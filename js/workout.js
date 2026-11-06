@@ -1,8 +1,8 @@
 // Ekran treningu: trwającego (zapis na bieżąco, minutnik) oraz edycji zapisanego.
 
 import { actionSheet, ask, h, icon, iconButton, openSheet, recordChip, toast } from './ui.js';
-import { countOf, fmtClock, fmtDuration, fmtSet, fmtUnit, fmtVolume, inputValue, parseNum, pastWorkoutStart, toLocalInput } from './format.js';
-import { exerciseSessions, flagRecords, isComplete, recordsFor, SET_KINDS, setLabels, suggestNextWeight, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
+import { countOf, fmtClock, fmtDuration, fmtNum, fmtSet, fmtUnit, fmtVolume, inputValue, parseNum, pastWorkoutStart, toLocalInput } from './format.js';
+import { exerciseSessions, flagRecords, isComplete, recordsFor, SET_KINDS, setLabels, stepBaseWeight, steppedWeight, suggestNextWeight, weightStep, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
 import { exerciseById, flushActive, newId, saveActiveSoon, saveExercise, saveRoutines, saveWorkout, setActive, state } from './store.js';
 import { pickExercises, stickyNoteSheet } from './picker.js';
 import { hasOwnName, putRoutine, routineDiffers, routineFromWorkout } from './routines.js';
@@ -294,11 +294,41 @@ function buildCard(item) {
 
   const rowsHost = h('div.set-rows');
   item.sets.forEach((set, index) => {
-    const row = buildSetRow({ set, type, hint: hintFor(index), label: numberLabel(index), onMenu: () => setMenu(index), onChange: refreshFlags, onDelete: () => deleteSet(set), exercise });
+    const onChange = () => { refreshFlags(); refreshWeightBar(); };
+    const row = buildSetRow({ set, type, hint: hintFor(index), label: numberLabel(index), onMenu: () => setMenu(index), onChange, onDelete: () => deleteSet(set), exercise });
     rows.push(row);
     rowsHost.append(row.node);
   });
   refreshFlags();
+
+  // Szybka zmiana ciężaru bez klawiatury. Działa na pierwszą nieodhaczoną serię, żeby karta nie była ciasna.
+  const step = weightStep(exercise.equipment);
+  const stepText = fmtNum(step);
+  const barLabel = h('strong.weight-bar-value', { 'aria-live': 'polite' });
+  const activeIndex = () => item.sets.findIndex((s) => !s.done);
+  const changeWeight = (delta) => {
+    const index = activeIndex();
+    if (index < 0) return;
+    const value = steppedWeight(stepBaseWeight(item.sets, index, hintFor(index)?.weight), delta);
+    item.sets[index].weight = value;
+    rows[index].setValue('weight', value);
+    refreshFlags();
+    refreshWeightBar();
+    touch();
+  };
+  const minus = h('button.btn.btn-chip', { type: 'button', 'aria-label': `Zmniejsz ciężar o ${stepText} kg`, onclick: () => changeWeight(-step) }, `−${stepText}`);
+  const plus = h('button.btn.btn-chip', { type: 'button', 'aria-label': `Zwiększ ciężar o ${stepText} kg`, onclick: () => changeWeight(step) }, `+${stepText}`);
+  const weightBar = type === 'time' ? null : h('div.weight-bar', minus, barLabel, plus);
+  function refreshWeightBar() {
+    if (!weightBar) return;
+    const index = activeIndex();
+    weightBar.hidden = index < 0;
+    if (index < 0) return;
+    const base = stepBaseWeight(item.sets, index, hintFor(index)?.weight);
+    barLabel.textContent = `Seria ${numberLabel(index)}: ${fmtUnit(base, 'kg')}`;
+    minus.disabled = base <= 0;
+  }
+  refreshWeightBar();
 
   const moveTo = (delta) => {
     const list = ctx.draft.exercises;
@@ -401,6 +431,7 @@ function buildCard(item) {
       icon('timer', 16), `Przerwa ${restLabel(restFor(exercise))}`),
     h('div.set-head', { 'aria-hidden': 'true' }, h('span', 'Seria'), h('span', 'Poprzednio'), columns, h('span')),
     rowsHost,
+    weightBar,
     h('button.btn.btn-ghost.btn-block.btn-small', { type: 'button', onclick: addSet }, icon('plus', 18), 'Dodaj serię'));
   return card;
 }
@@ -554,6 +585,11 @@ function buildSetRow({ set, type, hint, label, onMenu, onChange, onDelete, exerc
 
   return {
     node: wrapper,
+    setValue(key, value) {
+      const field = fields.find((f) => f.key === key);
+      field.input.value = inputValue(value);
+      field.input.classList.remove('invalid');
+    },
     setRecord(isRecord) {
       prevCell.replaceChildren(isRecord ? recordChip() : (prevText || '–'));
     },

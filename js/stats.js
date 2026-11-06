@@ -336,8 +336,22 @@ export function muscleLevel(sets) {
   return sets <= 15 ? 3 : 4;
 }
 
-const HEAVIER_STEP_KG = 2.5;
-const HEAVIER_STEP_DUMBBELL_KG = 2; // hantle zwykle rosną co 1 kg na stronę
+/** Skok ciężaru: 2,5 kg, a przy hantlach 2 kg, bo zwykle rosną co 1 kg na stronę. */
+export const weightStep = (equipment) => (equipment === 'Hantle' ? 2 : 2.5);
+
+/**
+ * Ciężar, od którego liczy szybka zmiana: wpisany w serii, a gdy go nie ma, ostatni wcześniejszy
+ * z tego ćwiczenia, a na końcu podpowiedź. Rozgrzewka nie jest punktem wyjścia dla serii roboczej.
+ */
+export function stepBaseWeight(sets, index, hintWeight) {
+  const set = sets[index];
+  if (set.weight != null) return set.weight;
+  const earlier = sets.slice(0, index).reverse().find((s) => s.weight != null && isWorking(s) === isWorking(set));
+  return earlier?.weight ?? hintWeight ?? 0;
+}
+
+/** Ciężar po zmianie, bez wartości ujemnych i błędów zaokrągleń. */
+export const steppedWeight = (base, delta) => Math.max(0, Math.round((base + delta) * 100) / 100);
 
 /**
  * Proponowany ciężar po sesji, w której wszystkie serie sięgnęły górnej granicy zakresu.
@@ -349,7 +363,7 @@ export function suggestNextWeight(sets, repRange, equipment) {
   if (!counted.length || !counted.every((set) => set.reps >= repRange.max)) return null;
   const top = Math.max(...counted.map((set) => set.weight || 0));
   if (!(top > 0)) return null;
-  return top + (equipment === 'Hantle' ? HEAVIER_STEP_DUMBBELL_KG : HEAVIER_STEP_KG);
+  return top + weightStep(equipment);
 }
 
 /** Równe podziałki osi Y: 1, 2, 2,5 lub 5 razy potęga dziesięciu. */

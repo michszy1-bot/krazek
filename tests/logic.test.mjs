@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { addDays, dayKey, fmtClock, fmtDuration, fmtSet, fmtVolume, inputValue, parseNum, pastWorkoutStart, plural, startOfWeek } from '../js/format.js';
-import { estimate1RM, flagRecords, goalProgress, isComplete, muscleLevel, muscleSets, neglectedMuscles, niceTicks, recordsFor, recordTimeline, setLabels, suggestNextWeight, summarizeSets, weekDays, weeklyTotals, workoutRecords, workoutVolume } from '../js/stats.js';
+import { estimate1RM, flagRecords, goalProgress, isComplete, muscleLevel, muscleSets, neglectedMuscles, niceTicks, recordsFor, recordTimeline, setLabels, stepBaseWeight, steppedWeight, suggestNextWeight, summarizeSets, weekDays, weeklyTotals, weightStep, workoutRecords, workoutVolume } from '../js/stats.js';
 import { applyFilter } from '../js/picker.js';
 import { SHAPE_TO_MUSCLE } from '../js/muscle-map.js';
 import { BODY_BACK, BODY_FRONT } from '../js/muscle-shapes.js';
@@ -422,6 +422,22 @@ test('mapa mięśni pokazuje każdą partię z aplikacji poza całym ciałem', (
     assert.ok(paths.length > 0);
     assert.ok(paths.every((d) => /^[Mm]/.test(d)));
   }
+});
+
+test('szybka zmiana ciężaru: punkt wyjścia i skok', () => {
+  const empty = (kind = 'normal') => set(null, null, { kind });
+  assert.equal(weightStep('Hantle'), 2);
+  assert.equal(weightStep('Sztanga'), 2.5);
+  assert.equal(stepBaseWeight([set(60, 5)], 0, 50), 60, 'wpisany ciężar ma pierwszeństwo');
+  assert.equal(stepBaseWeight([set(60, 5), empty()], 1, 50), 60, 'potem seria wyżej');
+  assert.equal(stepBaseWeight([empty()], 0, 50), 50, 'potem podpowiedź');
+  assert.equal(stepBaseWeight([empty()], 0, undefined), 0, 'na końcu zero');
+  assert.equal(stepBaseWeight([set(40, 10, { kind: 'warmup' }), empty()], 1, 80), 80, 'rozgrzewka nie jest punktem wyjścia');
+  assert.equal(stepBaseWeight([set(40, 10, { kind: 'warmup' }), empty('warmup')], 1, 80), 40);
+  assert.equal(stepBaseWeight([set(60, 5), set(50, 8, { kind: 'drop' }), empty()], 2, 0), 50);
+  assert.equal(steppedWeight(60, 2.5), 62.5);
+  assert.equal(steppedWeight(1, -2.5), 0);
+  assert.equal(steppedWeight(0.1, 0.2), 0.3);
 });
 
 test('poziom koloru mapy mięśni idzie za liczbą serii', () => {

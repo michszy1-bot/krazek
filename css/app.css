@@ -215,7 +215,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .routine-range { display: flex; align-items: center; gap: 8px; padding-right: 6px; }
 .routine-range > .field-label:first-child { flex: 1; }
 .routine-range-input { width: 58px; min-height: 44px; border: 0; border-radius: 8px; background: var(--panel); text-align: center; font-size: 16px; }
-/* Mapa mięśni. Jeden odcień, od ciemnego do jasnego, bo jaśniej znaczy więcej serii. */
+/* Mapa mięśni, jak sygnalizacja: czerwony to za mało serii w tygodniu, zielony to dobrze. */
 .muscle-map { display: flex; flex-direction: column; gap: 8px; }
 .muscle-figures { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 100%; max-width: 360px; margin: 0 auto; touch-action: pan-y; }
 .muscle-figure { margin: 0; text-align: center; font-size: 13px; color: var(--ink-2); }
@@ -223,10 +223,10 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .muscle-body { fill: var(--panel); }
 .muscle { cursor: pointer; }
 .muscle-0 { fill: var(--panel-raised); }
-.muscle-1 { fill: #274a94; background: #274a94; }
-.muscle-2 { fill: #2f6bea; background: #2f6bea; }
-.muscle-3 { fill: #5b8def; background: #5b8def; }
-.muscle-4 { fill: #b3cbfa; background: #b3cbfa; }
+.muscle-1 { fill: #e03131; background: #e03131; }
+.muscle-2 { fill: #ff8c1a; background: #ff8c1a; }
+.muscle-3 { fill: #ffd93b; background: #ffd93b; }
+.muscle-4 { fill: #2fd46b; background: #2fd46b; }
 .muscle-info { min-height: 22px; text-align: center; font-size: 15px; font-weight: 500; }
 .muscle-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 12px; list-style: none; padding: 0; margin: 0; font-size: 13px; color: var(--ink-2); }
 .muscle-legend li { display: flex; align-items: center; gap: 5px; }
@@ -548,6 +548,11 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .set-head { font-size: 12px; color: var(--ink-3); padding: 4px 0 0; text-align: center; }
 .set-head span:nth-child(2) { text-align: left; padding-left: 2px; }
 .set-rows { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
+.weight-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.weight-bar[hidden] { display: none; }
+.weight-bar .btn-chip { min-width: 72px; font: 700 20px/1 var(--font-data); }
+.weight-bar .btn-chip:disabled { opacity: 0.35; }
+.weight-bar-value { flex: 1; min-width: 0; text-align: center; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
 
 /* Przesunięcie serii w lewo. pan-y zostawia przeglądarce przewijanie w pionie. */
 .set-swipe { position: relative; border-radius: 8px; overflow: hidden; touch-action: pan-y; }
