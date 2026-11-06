@@ -7,15 +7,21 @@ const TITLE = 'title';
 const THEME = 'theme';
 const INSCRIPTION = 'inscription';
 const SHIELD = 'shield';
+const ACCENT = 'accent';
+const DUST = 'dust';
+const SPARK = 'spark';
 
 export const SHOP_SECTIONS = [
   { slot: SHIELD, label: 'Tarcza serii' },
   { slot: BAR, label: 'Gryf', worn: 'Założony' },
   { slot: PLATES, label: 'Krążki', worn: 'Założone' },
   { slot: CLAMP, label: 'Zaciski', worn: 'Założone' },
+  { slot: DUST, label: 'Efekt nowego krążka', worn: 'Wybrany' },
+  { slot: SPARK, label: 'Efekt rekordu', worn: 'Wybrany' },
   { slot: INSCRIPTION, label: 'Napis przy gryfie' },
   { slot: TITLE, label: 'Tytuł w profilu', worn: 'Wybrany' },
   { slot: THEME, label: 'Tło aplikacji', worn: 'Włączone' },
+  { slot: ACCENT, label: 'Kolor przycisków', worn: 'Włączony' },
 ];
 
 export const SHOP_ITEMS = [
@@ -23,12 +29,24 @@ export const SHOP_ITEMS = [
   { id: 'bar-steel', slot: BAR, name: 'Stalowy', meta: 'Podstawowy', price: 0 },
   { id: 'bar-copper', slot: BAR, name: 'Miedziany', meta: 'Ciepły połysk', price: 1500 },
   { id: 'bar-black', slot: BAR, name: 'Czarny', meta: 'Matowa czerń', price: 1500 },
+  { id: 'bar-chrome', slot: BAR, name: 'Chromowany', meta: 'Mocny połysk', price: 1500 },
+  { id: 'bar-titanium', slot: BAR, name: 'Tytanowy', meta: 'Chłodny szaroniebieski', price: 2000 },
+  { id: 'bar-gold', slot: BAR, name: 'Złoty', meta: 'Dla cierpliwych', price: 5000 },
   { id: 'plates-colour', slot: PLATES, name: 'Kolory z zawodów', meta: 'Kolor mówi o liczbie serii', price: 0 },
+  { id: 'plates-stripe', slot: PLATES, name: 'Czarne z paskiem', meta: 'Kolor paska mówi o liczbie serii', price: 3000 },
   { id: 'plates-iron', slot: PLATES, name: 'Żeliwne', meta: 'Jak w piwnicznej siłowni', price: 3000 },
+  { id: 'plates-neon', slot: PLATES, name: 'Neonowe', meta: 'Świecą w kolorze liczby serii', price: 5000 },
   { id: 'plates-gold', slot: PLATES, name: 'Złote', meta: 'Na długie miesiące treningów', price: 10000 },
   { id: 'clamp-steel', slot: CLAMP, name: 'Stalowe', meta: 'Podstawowe', price: 0 },
   { id: 'clamp-red', slot: CLAMP, name: 'Czerwone', meta: 'Widać je po wykonaniu celu', price: 800 },
   { id: 'clamp-gold', slot: CLAMP, name: 'Złote', meta: 'Widać je po wykonaniu celu', price: 800 },
+  { id: 'clamp-blue', slot: CLAMP, name: 'Niebieskie', meta: 'Widać je po wykonaniu celu', price: 800 },
+  { id: 'clamp-green', slot: CLAMP, name: 'Zielone', meta: 'Widać je po wykonaniu celu', price: 800 },
+  { id: 'clamp-black', slot: CLAMP, name: 'Czarne', meta: 'Widać je po wykonaniu celu', price: 800 },
+  { id: 'dust-none', slot: DUST, name: 'Bez efektu', meta: 'Sam krążek', price: 0 },
+  { id: 'dust-chalk', slot: DUST, name: 'Pył magnezji', meta: 'Chmurka, gdy krążek uderza o sztangę', price: 2500 },
+  { id: 'spark-none', slot: SPARK, name: 'Bez efektu', meta: 'Sama lista rekordów', price: 0 },
+  { id: 'spark-on', slot: SPARK, name: 'Iskry', meta: 'W podsumowaniu treningu z nowym rekordem', price: 2500 },
   { id: 'inscription', slot: INSCRIPTION, name: 'Własny napis', meta: 'Imię albo motto pod sztangą', price: 1000 },
   { id: 'title-none', slot: TITLE, name: 'Bez tytułu', meta: 'Sam poziom', price: 0 },
   { id: 'title-iron', slot: TITLE, name: 'Żelazny', meta: 'Tytuł przy poziomie', price: 500 },
@@ -36,8 +54,15 @@ export const SHOP_ITEMS = [
   { id: 'title-deadlift', slot: TITLE, name: 'Mistrz martwego ciągu', meta: 'Tytuł przy poziomie', price: 500 },
   { id: 'title-steel', slot: TITLE, name: 'Stalowa forma', meta: 'Tytuł przy poziomie', price: 500 },
   { id: 'title-no-excuses', slot: TITLE, name: 'Bez wymówek', meta: 'Tytuł przy poziomie', price: 500 },
-  { id: 'theme-graphite', slot: THEME, name: 'Grafitowe', meta: 'Podstawowe', price: 0 },
-  { id: 'theme-black', slot: THEME, name: 'Czarne', meta: 'Najlepiej wygląda na ekranie OLED', price: 2000 },
+  { id: 'theme-graphite', slot: THEME, name: 'Grafitowe', meta: 'Podstawowe', price: 0, themeColor: '#181C21' },
+  { id: 'theme-black', slot: THEME, name: 'Czarne', meta: 'Najlepiej wygląda na ekranie OLED', price: 2000, themeColor: '#000000' },
+  { id: 'theme-navy', slot: THEME, name: 'Granatowe', meta: 'Ciemny granat', price: 2000, themeColor: '#101A2B' },
+  { id: 'theme-burgundy', slot: THEME, name: 'Bordowe', meta: 'Ciemne wino', price: 2000, themeColor: '#1F1216' },
+  { id: 'theme-forest', slot: THEME, name: 'Leśne', meta: 'Ciemna zieleń', price: 2000, themeColor: '#121C17' },
+  { id: 'accent-blue', slot: ACCENT, name: 'Niebieski', meta: 'Podstawowy', price: 0 },
+  { id: 'accent-orange', slot: ACCENT, name: 'Pomarańczowy', meta: 'Też wykresy i pola wyboru', price: 1500 },
+  { id: 'accent-purple', slot: ACCENT, name: 'Fioletowy', meta: 'Też wykresy i pola wyboru', price: 1500 },
+  { id: 'accent-teal', slot: ACCENT, name: 'Turkusowy', meta: 'Też wykresy i pola wyboru', price: 1500 },
 ];
 
 const itemById = (id) => SHOP_ITEMS.find((item) => item.id === id);
@@ -88,9 +113,13 @@ export function shownTitle(shop) {
 }
 
 /** Klasy wyglądu dla całej aplikacji. */
-export const wornLooks = (shop) => [BAR, PLATES, CLAMP, THEME].map((slot) => `look-${wornItem(shop, slot).id}`);
+export const wornLooks = (shop) => [BAR, PLATES, CLAMP, THEME, ACCENT].map((slot) => `look-${wornItem(shop, slot).id}`);
 
-export const isBlackTheme = (shop) => wornItem(shop, THEME).id === 'theme-black';
+/** Kolor paska systemowego, taki sam jak tło aplikacji. */
+export const themeColor = (shop) => wornItem(shop, THEME).themeColor;
+
+export const hasChalkDust = (shop) => wornItem(shop, DUST).id === 'dust-chalk';
+export const hasRecordSparks = (shop) => wornItem(shop, SPARK).id === 'spark-on';
 
 /** Dane z kopii zapasowej lub bazy. Nieznane przedmioty przepadają, a brak danych to pusty sklep. */
 export function cleanShop(raw) {

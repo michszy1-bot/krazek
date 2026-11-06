@@ -6,7 +6,7 @@ import { applyDueShields, load, state, subscribe } from './store.js';
 import { isWorkoutOpen, resumeWorkout } from './workout.js';
 import { exerciseView, homeView, journalView, libraryView, progressView, settingsView, workoutDetailView } from './views.js';
 import { profileView } from './profile.js';
-import { isBlackTheme, wornLooks } from './shop.js';
+import { themeColor, wornLooks } from './shop.js';
 import { shopView } from './shop-views.js';
 import { achievementsView } from './achievement-views.js';
 
@@ -46,7 +46,7 @@ function route() {
 /** Kupiony wygląd obowiązuje w całej aplikacji. */
 function applyLooks() {
   document.documentElement.className = wornLooks(state.shop).join(' ');
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', isBlackTheme(state.shop) ? '#000000' : '#181C21');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', themeColor(state.shop));
 }
 
 function render({ keepScroll = false } = {}) {

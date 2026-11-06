@@ -1,6 +1,6 @@
 // Ekrany aplikacji poza treningiem: start, dziennik, postępy, ćwiczenia i ustawienia.
 
-import { actionSheet, ask, emptyState, h, icon, iconButton, openSheet, pageHeader, recordChip, segmented, toast } from './ui.js';
+import { actionSheet, ask, emptyState, h, icon, iconButton, openSheet, pageHeader, particles, recordChip, segmented, toast } from './ui.js';
 import { addDays, countOf, dayKey, fmtClock, fmtDayLong, fmtDayMedium, fmtDayShort, fmtDuration, fmtMonth, fmtMultiplier, fmtNum, fmtSet, fmtTime, fmtUnit, fmtVolume, plural, startOfWeek } from './format.js';
 import { columnChart, lineChart, rankedBars } from './chart.js';
 import { backupStatus, exerciseSessions, flagRecords, isWorking, loadBar, METRICS, muscleSets, neglectedMuscles, PLATE_TIERS, plateHeight, plateTier, plateTravel, plateWidth, RECORD_TYPES, recordsFor, recordTimeline, SET_KINDS, setLabels, streakStatus, summarizeSets, weekDays, weeklyTotals, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
@@ -11,7 +11,7 @@ import { backupText, deleteExercise, deleteWorkout, dismissShieldNote, exerciseB
 import { workoutsCsv } from './csv.js';
 import { MUSCLES } from './exercises.js';
 import { muscleMap } from './muscle-map.js';
-import { shownInscription } from './shop.js';
+import { hasChalkDust, shownInscription } from './shop.js';
 import { applyFilter, exerciseFilter, exerciseForm, favoriteButton, stickyNoteSheet } from './picker.js';
 import { addPastWorkout, editWorkout, repeatWorkout, resumeWorkout, startRoutine, startWorkout, stat } from './workout.js';
 import { routinesSection, saveWorkoutAsRoutine } from './routine-views.js';
@@ -41,7 +41,8 @@ function barSide(side, { plates, empty }, { met, arrival, hadSlot }) {
       if (i < plates.length - 1) return plate(sets, '.arrive.bar-plate-hit');
       return h('span.bar-slot', { style: `width:${width}px;height:${plateHeight(sets)}px` },
         hadSlot && h('span.bar-plate.bar-plate-empty.arrive.bar-plate-leaving', { style: `width:${width}px;height:${PLATE_EMPTY_HEIGHT}px` }),
-        plate(sets, '.arrive.bar-plate-new', `--from:${plateTravel(i, width)}px`));
+        plate(sets, '.arrive.bar-plate-new', `--from:${plateTravel(i, width)}px`),
+        hasChalkDust(state.shop) && h('span.chalk-puff', { 'aria-hidden': 'true' }, particles('chalk.arrive', 18, 42)));
     }),
     Array.from({ length: empty }, () => h('span.bar-plate.bar-plate-empty', { style: `width:${width}px;height:${PLATE_EMPTY_HEIGHT}px` })),
     met && (arrival

@@ -1,6 +1,6 @@
 /*
   Forma. Paleta pochodzi od kolorów krążków zawodowych:
-  niebieski (20 kg) to działanie, zielony (10 kg) to zaliczona seria,
+  niebieski (20 kg) to działanie, choć jego kolor można zmienić w sklepie, zielony (10 kg) to zaliczona seria,
   żółty (15 kg) to rekord, czerwony (25 kg) to usuwanie.
   Wyjątek to sztanga tygodnia: tam kolor krążka mówi o liczbie serii.
 */
@@ -15,8 +15,8 @@
   --ink-2: #b7c0ca;
   --ink-3: #8c96a2;
 
-  --blue: #2f6bea;
-  --blue-line: #5b8def;
+  --accent: #2f6bea;
+  --accent-line: #5b8def;
   --green: #35b371;
   --green-wash: rgb(53 179 113 / 16%);
   --yellow: #f6c62e;
@@ -56,7 +56,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 button { background: none; border: 0; padding: 0; cursor: pointer; touch-action: manipulation; }
 [hidden] { display: none !important; }
 
-:focus-visible { outline: 2px solid var(--blue-line); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 2px; }
 
 /* Układ */
 
@@ -101,7 +101,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .btn:disabled { opacity: 0.45; cursor: default; }
 .btn-block { width: 100%; }
 .btn-small { min-height: 44px; }
-.btn-primary { background: var(--blue); color: #fff; }
+.btn-primary { background: var(--accent); color: #fff; }
 .btn-ghost { background: var(--panel-raised); color: var(--ink); }
 .btn-danger { background: #d63c3c; color: #fff; }
 .btn-text-danger { color: var(--red); }
@@ -160,12 +160,12 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .level-rules li { display: flex; justify-content: space-between; gap: 12px; }
 .level-rules strong { flex: none; color: var(--ink); font-weight: 600; }
 .goal-line { display: flex; flex-wrap: wrap; align-items: center; column-gap: 10px; min-height: 44px; margin-bottom: -8px; text-align: left; font-weight: 600; color: var(--ink); }
-.goal-empty { font-weight: 500; color: var(--blue-line); }
+.goal-empty { font-weight: 500; color: var(--accent-line); }
 
 /* Kolory krążków według liczby serii, te same na sztandze, pasku dni i w legendzie. */
 .tier-green { --tier: var(--green); --tier-plate: linear-gradient(90deg, #268a55, var(--green) 40%, #55cf8e 60%, #268a55); }
 .tier-yellow { --tier: var(--yellow); --tier-plate: linear-gradient(90deg, #d7a916, var(--yellow) 40%, #ffdc66 60%, #d7a916); color: #2a2206; }
-.tier-blue { --tier: var(--blue); --tier-plate: linear-gradient(90deg, #255cd0, var(--blue) 40%, #4f85f5 60%, #255cd0); }
+.tier-blue { --tier: #2f6bea; --tier-plate: linear-gradient(90deg, #255cd0, #2f6bea 40%, #4f85f5 60%, #255cd0); }
 .tier-red { --tier: #e5484d; --tier-plate: linear-gradient(90deg, #b92f34, #e5484d 40%, #f26d71 60%, #b92f34); }
 
 /* Gryf biegnie przez całą szerokość ekranu, a krążki siedzą na jego końcach. */
@@ -220,13 +220,30 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .look-bar-steel { --steel-bar: linear-gradient(#b4bdc7, #737c87 55%, #4d555e); }
 .look-bar-copper { --steel-bar: linear-gradient(#f0bd94, #b5723f 55%, #6f4325); }
 .look-bar-black { --steel-bar: linear-gradient(#6b7077, #2c2f34 55%, #101215); }
+.look-bar-chrome { --steel-bar: linear-gradient(#ffffff, #aab4bf 38%, #eef2f5 55%, #59636e); }
+.look-bar-titanium { --steel-bar: linear-gradient(#b3c5d6, #5f7488 55%, #35465a); }
+.look-bar-gold { --steel-bar: linear-gradient(#fff0a8, #d6a51e 55%, #8f6a08); }
 .look-plates-colour { --skin: initial; --skin-ink: initial; --skin-glow: initial; }
 .look-plates-gold { --skin: linear-gradient(90deg, #c9960f, #f6c62e 40%, #fff0a8 55%, #e0ae1c 75%, #b98a0c); --skin-ink: #2a2206; --skin-glow: 0 0 14px rgb(246 198 46 / 28%); }
 .look-plates-iron { --skin: linear-gradient(90deg, #26282c, #44474c 40%, #5c5f65 55%, #3a3d42 75%, #232528); --skin-ink: #e6e8ea; --skin-glow: inset 0 0 0 1px rgb(255 255 255 / 14%); }
 .look-clamp-steel { --clamp: initial; }
 .look-clamp-red { --clamp: linear-gradient(#f26d71, #c7353a 55%, #8d2226); }
 .look-clamp-gold { --clamp: linear-gradient(#fff0a8, #f6c62e 55%, #b98a0c); }
+.look-clamp-blue { --clamp: linear-gradient(#7aa4f5, #2f6bea 55%, #1f47a0); }
+.look-clamp-green { --clamp: linear-gradient(#7fe0ac, #35b371 55%, #1f7346); }
+.look-clamp-black { --clamp: linear-gradient(#6b7077, #2c2f34 55%, #101215); }
+/* Te krążki zachowują kolor liczby serii, więc rysuje je reguła na samym krążku, a nie zmienna --skin. */
+.look-plates-stripe .bar-plate:not(.bar-plate-empty) { background: linear-gradient(var(--tier) 0 9px, #1b1d21 9px calc(100% - 9px), var(--tier) calc(100% - 9px)); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 12%); color: #f1f3f5; }
+.shop-preview.look-plates-stripe .mini-load i { background: linear-gradient(var(--tier) 0 5px, #1b1d21 5px calc(100% - 5px), var(--tier) calc(100% - 5px)); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 28%); }
+.look-plates-neon .bar-plate:not(.bar-plate-empty) { background: #0d0f12; box-shadow: inset 0 0 0 2px var(--tier), 0 0 10px var(--tier); color: var(--tier); }
+.shop-preview.look-plates-neon .mini-load i { background: #0d0f12; box-shadow: inset 0 0 0 1.5px var(--tier), 0 0 6px var(--tier); }
 .look-theme-black { --floor: #000; --panel: #15181c; --panel-raised: #23272d; --line: #2f353c; --chrome: #0e1013; }
+.look-theme-navy { --floor: #101a2b; --panel: #1a2840; --panel-raised: #243552; --line: #33486b; --chrome: #14202f; }
+.look-theme-burgundy { --floor: #1f1216; --panel: #2f1c22; --panel-raised: #3c252d; --line: #543540; --chrome: #26161b; }
+.look-theme-forest { --floor: #121c17; --panel: #1c2a23; --panel-raised: #26372e; --line: #365042; --chrome: #16211b; }
+.look-accent-orange { --accent: #c2570c; --accent-line: #f0873a; }
+.look-accent-purple { --accent: #7c4fe0; --accent-line: #a585f2; }
+.look-accent-teal { --accent: #0b8279; --accent-line: #2fc4b8; }
 
 /* Seria tygodni w karcie poziomu */
 .level-streak { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 10px; margin: 6px 0 0; padding-top: 10px; border-top: 1px solid var(--line); font-size: 15px; }
@@ -247,19 +264,28 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .mini-load i:nth-child(2) { height: 26px; }
 .mini-load i:nth-child(3) { height: 22px; }
 .mini-load b { width: 4px; height: 14px; border-radius: 1px; background: var(--clamp, var(--steel-bar)); }
-.shop-preview-shield { color: var(--blue-line); }
+.shop-preview-shield { color: var(--accent-line); }
 .shield-note { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border-radius: var(--radius); background: var(--panel); text-align: left; font-size: 14px; line-height: 1.3; color: var(--ink-2); }
-.shield-note svg { flex: none; color: var(--blue-line); }
+.shield-note svg { flex: none; color: var(--accent-line); }
 .shield-note strong { display: block; color: var(--ink); font-weight: 600; }
 .shop-preview-text { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
 .shop-swatch-theme-graphite { background: #181c21; box-shadow: inset 0 0 0 1px #3a424c; }
 .shop-swatch-theme-black { background: #000; box-shadow: inset 0 0 0 1px #3a424c; }
+.shop-swatch-theme-navy { background: #101a2b; box-shadow: inset 0 0 0 1px #33486b; }
+.shop-swatch-theme-burgundy { background: #1f1216; box-shadow: inset 0 0 0 1px #543540; }
+.shop-swatch-theme-forest { background: #121c17; box-shadow: inset 0 0 0 1px #365042; }
+.shop-swatch-accent-blue { background: #2f6bea; }
+.shop-swatch-accent-orange { background: #c2570c; }
+.shop-swatch-accent-purple { background: #7c4fe0; }
+.shop-swatch-accent-teal { background: #0b8279; }
+.preview-burst { position: relative; width: 0; height: 0; }
+.preview-burst .chalk, .preview-burst .spark { opacity: 1; animation: none; transform: translate(var(--dx), var(--dy)); }
 .shop-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
 .shop-name { font-weight: 600; }
 .shop-meta { font-size: 13px; line-height: 1.3; color: var(--ink-2); }
 .shop-progress { display: block; height: 4px; margin-top: 4px; border-radius: 2px; background: var(--panel-raised); overflow: hidden; }
 .shop-progress i { display: block; height: 100%; background: var(--yellow); }
-.shop-action { display: inline-flex; align-items: center; justify-content: center; min-width: 76px; min-height: 44px; padding: 0 10px; border-radius: 8px; background: var(--blue); color: #fff; font: 700 17px/1 var(--font-data); white-space: nowrap; }
+.shop-action { display: inline-flex; align-items: center; justify-content: center; min-width: 76px; min-height: 44px; padding: 0 10px; border-radius: 8px; background: var(--accent); color: #fff; font: 700 17px/1 var(--font-data); white-space: nowrap; }
 .shop-action.wear { background: var(--panel-raised); color: var(--ink); font: 600 14px/1 var(--font-body); }
 .shop-action.on { background: none; color: var(--green); font: 600 14px/1 var(--font-body); padding: 0; }
 .shop-action.far { background: var(--panel-raised); color: var(--ink-3); cursor: default; }
@@ -340,7 +366,26 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
   0%, 33.3% { transform: scaleX(0); animation-timing-function: cubic-bezier(.2, .8, .3, 1); }
   60%, 100% { transform: scaleX(1); }
 }
+/* Pył magnezji rusza w chwili uderzenia krążka, a przy ograniczonym ruchu w ogóle go nie widać. */
+.chalk-puff { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; z-index: 2; }
+.chalk { position: absolute; width: 14px; height: 14px; margin: -7px; border-radius: 50%; background: radial-gradient(rgb(255 255 255 / 95%), rgb(255 255 255 / 0%) 72%); opacity: 0; animation-name: chalk-out; }
+@keyframes chalk-out {
+  0%, 33% { opacity: 0; transform: translate(0, 0) scale(0.5); }
+  36% { opacity: 1; transform: translate(calc(var(--dx) * 0.15), calc(var(--dy) * 0.15)) scale(0.9); animation-timing-function: cubic-bezier(.2, .7, .4, 1); }
+  62% { opacity: 0.8; transform: translate(calc(var(--dx) * 0.8), calc(var(--dy) * 0.8)) scale(1.9); }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(2.6); }
+}
+/* Iskry w podsumowaniu treningu z rekordem */
+.sheet-summary { position: relative; }
+.spark-burst { position: absolute; left: 50%; top: 34px; width: 0; height: 0; pointer-events: none; z-index: 2; }
+.spark { position: absolute; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: #ffdc66; box-shadow: 0 0 6px #f6c62e; opacity: 0; animation: spark-fly 1000ms cubic-bezier(.15, .7, .3, 1) calc(350ms + var(--wait)) both; }
+@keyframes spark-fly {
+  0% { opacity: 0; transform: translate(0, 0) scale(1.3); }
+  8% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.3); }
+}
 @media (prefers-reduced-motion: reduce) {
+  .spark-burst { display: none; }
   .arrive { animation: none; }
   .bar-was, .bar-plate-leaving { display: none; }
 }
@@ -504,7 +549,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .cal-day.outside { color: #5c6570; }
 .cal-day.trained { background: var(--panel); color: var(--ink); font-weight: 600; }
 .cal-day.today .cal-num { background: var(--ink); color: var(--floor); border-radius: 6px; padding: 0 5px; font-weight: 700; }
-.cal-plate { width: 18px; height: 8px; border-radius: 2px; background: var(--blue); }
+.cal-plate { width: 18px; height: 8px; border-radius: 2px; background: var(--accent); }
 
 /* Filtry */
 
@@ -516,7 +561,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .filter { display: flex; flex-direction: column; gap: 10px; }
 .search { display: flex; align-items: center; gap: 8px; background: var(--panel); border-radius: var(--radius); padding: 0 12px; color: var(--ink-3); }
 .search-input { flex: 1; min-width: 0; min-height: 46px; border: 0; background: none; color: var(--ink); font-size: 17px; outline: none; -webkit-appearance: none; appearance: none; }
-.search:focus-within { outline: 2px solid var(--blue-line); }
+.search:focus-within { outline: 2px solid var(--accent-line); }
 .chips { display: flex; gap: 6px; overflow-x: auto; margin: 0 -16px; padding: 0 16px; scrollbar-width: none; }
 .chips::-webkit-scrollbar { display: none; }
 .chip { flex: none; min-height: 38px; padding: 0 12px; border-radius: 19px; background: var(--panel); color: var(--ink-2); font-size: 14px; }
@@ -528,11 +573,11 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .chart-plot svg { display: block; }
 .chart .grid { stroke: #30373f; stroke-width: 1; }
 .chart .tick { fill: var(--ink-3); font: 12px var(--font-body); font-variant-numeric: tabular-nums; }
-.chart .line { fill: none; stroke: var(--blue-line); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.chart .dot { fill: var(--blue-line); stroke: var(--floor); stroke-width: 2; }
+.chart .line { fill: none; stroke: var(--accent-line); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .dot { fill: var(--accent-line); stroke: var(--floor); stroke-width: 2; }
 .chart .end-label { fill: var(--ink); font: 700 16px var(--font-data); }
 .chart .crosshair { stroke: var(--ink-2); stroke-width: 1; }
-.chart .bar { fill: var(--blue-line); }
+.chart .bar { fill: var(--accent-line); }
 .chart .bar-active { fill: #a3c0ff; }
 .chart-tip {
   position: absolute;
@@ -559,7 +604,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .ranked li { display: grid; grid-template-columns: 108px 1fr; align-items: center; gap: 8px; }
 .ranked-label { font-size: 14px; color: var(--ink-2); }
 .ranked-track { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.ranked-bar { height: 16px; border-radius: 0 4px 4px 0; background: var(--blue-line); max-width: calc(100% - 40px); }
+.ranked-bar { height: 16px; border-radius: 0 4px 4px 0; background: var(--accent-line); max-width: calc(100% - 40px); }
 .ranked-value { font: 700 17px/1 var(--font-data); }
 
 /* Rekordy */
@@ -662,7 +707,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--blue);
+  background: var(--accent);
   color: #fff;
   border-radius: var(--radius);
   font-weight: 600;
@@ -712,7 +757,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
   font: 700 25px/1.1 var(--font-data);
   letter-spacing: 0.01em;
 }
-.wk-name:focus { outline: none; border-bottom-color: var(--blue-line); }
+.wk-name:focus { outline: none; border-bottom-color: var(--accent-line); }
 .wk-cards { display: flex; flex-direction: column; gap: 12px; }
 .wk-hint { color: var(--ink-2); padding: 16px 4px; text-align: center; }
 
@@ -778,11 +823,11 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .rpe-choice { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; min-height: 48px; border-radius: 8px; background: var(--panel-raised); color: var(--ink); }
 .rpe-choice strong { font: 700 20px/1 var(--font-data); }
 .rpe-choice span { font-size: 11px; line-height: 1.1; color: var(--ink-2); }
-.rpe-choice.selected { background: var(--blue); color: #fff; }
+.rpe-choice.selected { background: var(--accent); color: #fff; }
 .rpe-choice.selected span { color: #fff; }
 .set-row.warmup .set-num { color: var(--yellow); }
 .set-row.failure .set-num { color: var(--red); }
-.set-row.drop .set-num { color: var(--blue-line); }
+.set-row.drop .set-num { color: var(--accent-line); }
 .set-prev { font: 600 16px/1.1 var(--font-data); color: var(--ink-3); padding-left: 2px; overflow-wrap: anywhere; }
 .set-input {
   width: 100%;
@@ -798,7 +843,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
   appearance: none;
 }
 .set-input::placeholder { color: var(--ink-3); font-weight: 600; opacity: 1; }
-.set-input:focus { outline: 2px solid var(--blue-line); outline-offset: 0; }
+.set-input:focus { outline: 2px solid var(--accent-line); outline-offset: 0; }
 .set-input.invalid { outline: 2px solid var(--red); outline-offset: 0; }
 .set-row.done .set-input { background: transparent; }
 
@@ -843,7 +888,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
   padding-bottom: var(--safe-bottom);
 }
 .rest-track { display: block; height: 4px; background: var(--panel-raised); }
-.rest-progress { display: block; height: 100%; background: var(--blue-line); transform-origin: left; }
+.rest-progress { display: block; height: 100%; background: var(--accent-line); transform-origin: left; }
 .rest-row { display: flex; align-items: center; gap: 6px; padding: 8px 12px; max-width: 560px; margin: 0 auto; }
 .rest-time { flex: 1; font: 700 34px/1 var(--font-data); font-variant-numeric: tabular-nums; }
 .rest-bar.ended { background: var(--green); color: #0b2115; }
@@ -926,7 +971,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
   justify-content: center;
   color: transparent;
 }
-.picker-row[aria-pressed="true"] .picker-mark { background: var(--blue); border-color: var(--blue); color: #fff; }
+.picker-row[aria-pressed="true"] .picker-mark { background: var(--accent); border-color: var(--accent); color: #fff; }
 
 /* Formularze. Pola mają co najmniej 16 px, bo inaczej iPhone przybliża ekran przy wpisywaniu. */
 

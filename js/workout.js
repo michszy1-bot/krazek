@@ -1,6 +1,7 @@
 // Ekran treningu: trwającego (zapis na bieżąco, minutnik) oraz edycji zapisanego.
 
-import { actionSheet, ask, h, icon, iconButton, openSheet, recordChip, toast } from './ui.js';
+import { actionSheet, ask, h, icon, iconButton, openSheet, particles, recordChip, toast } from './ui.js';
+import { hasRecordSparks } from './shop.js';
 import { countOf, fmtClock, fmtDuration, fmtNum, fmtSet, fmtSetChange, fmtUnit, fmtVolume, inputValue, parseNum, pastWorkoutStart, toLocalInput } from './format.js';
 import { emptySet, exerciseSessions, flagRecords, isComplete, isWorking, recordsFor, restAfterSet, RPE_SCALE, SET_KINDS, setLabels, stepBaseWeight, steppedWeight, suggestNextWeight, swapExercise, warmupSets, weightStep, workingSetCount, workoutComparison, workoutRecords, workoutVolume } from './stats.js';
 import { exerciseById, flushActive, holdPlate, newId, releasePlate, saveActiveSoon, saveExercise, saveRoutines, saveWorkout, setActive, state } from './store.js';
@@ -956,7 +957,8 @@ async function saveEdit() {
 
 function showSummary(workout, records, gain, routine, updatedRoutine) {
   const changes = workoutComparison(workout, state.workouts, exerciseById);
-  openSheet((close) => h('div.sheet-body',
+  openSheet((close) => h('div.sheet-body.sheet-summary',
+    records.length > 0 && hasRecordSparks(state.shop) && h('span.spark-burst', { 'aria-hidden': 'true' }, particles('spark', 22, 150)),
     h('h2.sheet-title', 'Trening zapisany'),
     h('div.stats',
       stat('Czas', fmtDuration(workout.endedAt - workout.startedAt)),

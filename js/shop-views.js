@@ -1,6 +1,6 @@
 // Ekran sklepu za XP.
 
-import { ask, h, icon, openSheet, pageHeader, toast } from './ui.js';
+import { ask, h, icon, openSheet, pageHeader, particles, toast } from './ui.js';
 import { fmtNum } from './format.js';
 import { levelProgress } from './level.js';
 import { levelOptions } from './level-views.js';
@@ -53,6 +53,10 @@ async function buy(item, xp) {
 function preview(item) {
   if (item.slot === 'shield') return h('span.shop-preview.shop-preview-shield', icon('shield', 30));
   if (item.slot === 'theme') return h(`span.shop-preview.shop-swatch-${item.id}`);
+  if (item.slot === 'accent') return h(`span.shop-preview.shop-swatch-${item.id}`);
+  if (item.id === 'dust-chalk') return h('span.shop-preview', h('span.preview-burst', particles('chalk', 12, 20)));
+  if (item.id === 'spark-on') return h('span.shop-preview', h('span.preview-burst', particles('spark', 12, 20)));
+  if (item.slot === 'dust' || item.slot === 'spark') return h('span.shop-preview.shop-preview-text', 'Brak');
   if (item.slot === 'title') return h('span.shop-preview', icon('person', 26));
   if (item.slot === 'inscription') return h('span.shop-preview.shop-preview-text', 'Abc');
   const look = (slot) => `look-${item.slot === slot ? item.id : wornItem(state.shop, slot).id}`;

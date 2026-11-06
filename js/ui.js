@@ -71,6 +71,15 @@ export function icon(name, size = 24) {
   return svg;
 }
 
+/** Drobinki efektu. Złota proporcja rozrzuca je równo, więc efekt wygląda tak samo za każdym razem. */
+export function particles(className, count, reach) {
+  return Array.from({ length: count }, (_, i) => {
+    const angle = i * 2.39996;
+    const distance = reach * (0.45 + ((i * 0.618) % 1) * 0.55);
+    return h(`i.${className}`, { style: `--dx:${Math.round(Math.cos(angle) * distance)}px;--dy:${Math.round(Math.sin(angle) * distance)}px;--wait:${i * 14}ms` });
+  });
+}
+
 export function iconButton(name, label, onclick, extraClass = '') {
   return h(`button.icon-btn${extraClass ? `.${extraClass}` : ''}`, { type: 'button', 'aria-label': label, title: label, onclick }, icon(name));
 }

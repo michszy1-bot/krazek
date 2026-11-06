@@ -11,7 +11,7 @@ import { applyFilter } from '../js/picker.js';
 import { SHAPE_TO_MUSCLE } from '../js/muscle-map.js';
 import { BODY_BACK, BODY_FRONT } from '../js/muscle-shapes.js';
 import { buildBackup, parseBackup } from '../js/backup.js';
-import { buyItem, cleanInscription, cleanShop, INSCRIPTION_MAX, SHOP_ITEMS, SHOP_SECTIONS, shownInscription, shownTitle, spendable, useShields, wearItem, wornItem, wornLooks } from '../js/shop.js';
+import { buyItem, cleanInscription, cleanShop, hasChalkDust, hasRecordSparks, INSCRIPTION_MAX, SHOP_ITEMS, SHOP_SECTIONS, shownInscription, shownTitle, spendable, themeColor, useShields, wearItem, wornItem, wornLooks } from '../js/shop.js';
 import { ageOn, cleanProfile, cleanWeights, dayTime, isDay, putWeight, removeWeight, weightChange, weightOn } from '../js/body.js';
 import { cleanRoutines, hasOwnName, isNameTaken, moveItem, parseRepRange, putRoutine, routineDiffers, routineFromWorkout, routineSetCount } from '../js/routines.js';
 import { SEED_EXERCISES, MUSCLES, EQUIPMENT, HELPER_MUSCLES, musclesOf, RETIRED_EXERCISES, syncExercises } from '../js/exercises.js';
@@ -1063,7 +1063,7 @@ test('sklep: saldo, zakup, założenie, a poziom liczy się dalej z całego XP',
   assert.equal(steel.spent, 1500, 'zmiana nie kosztuje');
   assert.equal(wornItem(wearItem(steel, 'bar-copper'), 'bar').id, 'bar-copper');
   assert.equal(wearItem(steel, 'bar-black'), null, 'nie założysz niekupionego');
-  assert.deepEqual(wornLooks(copper), ['look-bar-copper', 'look-plates-colour', 'look-clamp-steel', 'look-theme-graphite']);
+  assert.deepEqual(wornLooks(copper), ['look-bar-copper', 'look-plates-colour', 'look-clamp-steel', 'look-theme-graphite', 'look-accent-blue']);
 });
 
 test('sklep: usunięty trening nie daje salda poniżej zera, a zakupy zostają', () => {
@@ -1349,4 +1349,32 @@ test('okazje: powrót dopiero po 30 dniach przerwy, a Nowy Rok tylko 1 stycznia'
   assert.equal(has([first, warmup, at('e', new Date(2026, 9, 31, 9))], 'comeback', {}, levelLookup).done, true);
   assert.equal(has([at('f', new Date(2027, 0, 1, 10))], 'new-year', {}, levelLookup).done, true);
   assert.equal(has([at('g', new Date(2027, 0, 2, 10))], 'new-year', {}, levelLookup).done, false);
+});
+
+test('sklep: nowe przedmioty zakłada się jak pozostałe, a efekty można wyłączyć', () => {
+  const empty = cleanShop(null);
+  assert.equal(themeColor(empty), '#181C21');
+  assert.equal(hasChalkDust(empty), false);
+  assert.equal(hasRecordSparks(empty), false);
+
+  const navy = buyItem(empty, 'theme-navy', 2000);
+  assert.equal(navy.spent, 2000);
+  assert.equal(themeColor(navy), '#101A2B');
+  assert.ok(SHOP_ITEMS.filter((item) => item.slot === 'theme').every((item) => /^#[0-9A-F]{6}$/.test(item.themeColor)));
+
+  const teal = buyItem(navy, 'accent-teal', 3500);
+  assert.ok(wornLooks(teal).includes('look-accent-teal'));
+  assert.ok(wornLooks(teal).includes('look-theme-navy'));
+
+  const chalk = buyItem(empty, 'dust-chalk', 2500);
+  assert.equal(hasChalkDust(chalk), true);
+  assert.equal(hasChalkDust(wearItem(chalk, 'dust-none')), false);
+  // Wyłączony efekt nadal jest kupiony, więc można go włączyć bez płacenia.
+  assert.equal(hasChalkDust(wearItem(wearItem(chalk, 'dust-none'), 'dust-chalk')), true);
+  assert.equal(hasRecordSparks(buyItem(empty, 'spark-on', 2500)), true);
+
+  // Kopia zapasowa zachowuje nowe przedmioty.
+  const restored = cleanShop(JSON.parse(JSON.stringify(teal)));
+  assert.deepEqual(restored.owned, ['theme-navy', 'accent-teal']);
+  assert.ok(wornLooks(restored).includes('look-accent-teal'));
 });
