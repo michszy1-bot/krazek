@@ -88,4 +88,120 @@ export const ANIMATIONS = {
   "lying-leg-raise": "WhuFnR7", // lying leg raise flat bench
   "plank": "VBAWRPG", // weighted front plank
   "side-plank": "5VXmnV5", // bodyweight incline side plank
+  // Klatka
+  "smith-bench": "trqKQv2", // smith bench press
+  "smith-incline": "5v7KYld", // smith incline bench press
+  "db-pullover": "9XjtHvS", // dumbbell pullover
+  "cable-incline-fly": "tBWXbIT", // cable incline fly
+  "cable-low-fly": "FVmZVhk", // cable low fly
+  "cable-chest-press": "nIR4Rwl", // cable seated chest press
+  "incline-push-up": "B1EVP9F", // incline push-up
+  "decline-push-up": "i5cEhka", // decline push-up
+  "wide-push-up": "JmMVpR3", // wide hand push up
+  // Plecy
+  "pendlay-row": "r0z6xzQ", // barbell pendlay row
+  "rack-pull": "za9Ni4z", // barbell rack pull
+  "barbell-pullover": "i6LWjok", // barbell pullover
+  "inverted-row": "bZGHsAZ", // inverted row
+  "wide-pull-up": "Qqi7bko", // Wide-Grip Pull-Up
+  "underhand-pulldown": "xBYcQHj", // cable underhand pulldown
+  "rope-straight-pulldown": "DT14T9T", // cable straight arm pulldown (with rope)
+  "wide-cable-row": "qcY50ZD", // cable seated wide-grip row
+  "machine-pulldown": "7F1DVzn", // Machine Front Pulldown
+  "machine-pullover": "4U7iLb5", // Machine Pullover
+  "smith-row": "ZX9UZmj", // smith bent over row
+  "smith-shrug": "OUQ0ZyW", // smith shrug
+  "kb-row": "g9AsZ8P", // Kettlebell Single-Arm Row
+  // Barki
+  "arnold-press": "eOrFCnx", // dumbbell arnold press
+  "one-arm-db-press": "1TkiAFK", // Dumbbell Single-Arm Shoulder Press
+  "db-push-press": "FS63wTN", // dumbbell push press
+  "seated-lateral": "hrrS0Ed", // dumbbell seated lateral raise
+  "one-arm-lateral": "n5cWCsI", // Dumbbell Single-Arm Lateral Raise
+  "db-upright-row": "ainizkb", // dumbbell upright row
+  "incline-rear-fly": "vYk8lqw", // dumbbell incline rear lateral raise
+  "db-rear-delt-row": "EKXOMEh", // dumbbell rear delt row (shoulder)
+  "external-rotation": "x306lCW", // dumbbell upright shoulder external rotation
+  "barbell-upright-row": "83HoW9X", // barbell upright row
+  "barbell-front-raise": "b2Uoz54", // barbell front raise
+  "cable-shoulder-press": "PzQanLE", // cable shoulder press
+  "cable-upright-row": "cALKspW", // cable upright row
+  "cable-front-raise": "u2X71Np", // cable front raise
+  "cable-rear-fly": "aqvSOQE", // Cable Crossover Reverse Fly
+  "smith-shoulder": "903mzG8", // smith shoulder press
+  "kb-press": "kuXhl0o", // Single-Arm Kettlebell Overhead Press
+  "plate-front-raise": "e4aFmFY", // weighted front raise
+  // Biceps
+  "concentration-curl": "gvsWLQw", // dumbbell concentration curl
+  "zottman-curl": "kXaIn5A", // dumbbell zottman curl
+  "spider-curl": "2kattbR", // EZ-Bar Spider Curl
+  "drag-curl": "IENzBdA", // barbell drag curl
+  "wide-curl": "NdIb5Z1", // barbell standing wide-grip curl
+  "cable-hammer-curl": "HPlPoQA", // cable hammer curl (with rope)
+  // Triceps
+  "diamond-push-up": "soIB2rj", // diamond push-up
+  "barbell-overhead-ext": "dZl9Q27", // barbell standing overhead triceps extension
+  "ez-overhead-ext": "iaapw0g", // EZ-Bar Seated Triceps Extension
+  "db-lying-ext": "mpKZGWz", // dumbbell lying triceps extension
+  "db-standing-ext": "PdmaD0N", // dumbbell standing triceps extension
+  "db-kickback": "W6PxUkg", // dumbbell kickback
+  "vbar-pushdown": "gAwDzB3", // cable triceps pushdown (v-bar)
+  "reverse-pushdown": "VjYliFZ", // cable reverse-grip pushdown
+  "one-arm-pushdown": "qRZ5S1N", // Cable Single-Arm Triceps Pushdown
+  "rope-overhead-ext": "2IxROQ1", // cable overhead triceps extension (rope attachment)
+  "cable-kickback-triceps": "HEJ6DIX", // cable kickback
+  "machine-triceps": "Ser9eQp", // Machine Triceps Extension
+  "machine-dip": "BRImeP8", // Machine Seated Dip
+  "assisted-dip": "J60bN17", // assisted triceps dip (kneeling)
+  "smith-close-bench": "WcHl7ru", // smith close-grip bench press
+  // Przedramiona
+  "barbell-wrist-curl": "6kSxYnw", // barbell wrist curl
+  "barbell-reverse-wrist": "LsZkfU6", // barbell reverse wrist curl
+  "db-reverse-wrist": "BLCvwr2", // dumbbell reverse wrist curl
+  "wrist-roller": "bd5b860", // wrist rollerer
+  // Nogi
+  "reverse-lunge": "SSsBDwB", // dumbbell rear lunge
+  "barbell-lunge": "62Nw60O", // barbell rear lunge
+  "walking-lunge": "IZVHb27", // walking lunge
+  "sissy-squat": "xdYPUtE", // sissy squat
+  "pistol-squat": "nqs5HGV", // Single Leg Squat (Pistol)
+  "smith-squat": "NNoHCEA", // smith full squat
+  "kb-front-squat": "DB0n8AG", // kettlebell front squat
+  "leg-curl-kneeling": "nnmCTLN", // Machine Kneeling Leg Curl
+  "db-leg-curl": "FkBIE6a", // Lying Dumbbell Leg Curl
+  "single-leg-deadlift": "gKozT8X", // dumbbell single leg deadlift
+  "glute-ham-raise": "Vvwjz6N", // glute-ham raise
+  // Pośladki
+  "barbell-glute-bridge": "qKBpF7I", // barbell glute bridge
+  "sumo-deadlift": "KgI0tqW", // barbell sumo deadlift
+  "bench-glute-bridge": "aWedzZX", // Glute Bridge Two-Leg On Bench
+  "hip-adduction": "oHsrypV", // Machine Seated Hip Adduction
+  "reverse-hyper": "Krmb3cB", // Machine Reverse Hyperextension
+  "cable-adduction": "hBGWILP", // cable hip adduction
+  // Łydki
+  "calf-hack": "2ORFMoR", // hack calf raise
+  "calf-donkey": "C9LuR4A", // Machine Donkey Calf Raise
+  "calf-barbell": "8ozhUIZ", // barbell standing calf raise
+  "calf-db": "dPmaUaU", // dumbbell standing calf raise
+  "calf-db-seated": "r29jP7S", // dumbbell seated calf raise
+  "calf-bodyweight": "bJYHBIN", // bodyweight standing calf raise
+  // Brzuch
+  "sit-up": "Bn6TXyO", // sit-up
+  "decline-sit-up": "QLL2gdc", // decline sit-up
+  "bicycle-crunch": "1ZFqTDN", // Bicycle Crunch
+  "reverse-crunch": "nCU1Ekp", // reverse crunch
+  "mountain-climber": "RJgzwny", // mountain climber
+  "dead-bug": "iny3m5y", // dead bug
+  "hanging-knee-raise": "03lzqwk", // assisted hanging knee raise
+  "wheel-rollout": "NAgVB3t", // wheel rollout
+  "db-side-bend": "IpONWYv", // dumbbell side bend
+  "cable-side-bend": "wPypxFY", // cable side bend
+  "cable-reverse-crunch": "RqOtqD7", // cable reverse crunch
+  // Całe ciało
+  "barbell-thruster": "f7Y9eDZ", // barbell thruster
+  "power-clean": "SiWCcTN", // power clean
+  "kb-clean": "7Ba7bQ2", // Kettlebell Two-Arm Clean
+  "kb-snatch": "aXcUyKb", // Kettlebell Single-Arm Snatch
+  "kb-thruster": "yWxMvB5", // kettlebell thruster
+  "turkish-get-up": "Ha7SZ3y", // Kettlebell Turkish Get-Up (Squat Style)
 };

@@ -7,6 +7,7 @@ import { buildBackup, parseBackup } from '../js/backup.js';
 import { ageOn, cleanProfile, cleanWeights, dayTime, isDay, putWeight, removeWeight, weightChange } from '../js/body.js';
 import { cleanRoutines, hasOwnName, isNameTaken, putRoutine, routineFromWorkout, routineSetCount } from '../js/routines.js';
 import { SEED_EXERCISES, MUSCLES, EQUIPMENT } from '../js/exercises.js';
+import { ANIMATIONS } from '../js/animations.js';
 
 const nbsp = (s) => s.replace(/ /g, ' ');
 const set = (weight, reps, extra = {}) => ({ weight, reps, seconds: null, kind: 'normal', ...extra });
@@ -194,6 +195,13 @@ test('niceTicks daje równe, okrągłe podziałki obejmujące zakres', () => {
   const step = ticks[1] - ticks[0];
   ticks.slice(1).forEach((t, i) => assert.ok(Math.abs(t - ticks[i] - step) < 1e-6));
   assert.ok(niceTicks(100, 100).length >= 2);
+});
+
+test('każde ćwiczenie z bazy ma animację i każda animacja ma ćwiczenie', () => {
+  const seedIds = SEED_EXERCISES.map((e) => e.id).sort();
+  assert.deepEqual(Object.keys(ANIMATIONS).sort(), seedIds);
+  const files = Object.values(ANIMATIONS);
+  assert.equal(new Set(files).size, files.length, 'dwa ćwiczenia nie powinny mieć tej samej animacji');
 });
 
 test('wiek rośnie dopiero w dniu urodzin', () => {
