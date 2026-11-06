@@ -1,6 +1,7 @@
 // Poziomy. Wszystko wynika z historii treningów, więc nic nie trzeba zapisywać, a zmiana zasad po prostu przelicza wynik.
 // Poziom główny to punkty XP za regularność i postęp. Poziomy partii to siła względem masy ciała.
 
+import { achievementProgress, achievementXp } from './achievements.js';
 import { weightOn } from './body.js';
 import { HELPER_MUSCLES, MUSCLES } from './exercises.js';
 import { dayKey, startOfWeek } from './format.js';
@@ -54,7 +55,7 @@ function mainLevel(xp) {
   return { xp, level, toNext: end - xp, share: (xp - start) / (end - start) };
 }
 
-function earnedXp(workouts, exerciseById, weeklyGoal, shieldedWeeks) {
+function earnedXp(workouts, exerciseById, weeklyGoal, shieldedWeeks, records) {
   const weekXp = new Map();
   const add = (time, amount) => {
     const week = dayKey(startOfWeek(time));
@@ -90,7 +91,7 @@ function earnedXp(workouts, exerciseById, weeklyGoal, shieldedWeeks) {
     if (weeklyGoal != null && weekWorkouts.get(week) === weeklyGoal) add(workout.startedAt, XP_GOAL);
   }
 
-  for (const { date } of recordTimeline(workouts, exerciseById)) add(date, XP_RECORD);
+  for (const { date } of records) add(date, XP_RECORD);
 
   // Bez celu nie ma serii, więc nie ma też mnożnika.
   const countIn = weekCounter(workouts);
@@ -193,7 +194,11 @@ export function levelProgress(workouts, exerciseById, { weeklyGoal = null, bodyW
     .filter((muscle) => muscle !== 'Całe ciało')
     .map((muscle) => muscleRow(muscle, best.get(muscle)))
     .sort((a, b) => (a.level == null) - (b.level == null) || (a.level + a.share) - (b.level + b.share));
-  return { ...mainLevel(earnedXp(workouts, exerciseById, weeklyGoal, shieldedWeeks)), muscles };
+  const records = recordTimeline(workouts, exerciseById);
+  const achievements = achievementProgress(workouts, exerciseById, { weeklyGoal, shieldedWeeks, records: records.length });
+  const fromAchievements = achievementXp(achievements);
+  const xp = earnedXp(workouts, exerciseById, weeklyGoal, shieldedWeeks, records) + fromAchievements;
+  return { ...mainLevel(xp), achievementXp: fromAchievements, achievements, muscles };
 }
 
 /** Co dał zapisany trening: różnica między historią z nim i bez niego. */
@@ -201,6 +206,7 @@ export function workoutGain(workouts, workout, exerciseById, options = {}) {
   const before = levelProgress(workouts.filter((w) => w.id !== workout.id), exerciseById, options);
   const after = levelProgress(workouts, exerciseById, options);
   const levelBefore = new Map(before.muscles.map((row) => [row.muscle, row.level ?? 0]));
+  const hadBefore = new Set(before.achievements.filter((item) => item.done).map((item) => item.id));
   const multiplier = options.weeklyGoal == null
     ? 1
     : streakMultiplier(streakFrom(weekCounter(workouts), options.weeklyGoal, startOfWeek(workout.startedAt), options.shieldedWeeks ?? []));
@@ -210,5 +216,6 @@ export function workoutGain(workouts, workout, exerciseById, options = {}) {
     before,
     after,
     muscleUps: after.muscles.filter((row) => row.level > levelBefore.get(row.muscle)),
+    newAchievements: after.achievements.filter((item) => item.done && !hadBefore.has(item.id)),
   };
 }

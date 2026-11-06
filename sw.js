@@ -1,7 +1,7 @@
 // Tryb offline: wszystkie pliki aplikacji są w pamięci telefonu.
 // Przy każdej zmianie plików podnieś VERSION, żeby telefon pobrał nową wersję.
 
-const VERSION = 'krazek-v29';
+const VERSION = 'krazek-v30';
 
 // Animacje mają osobną pamięć, która przetrwa aktualizacje aplikacji. Nazwa jak w js/media.js.
 const MEDIA_CACHE = 'forma-media';
@@ -14,6 +14,8 @@ const FILES = [
   './index.html',
   './manifest.webmanifest',
   './css/app.css',
+  './js/achievement-views.js',
+  './js/achievements.js',
   './js/animations.js',
   './js/app.js',
   './js/backup.js',

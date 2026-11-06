@@ -8,6 +8,7 @@ import { exerciseView, homeView, journalView, libraryView, progressView, setting
 import { profileView } from './profile.js';
 import { isBlackTheme, wornLooks } from './shop.js';
 import { shopView } from './shop-views.js';
+import { achievementsView } from './achievement-views.js';
 
 const main = document.getElementById('view');
 const nav = document.getElementById('tabs');
@@ -37,6 +38,7 @@ function route() {
     case 'ustawienia': return { tab: '#/', view: settingsView };
     case 'profil': return { tab: '#/', view: profileView };
     case 'sklep': return { tab: '#/', view: shopView };
+    case 'osiagniecia': return { tab: '#/', view: achievementsView };
     default: return { tab: '#/', view: homeView };
   }
 }

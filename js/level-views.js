@@ -74,6 +74,11 @@ export function levelSections(onAddWeight) {
         h('span.link-name', 'Sklep'),
         h('span.link-meta', `${fmtNum(spendable(progress.xp, state.shop))} XP do wydania`)),
       h('span.flip', icon('back', 20))),
+    h('a.link-row', { href: '#/osiagniecia' },
+      h('span.link-text',
+        h('span.link-name', 'Osiągnięcia'),
+        h('span.link-meta', `Zdobyte: ${progress.achievements.filter((item) => item.done).length} z ${progress.achievements.length}`)),
+      h('span.flip', icon('back', 20))),
     h('section.block',
       h('h2.block-title', 'Siła partii'),
       state.bodyWeights.length
@@ -96,18 +101,22 @@ export function pointsSection() {
       h('li', h('span', 'Seria na nogi, do 8 serii partii w tygodniu'), h('strong', '10 XP')),
       h('li', h('span', 'Nowy rekord w ćwiczeniu'), h('strong', `${XP_RECORD} XP`)),
       h('li', h('span', goal == null ? 'Wykonany cel tygodniowy (nie masz ustawionego celu)' : 'Wykonany cel tygodniowy'), h('strong', `${XP_GOAL} XP`)),
-      h('li', h('span', 'Seria tygodni: co 4 tygodnie z rzędu mnożnik rośnie o 0,1'), h('strong', `do ${fmtMultiplier(1.5)}`))),
-    h('p.settings-text', 'Mnożnik działa na całe XP z danego tygodnia i zależy od serii sprzed tego tygodnia. Tydzień bez celu zeruje serię, chyba że masz tarczę.'),
+      h('li', h('span', 'Seria tygodni: co 4 tygodnie z rzędu mnożnik rośnie o 0,1'), h('strong', `do ${fmtMultiplier(1.5)}`)),
+      h('li', h('span', 'Osiągnięcie, bez mnożnika'), h('strong', 'od 50 XP'))),
+    h('p.settings-text', 'Mnożnik działa na całe XP z danego tygodnia, oprócz osiągnięć, i zależy od serii sprzed tego tygodnia. Tydzień bez celu zeruje serię, chyba że masz tarczę.'),
     h('p.settings-text', 'Rozgrzewka się nie liczy. Wszystko wynika z historii, więc usunięcie treningu albo podniesienie celu może obniżyć wynik.'));
 }
 
 /** Wynik treningu w podsumowaniu. Bez punktów nie ma czego pokazywać. */
-export function levelGainBlock({ xp, multiplier, before, after, muscleUps }) {
+export function levelGainBlock({ xp, multiplier, before, after, muscleUps, newAchievements }) {
   if (!(xp > 0)) return null;
   const leveledUp = after.level > before.level;
   return h('div.level-gain',
     h('p.level-line-top', h('strong.level-gain-xp', `+${fmtNum(xp)} XP`), h('span', leveledUp ? `Nowy poziom: ${after.level}!` : nextText(after))),
     xpBar(`Postęp poziomu ${after.level}`, after.share, leveledUp ? 0 : before.share),
     multiplier > 1 && h('p.level-meta', `Z mnożnikiem za serię tygodni: ${fmtMultiplier(multiplier)}`),
-    muscleUps.length > 0 && h('p.level-meta', `Siła: ${muscleUps.map((row) => `${row.muscle} ${row.level}`).join(' · ')}`));
+    muscleUps.length > 0 && h('p.level-meta', `Siła: ${muscleUps.map((row) => `${row.muscle} ${row.level}`).join(' · ')}`),
+    newAchievements.map((item) => h('p.level-unlock',
+      h('span', h('span.level-unlock-label', 'Nowe osiągnięcie: '), h('strong', item.name)),
+      h('span.level-unlock-xp', `+${fmtNum(item.xp)} XP`))));
 }

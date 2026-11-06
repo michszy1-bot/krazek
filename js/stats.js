@@ -262,6 +262,25 @@ export function streakFrom(countIn, goal, week, shieldedWeeks = []) {
   }
 }
 
+/** Najdłuższa seria w historii. Późniejsza przerwa jej nie skraca. */
+export function bestStreak(workouts, goal, shieldedWeeks = []) {
+  if (goal == null || !workouts.length) return 0;
+  const countIn = weekCounter(workouts);
+  const times = workouts.map((workout) => workout.startedAt);
+  const lastWeek = startOfWeek(Math.max(...times));
+  let best = 0;
+  let run = 0;
+  for (let week = startOfWeek(Math.min(...times)); week <= lastWeek; week = addDays(week, 7)) {
+    if (countIn(week) >= goal) {
+      run += 1;
+      best = Math.max(best, run);
+    } else if (!shieldedWeeks.includes(dayKey(week))) {
+      run = 0;
+    }
+  }
+  return best;
+}
+
 const STREAK_STEP_WEEKS = 4;
 const STREAK_STEP_BONUS = 0.1;
 const STREAK_MAX_STEPS = 5;

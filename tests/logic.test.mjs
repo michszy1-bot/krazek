@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { addDays, dayKey, fmtClock, fmtDuration, fmtMultiplier, fmtSet, fmtSetChange, fmtVolume, inputValue, parseNum, pastWorkoutStart, plural, startOfWeek } from '../js/format.js';
-import { backupStatus, bestSet, compareSets, estimate1RM, flagRecords, goalProgress, isComplete, loadBar, MUSCLE_SCALES, muscleLevel, muscleSets, neglectedMuscles, niceTicks, plateHeight, plateTier, plateTravel, plateWidth, recordsFor, recordTimeline, restAfterSet, setLabels, stepBaseWeight, steppedWeight, streakMultiplier, streakStatus, suggestNextWeight, summarizeSets, swapExercise, warmupSets, weekDays, weeklyTotals, weeksToShield, weightStep, workoutComparison, workoutRecords, workoutVolume } from '../js/stats.js';
+import { ACHIEVEMENT_GROUPS, ACHIEVEMENTS, achievementProgress, achievementXp, rewardTier } from '../js/achievements.js';
+import { backupStatus, bestSet, bestStreak, compareSets, estimate1RM, flagRecords, goalProgress, isComplete, loadBar, MUSCLE_SCALES, muscleLevel, muscleSets, neglectedMuscles, niceTicks, plateHeight, plateTier, plateTravel, plateWidth, recordsFor, recordTimeline, restAfterSet, setLabels, stepBaseWeight, steppedWeight, streakMultiplier, streakStatus, suggestNextWeight, summarizeSets, swapExercise, warmupSets, weekDays, weeklyTotals, weeksToShield, weightStep, workoutComparison, workoutRecords, workoutVolume } from '../js/stats.js';
 import { workoutsCsv } from '../js/csv.js';
 import { levelProgress, strengthCategory, strengthColour, strengthRatio, workoutGain } from '../js/level.js';
 import { LIFTS_BODY, ONE_DUMBBELL, STRENGTH_ALSO, STRENGTH_TOPS } from '../js/strength-norms.js';
@@ -588,6 +589,11 @@ const levelExercises = new Map([
 ]);
 const levelLookup = (id) => levelExercises.get(id);
 const workSets = (count, weight = 50) => Array.from({ length: count }, () => ({ weight, reps: 8, seconds: null, kind: 'normal' }));
+// XP bez nagród za osiągnięcia, które mają osobne testy.
+const workXp = (workouts, lookup, options) => {
+  const progress = levelProgress(workouts, lookup, options);
+  return progress.xp - progress.achievementXp;
+};
 const levelWorkout = (id, date, exerciseId, sets) => ({ id, name: 'T', startedAt: date.getTime(), endedAt: date.getTime() + 1, note: '', exercises: [{ exerciseId, note: '', sets }] });
 
 test('mnożnik serii: co 4 tygodnie o 0,1, najwyżej ×1,5', () => {
@@ -602,15 +608,15 @@ test('mnożnik serii: działa na XP tygodnia i zależy od tygodni przed nim', ()
   const fifth = levelWorkout('w4', new Date(2026, 10, 2, 9), 'bench', workSets(4));
   const week = 50 + 20;
   // Bez celu nie ma mnożnika.
-  assert.equal(levelProgress([...weeks, fifth], levelLookup).xp, 5 * week);
+  assert.equal(workXp([...weeks, fifth], levelLookup), 5 * week);
   // Pierwsze cztery tygodnie bez mnożnika, piąty ×1,1, także premia za cel.
-  assert.equal(levelProgress(weeks, levelLookup, { weeklyGoal: 1 }).xp, 4 * (week + 150));
-  assert.equal(levelProgress([...weeks, fifth], levelLookup, { weeklyGoal: 1 }).xp, 4 * (week + 150) + Math.round((week + 150) * 1.1));
+  assert.equal(workXp(weeks, levelLookup, { weeklyGoal: 1 }), 4 * (week + 150));
+  assert.equal(workXp([...weeks, fifth], levelLookup, { weeklyGoal: 1 }), 4 * (week + 150) + Math.round((week + 150) * 1.1));
   // Przerwa zeruje serię, a tydzień z tarczą nie.
   const afterGap = levelWorkout('w5', new Date(2026, 10, 9, 9), 'bench', workSets(4));
   const gap = [...weeks, afterGap];
-  assert.equal(levelProgress(gap, levelLookup, { weeklyGoal: 1 }).xp, 5 * (week + 150));
-  assert.equal(levelProgress(gap, levelLookup, { weeklyGoal: 1, shieldedWeeks: ['2026-11-02'] }).xp, 4 * (week + 150) + Math.round((week + 150) * 1.1));
+  assert.equal(workXp(gap, levelLookup, { weeklyGoal: 1 }), 5 * (week + 150));
+  assert.equal(workXp(gap, levelLookup, { weeklyGoal: 1, shieldedWeeks: ['2026-11-02'] }), 4 * (week + 150) + Math.round((week + 150) * 1.1));
   const gain = workoutGain([...weeks, fifth], fifth, levelLookup, { weeklyGoal: 1 });
   assert.equal(gain.multiplier, 1.1);
   assert.equal(gain.xp, Math.round((week + 150) * 1.1));
@@ -634,46 +640,46 @@ test('stan serii: mnożnik tygodnia i ile brakuje do następnego', () => {
 
 test('XP: trening raz dziennie, seria za 5, a seria na nogi za 10', () => {
   const monday = new Date(2026, 10, 2, 9);
-  assert.equal(levelProgress([], levelLookup).xp, 0);
+  assert.equal(workXp([], levelLookup), 0);
   assert.equal(levelProgress([], levelLookup).level, 1);
-  assert.equal(levelProgress([levelWorkout('a', monday, 'bench', workSets(4))], levelLookup).xp, 50 + 20);
-  assert.equal(levelProgress([levelWorkout('a', monday, 'squat', workSets(4))], levelLookup).xp, 50 + 40);
+  assert.equal(workXp([levelWorkout('a', monday, 'bench', workSets(4))], levelLookup), 50 + 20);
+  assert.equal(workXp([levelWorkout('a', monday, 'squat', workSets(4))], levelLookup), 50 + 40);
   // Drugi trening tego samego dnia daje tylko serie. Ten sam ciężar nie jest rekordem.
   const twice = [levelWorkout('a', monday, 'bench', workSets(1)), levelWorkout('b', new Date(2026, 10, 2, 18), 'bench', workSets(1))];
-  assert.equal(levelProgress(twice, levelLookup).xp, 50 + 5 + 5);
+  assert.equal(workXp(twice, levelLookup), 50 + 5 + 5);
 });
 
 test('XP: rozgrzewka nie daje punktów, a trening z samą rozgrzewką też nie', () => {
   const warmup = [{ weight: 20, reps: 10, seconds: null, kind: 'warmup' }];
-  assert.equal(levelProgress([levelWorkout('a', new Date(2026, 10, 2, 9), 'bench', warmup)], levelLookup).xp, 0);
+  assert.equal(workXp([levelWorkout('a', new Date(2026, 10, 2, 9), 'bench', warmup)], levelLookup), 0);
 });
 
 test('XP: tygodniowy limit serii na partię, od nowa w kolejnym tygodniu', () => {
   const week1 = levelWorkout('a', new Date(2026, 10, 2, 9), 'bench', workSets(30));
   const sameWeek = levelWorkout('b', new Date(2026, 10, 8, 9), 'bench', workSets(5));
   const week2 = levelWorkout('c', new Date(2026, 10, 9, 9), 'bench', workSets(5));
-  assert.equal(levelProgress([week1], levelLookup).xp, 50 + 16 * 5);
-  assert.equal(levelProgress([week1, sameWeek], levelLookup).xp, 100 + 16 * 5);
-  assert.equal(levelProgress([week1, sameWeek, week2], levelLookup).xp, 150 + 21 * 5);
-  const legs = levelProgress([levelWorkout('a', new Date(2026, 10, 2, 9), 'squat', workSets(30))], levelLookup);
-  assert.equal(legs.xp, 50 + 8 * 10);
+  assert.equal(workXp([week1], levelLookup), 50 + 16 * 5);
+  assert.equal(workXp([week1, sameWeek], levelLookup), 100 + 16 * 5);
+  assert.equal(workXp([week1, sameWeek, week2], levelLookup), 150 + 21 * 5);
+  assert.equal(workXp([levelWorkout('a', new Date(2026, 10, 2, 9), 'squat', workSets(30))], levelLookup), 50 + 8 * 10);
 });
 
 test('XP: rekord i cel tygodniowy, a pierwszy raz nie jest rekordem', () => {
   const first = levelWorkout('a', new Date(2026, 10, 2, 9), 'bench', workSets(1, 50));
   const better = levelWorkout('b', new Date(2026, 10, 3, 9), 'bench', workSets(1, 60));
   const plain = 2 * 50 + 2 * 5;
-  assert.equal(levelProgress([first, better], levelLookup).xp, plain + 100);
-  assert.equal(levelProgress([first, better], levelLookup, { weeklyGoal: 2 }).xp, plain + 100 + 150);
-  assert.equal(levelProgress([first, better], levelLookup, { weeklyGoal: 3 }).xp, plain + 100);
+  assert.equal(workXp([first, better], levelLookup), plain + 100);
+  assert.equal(workXp([first, better], levelLookup, { weeklyGoal: 2 }), plain + 100 + 150);
+  assert.equal(workXp([first, better], levelLookup, { weeklyGoal: 3 }), plain + 100);
 });
 
 test('poziom główny: próg rośnie z kwadratem, a bez wagi partie nie mają wyniku', () => {
   const body = levelProgress([levelWorkout('a', new Date(2026, 10, 2, 9), 'burpee', workSets(10))], levelLookup);
-  assert.equal(body.xp, 100);
+  // Trening 50 XP, serie 50 XP i pierwszy trening jako osiągnięcie 50 XP.
+  assert.equal(body.xp, 150);
   assert.equal(body.level, 2);
-  assert.equal(body.toNext, 300);
-  assert.equal(body.share, 0);
+  assert.equal(body.toNext, 250);
+  assert.equal(body.share, 50 / 300);
   assert.equal(body.muscles.length, 11);
   assert.ok(body.muscles.every((row) => row.level === null));
 });
@@ -850,8 +856,9 @@ test('zysk z treningu to różnica historii, razem z awansami siły', () => {
   const options = { bodyWeights: at75 };
   const gain = workoutGain([today, earlier], today, seedLookup, options);
   assert.equal(gain.xp, 50 + 20 + 100);
-  assert.equal(gain.before.level, 1);
-  assert.equal(gain.after.level, 2);
+  // Przed: 70 XP i 50 XP za pierwszy trening, po: jeszcze 170 XP.
+  assert.equal(gain.before.xp, 120);
+  assert.equal(gain.after.xp, 290);
   assert.deepEqual(gain.muscleUps.map((row) => row.muscle), ['Klatka']);
   assert.ok(gain.muscleUps[0].level > gain.before.muscles.find((row) => row.muscle === 'Klatka').level);
   const same = levelWorkout('c', new Date(2026, 10, 4, 9), 'bench-press', workSets(1, 50));
@@ -1163,4 +1170,89 @@ test('baza ćwiczeń: unikalne identyfikatory, nazwy i poprawne kategorie', () =
     assert.ok(EQUIPMENT.includes(e.equipment), e.id);
   }
   assert.equal(nbsp(fmtVolume(10000)), '10 t');
+});
+
+const achieved = (workouts, lookup = levelLookup, options) => achievementProgress(workouts, lookup, options).filter((item) => item.done).map((item) => item.id);
+const achievedOne = (exerciseId, weight, reps = 1, kind = 'normal') => achieved(
+  [levelWorkout('a', new Date(2026, 10, 2, 9), exerciseId, [{ weight, reps, seconds: null, kind }])],
+  seedLookup,
+).filter((id) => id !== 'workouts-1');
+
+test('osiągnięcia: lista ma poprawne grupy, stałe nagrody i kolory krążków', () => {
+  assert.equal(new Set(ACHIEVEMENTS.map((item) => item.id)).size, ACHIEVEMENTS.length);
+  assert.ok(ACHIEVEMENTS.every((item) => ACHIEVEMENT_GROUPS.includes(item.group) && item.xp > 0 && item.target > 0));
+  assert.equal(ACHIEVEMENTS.reduce((sum, item) => sum + item.xp, 0), 22600);
+  assert.deepEqual([50, 200, 300, 800, 1000, 2000, 2500, 5000].map(rewardTier), ['green', 'green', 'yellow', 'yellow', 'blue', 'blue', 'red', 'red']);
+});
+
+test('osiągnięcia: trening liczy się tylko z serią roboczą, a nagroda wpada raz', () => {
+  const warmup = [{ weight: 20, reps: 10, seconds: null, kind: 'warmup' }];
+  assert.deepEqual(achieved([]), []);
+  assert.deepEqual(achieved([levelWorkout('a', new Date(2026, 10, 2, 9), 'bench', warmup)]), []);
+  const ten = Array.from({ length: 10 }, (_, i) => levelWorkout(`w${i}`, new Date(2026, 9, 1 + i, 9), 'bench', workSets(1)));
+  assert.deepEqual(achieved(ten.slice(0, 9)), ['workouts-1']);
+  assert.deepEqual(achieved(ten), ['workouts-1', 'workouts-10']);
+  assert.equal(achievementXp(achievementProgress(ten, levelLookup)), 50 + 150);
+});
+
+test('osiągnięcia siły: prawdziwy ciężar z właściwego ćwiczenia, bez rozgrzewki', () => {
+  assert.deepEqual(achievedOne('squat', 100), ['lift-100']);
+  assert.deepEqual(achievedOne('deadlift', 150), ['lift-100', 'lift-150']);
+  assert.deepEqual(achievedOne('sumo-deadlift', 100), ['lift-100']);
+  assert.deepEqual(achievedOne('squat', 97.5, 5), []);
+  assert.deepEqual(achievedOne('squat', 100, 1, 'warmup'), []);
+  assert.deepEqual(achievedOne('hack-squat', 100), []);
+  assert.deepEqual(achievedOne('bench-press', 100), ['bench-100']);
+  assert.deepEqual(achievedOne('bench-press', 99), []);
+  assert.deepEqual(achievedOne('incline-bench', 100), []);
+  assert.deepEqual(achievedOne('db-bench', 30), ['dumbbell-30']);
+  assert.deepEqual(achievedOne('db-row', 40), ['dumbbell-30', 'dumbbell-40']);
+  assert.deepEqual(achievedOne('barbell-row', 40), []);
+});
+
+test('najdłuższa seria: przerwa jej nie zabiera, tarcza nie przerywa, a bez celu jej nie ma', () => {
+  const on = (m, d) => levelWorkout(`${m}-${d}`, new Date(2026, m, d, 9), 'bench', workSets(1));
+  const three = [on(9, 5), on(9, 12), on(9, 19)];
+  const later = on(10, 2);
+  assert.equal(bestStreak([], 1), 0);
+  assert.equal(bestStreak(three, null), 0);
+  assert.equal(bestStreak(three, 2), 0);
+  assert.equal(bestStreak([...three, later], 1), 3);
+  assert.equal(bestStreak([...three, later], 1, ['2026-10-26']), 4);
+  assert.ok(achieved([...three, later], levelLookup, { weeklyGoal: 1, shieldedWeeks: ['2026-10-26'] }).includes('streak-4'));
+  assert.ok(!achieved([...three, later], levelLookup, { weeklyGoal: 1 }).includes('streak-4'));
+  assert.ok(!achieved([...three, later], levelLookup).includes('streak-4'));
+});
+
+test('osiągnięcia: tonaż, rekordy, wszystkie partie w tygodniu i pora treningu', () => {
+  const heavy = levelWorkout('a', new Date(2026, 10, 2, 9), 'bench', [{ weight: 1000, reps: 100, seconds: null, kind: 'normal' }]);
+  assert.ok(achieved([heavy]).includes('tonnage-100'));
+  assert.ok(!achieved([heavy]).includes('tonnage-500'));
+  assert.equal(achievementProgress([heavy], levelLookup).find((item) => item.id === 'tonnage-100').value, 100000);
+  assert.ok(achieved([], levelLookup, { records: 10 }).includes('records-10'));
+
+  const muscles = ['Klatka', 'Plecy', 'Barki', 'Biceps', 'Triceps', 'Przedramiona', 'Czworogłowe', 'Dwugłowe uda', 'Pośladki', 'Łydki', 'Brzuch'];
+  const lookup = (id) => ({ muscle: id, type: 'weight' });
+  const workoutOn = (day, list) => ({ ...levelWorkout(`m${day}`, new Date(2026, 10, day, 9), list[0], workSets(1)), exercises: list.map((exerciseId) => ({ exerciseId, note: '', sets: workSets(1) })) });
+  assert.ok(achieved([workoutOn(2, muscles.slice(0, 6)), workoutOn(5, muscles.slice(6))], lookup).includes('all-muscles'));
+  // Ta sama lista rozbita na dwa tygodnie się nie liczy.
+  assert.ok(!achieved([workoutOn(2, muscles.slice(0, 6)), workoutOn(9, muscles.slice(6))], lookup).includes('all-muscles'));
+
+  const at = (hour, minute = 0) => achieved([levelWorkout('a', new Date(2026, 10, 2, hour, minute), 'bench', workSets(1))]);
+  assert.ok(at(6, 59).includes('early'));
+  assert.ok(!at(7).includes('early'));
+  assert.ok(!at(21, 59).includes('late'));
+  assert.ok(at(22).includes('late'));
+});
+
+test('osiągnięcia: nagroda bez mnożnika, a podsumowanie pokazuje tylko nowe', () => {
+  const weeks = [5, 12, 19, 26].map((day, i) => levelWorkout(`w${i}`, new Date(2026, 9, day, 9), 'bench-press', workSets(1, 60)));
+  const strong = levelWorkout('w4', new Date(2026, 10, 2, 9), 'bench-press', workSets(1, 100));
+  const options = { weeklyGoal: 1 };
+  const gain = workoutGain([...weeks, strong], strong, seedLookup, options);
+  assert.deepEqual(gain.newAchievements.map((item) => item.id), ['bench-100']);
+  // Trening, seria, cel i rekord są pod mnożnikiem ×1,1, a 1000 XP za ławkę już nie.
+  assert.equal(gain.xp, Math.round((50 + 5 + 150 + 100) * 1.1) + 1000);
+  const again = levelWorkout('w5', new Date(2026, 10, 9, 9), 'bench-press', workSets(1, 100));
+  assert.deepEqual(workoutGain([...weeks, strong, again], again, seedLookup, options).newAchievements, []);
 });
