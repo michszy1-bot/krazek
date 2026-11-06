@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { addDays, dayKey, fmtClock, fmtDuration, fmtSet, fmtVolume, inputValue, parseNum, pastWorkoutStart, plural, startOfWeek } from '../js/format.js';
 import { backupStatus, estimate1RM, flagRecords, goalProgress, isComplete, MUSCLE_SCALES, muscleLevel, muscleSets, neglectedMuscles, niceTicks, recordsFor, recordTimeline, restAfterSet, setLabels, stepBaseWeight, steppedWeight, suggestNextWeight, summarizeSets, swapExercise, warmupSets, weekDays, weeklyTotals, weightStep, workoutRecords, workoutVolume } from '../js/stats.js';
 import { workoutsCsv } from '../js/csv.js';
-import { levelProgress, strengthColour, strengthRatio, workoutGain } from '../js/level.js';
+import { levelProgress, strengthCategory, strengthColour, strengthRatio, workoutGain } from '../js/level.js';
 import { LIFTS_BODY, ONE_DUMBBELL, STRENGTH_ALSO, STRENGTH_TOPS } from '../js/strength-norms.js';
 import { applyFilter } from '../js/picker.js';
 import { SHAPE_TO_MUSCLE } from '../js/muscle-map.js';
@@ -12,7 +12,7 @@ import { BODY_BACK, BODY_FRONT } from '../js/muscle-shapes.js';
 import { buildBackup, parseBackup } from '../js/backup.js';
 import { ageOn, cleanProfile, cleanWeights, dayTime, isDay, putWeight, removeWeight, weightChange, weightOn } from '../js/body.js';
 import { cleanRoutines, hasOwnName, isNameTaken, moveItem, parseRepRange, putRoutine, routineDiffers, routineFromWorkout, routineSetCount } from '../js/routines.js';
-import { SEED_EXERCISES, MUSCLES, EQUIPMENT, RETIRED_EXERCISES, syncExercises } from '../js/exercises.js';
+import { SEED_EXERCISES, MUSCLES, EQUIPMENT, HELPER_MUSCLES, musclesOf, RETIRED_EXERCISES, syncExercises } from '../js/exercises.js';
 import { ANIMATIONS } from '../js/animations.js';
 
 const nbsp = (s) => s.replace(/ /g, ' ');
@@ -191,7 +191,32 @@ test('muscleSets liczy serie robocze i sortuje malejąco', () => {
   assert.deepEqual(muscleSets([w], lookup, 0), [
     { muscle: 'Klatka', sets: 2 },
     { muscle: 'Czworogłowe', sets: 1 },
+    { muscle: 'Triceps', sets: 1 },
+    { muscle: 'Barki', sets: 1 },
+    { muscle: 'Pośladki', sets: 0.5 },
+    { muscle: 'Dwugłowe uda', sets: 0.5 },
   ]);
+});
+
+test('przysiad liczy się w połowie do pośladków i dwugłowych, a izolacja i własne ćwiczenie tylko do swojej partii', () => {
+  const lookup = (id) => SEED_EXERCISES.find((e) => e.id === id) ?? (id === 'moje' ? { id, muscle: 'Klatka' } : undefined);
+  assert.deepEqual(musclesOf(lookup('squat')), [['Czworogłowe', 1], ['Pośladki', 0.5], ['Dwugłowe uda', 0.5]]);
+  assert.deepEqual(musclesOf(lookup('leg-extension')), [['Czworogłowe', 1]]);
+  assert.deepEqual(musclesOf(lookup('moje')), [['Klatka', 1]]);
+  assert.deepEqual(musclesOf(undefined), []);
+  const week = workout('a', '2026-11-02', { squat: [set(100, 5), set(100, 5), set(100, 5), set(100, 5)] });
+  assert.deepEqual(neglectedMuscles([week], lookup, ['Pośladki', 'Dwugłowe uda', 'Łydki'], new Date(2026, 10, 3), 7), [{ muscle: 'Łydki', days: null }]);
+});
+
+test('partie pomocnicze dotyczą istniejących ćwiczeń i partii, innych niż główna', () => {
+  for (const [id, muscles] of HELPER_MUSCLES) {
+    const exercise = SEED_EXERCISES.find((e) => e.id === id);
+    assert.ok(exercise, id);
+    for (const muscle of muscles) {
+      assert.ok(MUSCLES.includes(muscle), `${id}: ${muscle}`);
+      assert.notEqual(muscle, exercise.muscle, id);
+    }
+  }
 });
 
 test('niceTicks daje równe, okrągłe podziałki obejmujące zakres', () => {
@@ -511,12 +536,13 @@ const lift = (weight, reps, kind = 'normal') => ({ weight, reps, seconds: null, 
 const strengthOf = (workouts, bodyWeights, muscle) => levelProgress(workouts, seedLookup, { bodyWeights }).muscles.find((row) => row.muscle === muscle);
 const at75 = [{ day: '2026-01-01', kg: 75 }];
 
-test('siła partii: 30 kg × 6 na hantel przy 75 kg to 96% masy ciała', () => {
+test('siła partii: 30 kg × 6 na hantel przy 75 kg to 96% masy ciała, z poprawką na masę w poziomie', () => {
   const row = strengthOf([levelWorkout('a', new Date(2026, 10, 2, 9), 'db-incline', [lift(30, 6)])], at75, 'Klatka');
   assert.ok(Math.abs(row.ratio - 0.96) < 1e-9);
-  assert.equal(row.level, 14);
+  assert.equal(row.level, 13);
+  assert.equal(strengthCategory(row.level), 'Średnio zaawansowany');
   assert.equal(row.exercise, 'Wyciskanie hantli na ławce skośnej');
-  assert.ok(Math.abs(row.nextRatio - (1.4 * 14) / 19) < 1e-9);
+  assert.ok(Math.abs(row.nextRatio - (1.4 * 13) / 19 / (75 / 80) ** 0.35) < 1e-9);
   assert.ok(row.share > 0 && row.share < 1);
 });
 
@@ -525,7 +551,7 @@ test('siła partii: jeden hantel, podciąganie i ciężar liczony przez ogranicz
   assert.equal(ratio('db-row', lift(40, 1)), 0.5);
   assert.equal(ratio('db-curl', lift(10, 1)), 0.25);
   assert.equal(ratio('bench-press', lift(80, 1)), 1);
-  assert.equal(ratio('bench-press', lift(40, 30)), ratio('bench-press', lift(40, 15)));
+  assert.equal(ratio('bench-press', lift(40, 30)), ratio('bench-press', lift(40, 12)));
   assert.equal(ratio('pull-up', lift(null, 1)), 1);
   assert.equal(ratio('pull-up', lift(20, 1)), 1.25);
   assert.equal(ratio('crunch', lift(null, 20)), 0);
@@ -559,7 +585,9 @@ test('siła partii: przysiad i martwy ciąg liczą się też do innych partii n�
   const squat = levelWorkout('a', new Date(2026, 10, 2, 9), 'squat', [lift(100, 1)]);
   assert.equal(strengthOf([squat], at75, 'Czworogłowe').exercise, 'Przysiad ze sztangą');
   assert.equal(strengthOf([squat], at75, 'Pośladki').exercise, 'Przysiad ze sztangą');
-  assert.equal(strengthOf([squat], at75, 'Dwugłowe uda').level, null);
+  assert.equal(strengthOf([squat], at75, 'Dwugłowe uda').exercise, 'Przysiad ze sztangą');
+  assert.ok(strengthOf([squat], at75, 'Dwugłowe uda').level < strengthOf([squat], at75, 'Czworogłowe').level);
+  assert.equal(strengthOf([squat], at75, 'Łydki').level, null);
   const deadlift = levelWorkout('b', new Date(2026, 10, 3, 9), 'deadlift', [lift(100, 1)]);
   assert.equal(strengthOf([deadlift], at75, 'Plecy').exercise, 'Martwy ciąg');
   assert.equal(strengthOf([deadlift], at75, 'Dwugłowe uda').exercise, 'Martwy ciąg');
@@ -589,6 +617,66 @@ test('siła partii: wolne ciężary mają pierwszeństwo przed maszyną i wycią
   // Martwy ciąg liczy się do pleców przed maszyną.
   const deadlift = levelWorkout('h', day(4), 'deadlift', [lift(60, 1)]);
   assert.equal(strengthOf([row, deadlift], at75, 'Plecy').exercise, 'Martwy ciąg');
+});
+
+test('siła partii: 140 kg przy 80 kg to zaawansowany, a przy większej masie ten sam procent daje więcej', () => {
+  const strong = strengthOf([levelWorkout('a', new Date(2026, 10, 2, 9), 'bench-press', [lift(140, 1)])], [{ day: '2026-01-01', kg: 80 }], 'Klatka');
+  assert.equal(strong.ratio, 1.75);
+  assert.equal(strong.level, 17);
+  assert.equal(strengthCategory(strong.level), 'Zaawansowany');
+  const heavier = strengthOf([levelWorkout('b', new Date(2026, 10, 2, 9), 'bench-press', [lift(175, 1)])], [{ day: '2026-01-01', kg: 100 }], 'Klatka');
+  assert.equal(heavier.ratio, 1.75);
+  assert.ok(heavier.level > strong.level);
+  assert.ok(heavier.nextRatio < 2);
+});
+
+test('siła partii: normy z danych zawodników i mniejsza poprawka na masę w martwym ciągu', () => {
+  const weights = (kg) => [{ day: '2026-01-01', kg }];
+  const at = (id, load, kg, muscle) => strengthOf([levelWorkout('a', new Date(2026, 10, 2, 9), id, [lift(load, 1)])], weights(kg), muscle);
+  assert.equal(at('squat', 240, 80, 'Czworogłowe').level, 20);
+  assert.equal(at('deadlift', 276, 80, 'Plecy').level, 20);
+  assert.equal(at('deadlift', 200, 80, 'Plecy').level, 14);
+  // Masa ciała pomaga w martwym ciągu mniej, więc przy 125 kg poprawka jest tam większa niż w wyciskaniu.
+  const factor = ({ level, nextRatio }, top) => (top * level) / 19 / nextRatio;
+  const press = factor(at('bench-press', 125, 125, 'Klatka'), 2);
+  const pull = factor(at('deadlift', 125, 125, 'Plecy'), 3.45);
+  assert.ok(Math.abs(press - (125 / 80) ** 0.35) < 1e-9);
+  assert.ok(Math.abs(pull - (125 / 80) ** 0.5) < 1e-9);
+  assert.ok(pull > press);
+});
+
+test('nazwy poziomów siły', () => {
+  assert.deepEqual([1, 5, 6, 10, 11, 15, 16, 19, 20].map(strengthCategory), ['Początkujący', 'Początkujący', 'Nowicjusz', 'Nowicjusz', 'Średnio zaawansowany', 'Średnio zaawansowany', 'Zaawansowany', 'Zaawansowany', 'Elita']);
+});
+
+test('siła partii: ćwiczenie złożone daje wynik partii pomocniczej, dopóki nie ma ćwiczenia wprost na nią', () => {
+  const day = (d) => new Date(2026, 10, d, 9);
+  const bench = levelWorkout('a', day(2), 'bench-press', [lift(100, 1)]);
+  const benchTriceps = strengthOf([bench], at75, 'Triceps');
+  assert.equal(benchTriceps.exercise, 'Wyciskanie sztangi na ławce płaskiej');
+  // Partia pomocnicza dostaje tylko 10% wyniku: 100 kg przy 75 kg to poziom 13 klatki i poziom 2 tricepsa.
+  assert.equal(strengthOf([bench], at75, 'Klatka').level, 13);
+  assert.equal(benchTriceps.level, 2);
+  assert.equal(strengthOf([bench], at75, 'Barki').exercise, 'Wyciskanie sztangi na ławce płaskiej');
+  assert.equal(strengthOf([bench], at75, 'Biceps').level, null);
+
+  // Prostowanie na wyciągu jest wprost na triceps, więc wygrywa mimo wyciągu i słabszego wyniku.
+  const pushdown = levelWorkout('b', day(3), 'pushdown', [lift(10, 1)]);
+  assert.equal(strengthOf([bench, pushdown], at75, 'Triceps').exercise, 'Prostowanie ramion na wyciągu');
+  // Wolny ciężar wprost na triceps wygrywa z wyciągiem.
+  const close = levelWorkout('c', day(4), 'close-bench', [lift(40, 1)]);
+  assert.equal(strengthOf([bench, pushdown, close], at75, 'Triceps').exercise, 'Wyciskanie wąsko na ławce płaskiej');
+
+  // Wiosłowanie daje wynik bicepsowi, a wolny ciężar ma pierwszeństwo przed maszyną.
+  const machineRow = levelWorkout('d', day(5), 'machine-row', [lift(200, 1)]);
+  const barbellRow = levelWorkout('e', day(6), 'barbell-row', [lift(40, 1)]);
+  assert.equal(strengthOf([machineRow], at75, 'Biceps').exercise, 'Wiosłowanie na maszynie');
+  assert.equal(strengthOf([machineRow, barbellRow], at75, 'Biceps').exercise, 'Wiosłowanie sztangą');
+
+  // Przysiad na mocnej normie liczy się jak wolny ciężar, więc wygrywa z maszyną na pośladki.
+  const squat = levelWorkout('f', day(7), 'squat', [lift(60, 1)]);
+  const abduction = levelWorkout('g', day(8), 'hip-abduction', [lift(200, 1)]);
+  assert.equal(strengthOf([squat, abduction], at75, 'Pośladki').exercise, 'Przysiad ze sztangą');
 });
 
 test('kolor poziomu siły: co pięć poziomów, a bez wyniku szary', () => {

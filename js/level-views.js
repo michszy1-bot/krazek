@@ -2,7 +2,7 @@
 
 import { h } from './ui.js';
 import { fmtNum } from './format.js';
-import { levelProgress, MAX_MUSCLE_LEVEL, strengthColour, XP_GOAL, XP_RECORD, XP_WORKOUT } from './level.js';
+import { levelProgress, MAX_MUSCLE_LEVEL, strengthCategory, strengthColour, XP_GOAL, XP_RECORD, XP_WORKOUT } from './level.js';
 import { strengthMap } from './muscle-map.js';
 import { exerciseById, state } from './store.js';
 
@@ -30,6 +30,7 @@ function muscleRow(row) {
   return h('li.level-row',
     h('span.level-row-name', row.muscle),
     h('span.level-row-value', `Poziom ${row.level}`),
+    h('span.level-row-detail', strengthCategory(row.level)),
     xpBar(`${row.muscle}, postęp poziomu ${row.level}`, row.share, null, strengthColour(row.level)),
     h('span.level-row-detail', `${percent(row.ratio)}% masy ciała · ${row.exercise}`),
     row.nextRatio != null && h('span.level-row-detail', `Poziom ${row.level + 1} od ${Math.ceil(row.nextRatio * 100)}%`));
@@ -50,7 +51,7 @@ export function levelSections(onAddWeight) {
         : h('button.notice', { type: 'button', onclick: onAddWeight },
           h('strong', 'Dodaj swoją wagę'),
           h('span', 'Siłę partii liczę jako procent masy ciała, więc potrzebny jest choć jeden wpis w dzienniku wagi.')),
-      state.bodyWeights.length > 0 && h('p.settings-text', `Poziomy 1–${MAX_MUSCLE_LEVEL} to najlepszy szacowany ciężar maksymalny względem wagi z dnia treningu. Najpierw liczą się wolne ciężary, a maszyny i wyciągi tylko wtedy, gdy partia nie ma wyniku z wolnych ciężarów. Normy są orientacyjne. Własne ćwiczenia i te bez obciążenia się nie liczą.`)),
+      state.bodyWeights.length > 0 && h('p.settings-text', `Poziomy 1–${MAX_MUSCLE_LEVEL} to najlepszy szacowany ciężar maksymalny względem wagi z dnia treningu, z poprawką na to, że siła rośnie wolniej niż masa ciała. Najpierw liczą się wolne ciężary, potem maszyny i wyciągi, a na końcu ćwiczenia złożone, w których partia tylko pomaga, np. wyciskanie dla tricepsa. Te ostatnie dają jej tylko 10% wyniku. Normy dla mężczyzn są orientacyjne, a dla ćwiczeń innych niż główne szacunkowe. Własne ćwiczenia i te bez obciążenia się nie liczą.`)),
   ];
 }
 

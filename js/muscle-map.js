@@ -3,7 +3,7 @@
 import { h } from './ui.js';
 import { fmtNum, plural } from './format.js';
 import { BODY_BACK, BODY_FRONT } from './muscle-shapes.js';
-import { STRENGTH_BANDS, strengthColour } from './level.js';
+import { STRENGTH_BANDS, strengthCategory, strengthColour } from './level.js';
 import { MUSCLE_SCALES, muscleLevel } from './stats.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -63,7 +63,7 @@ export function strengthMap(rows) {
     colourOf: (muscle) => strengthColour(rowOf.get(muscle)?.level),
     infoOf: (muscle) => {
       const row = rowOf.get(muscle);
-      return row?.level == null ? `${muscle}: brak wyniku` : `${muscle}: poziom ${row.level}, ${Math.round(row.ratio * 100)}% masy ciała`;
+      return row?.level == null ? `${muscle}: brak wyniku` : `${muscle}: poziom ${row.level}, ${strengthCategory(row.level).toLowerCase()}`;
     },
     hint: 'Stuknij partię, żeby zobaczyć jej poziom.',
     summary: known.length

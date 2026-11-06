@@ -1,5 +1,7 @@
-// Orientacyjne normy siły, ustalone szacunkowo dla tej aplikacji, a nie zmierzone.
-// Liczba to szacowany ciężar maksymalny jako wielokrotność masy ciała, który daje najwyższy poziom partii.
+// Orientacyjne normy siły dla mężczyzny ważącego 80 kg. Liczba to szacowany ciężar maksymalny jako wielokrotność
+// masy ciała, który daje najwyższy poziom partii. Wyciskanie 2×, przysiad 3× i martwy ciąg 3,45× to 95. percentyl
+// zawodników bez sprzętu z danych OpenPowerlifting (https://www.openpowerlifting.org), policzony w tools/opl-norms.mjs.
+// Pozostałe liczby to szacunki tej aplikacji.
 // Przy dwóch hantlach chodzi o ich sumę. Ćwiczeń, w których ciężar nie mówi o sile, tu nie ma,
 // np. wspomaganego podciągania, gdzie większy ciężar oznacza łatwiejsze ćwiczenie.
 
@@ -12,7 +14,7 @@ export const STRENGTH_TOPS = {
   'cable-fly': 0.7, 'cable-incline-fly': 0.7, 'cable-low-fly': 0.7, 'db-pullover': 0.6,
 
   // Plecy
-  deadlift: 2.8, 'rack-pull': 3, 'db-deadlift': 1.9,
+  deadlift: 3.45, 'rack-pull': 3.7, 'db-deadlift': 2.3,
   'barbell-row': 1.5, 'pendlay-row': 1.5, 'reverse-barbell-row': 1.5, 't-bar-row': 1.5, 'barbell-incline-row': 1.2,
   'db-row': 0.8, 'db-bent-row': 1.3, 'db-incline-row': 1.3,
   'lat-pulldown': 1.5, 'close-pulldown': 1.5, 'underhand-pulldown': 1.5, 'machine-pulldown': 1.5,
@@ -23,7 +25,7 @@ export const STRENGTH_TOPS = {
   'pull-up': 2, 'wide-pull-up': 2, 'chin-up': 2.1,
 
   // Barki
-  ohp: 1.3, 'seated-ohp': 1.3, 'smith-shoulder': 1.4, 'machine-shoulder': 1.4, 'cable-shoulder-press': 1,
+  ohp: 1.35, 'seated-ohp': 1.35, 'smith-shoulder': 1.4, 'machine-shoulder': 1.4, 'cable-shoulder-press': 1,
   'db-shoulder-press': 1.1, 'arnold-press': 1.1, 'db-push-press': 1.3, 'one-arm-db-press': 0.55, 'machine-one-arm-shoulder': 0.7,
   'lateral-raise': 0.6, 'seated-lateral': 0.6, 'front-raise': 0.6, 'db-seated-front': 0.6, 'lateral-to-front': 0.6,
   'rear-delt-fly': 0.6, 'incline-rear-fly': 0.6, 'db-lying-rear': 0.6, 'one-arm-lateral': 0.3,
@@ -48,17 +50,17 @@ export const STRENGTH_TOPS = {
   'wrist-curl': 0.6, 'barbell-wrist-curl': 0.9, 'barbell-reverse-wrist': 0.5, 'db-reverse-wrist': 0.35, 'reverse-curl': 0.7, 'ez-reverse-curl': 0.75,
 
   // Czworogłowe
-  squat: 2.5, 'barbell-box-squat': 2.5, 'barbell-wide-squat': 2.5, 'smith-squat': 2.5, 'front-squat': 2, 'barbell-hack': 2, 'zercher-squat': 1.9,
+  squat: 3, 'barbell-box-squat': 3, 'barbell-wide-squat': 3, 'smith-squat': 3, 'front-squat': 2.4, 'barbell-hack': 2.4, 'zercher-squat': 2.3,
   'leg-press': 4.5, 'leg-press-wide': 4.5, 'leg-press-single': 2.2, 'hack-squat': 3.2, 'hack-close': 3, 'leg-extension': 1.4,
   'goblet-squat': 0.9, 'db-squat': 1.4, 'bulgarian-squat': 1, 'barbell-bulgarian': 1.2, lunge: 1.2, 'reverse-lunge': 1.2,
   'barbell-lunge': 1.4, 'barbell-forward-lunge': 1.4, 'step-up': 1, 'barbell-step-up': 1.2,
 
   // Dwugłowe uda
-  'romanian-deadlift': 2, 'barbell-stiff-deadlift': 2, 'good-morning': 1.3, 'db-romanian': 1.6, 'db-stiff-deadlift': 1.6, 'single-leg-deadlift': 0.7,
+  'romanian-deadlift': 2.4, 'barbell-stiff-deadlift': 2.4, 'good-morning': 1.3, 'db-romanian': 1.9, 'db-stiff-deadlift': 1.9, 'single-leg-deadlift': 0.7,
   'leg-curl-lying': 1.1, 'leg-curl-seated': 1.2, 'leg-curl-alternate': 1, 'leg-curl-kneeling': 0.6, 'db-leg-curl': 0.5,
 
   // Pośladki
-  'hip-thrust': 3, 'barbell-glute-bridge': 2.5, 'sumo-deadlift': 2.8, 'hip-abduction': 1.8, 'hip-adduction': 1.8,
+  'hip-thrust': 3, 'barbell-glute-bridge': 2.5, 'sumo-deadlift': 3.45, 'hip-abduction': 1.8, 'hip-adduction': 1.8,
   'cable-kickback': 0.6, 'cable-adduction': 0.6, 'machine-hip-extension': 1.5, 'reverse-hyper': 1, 'barbell-lateral-lunge': 1,
 
   // Łydki
@@ -71,13 +73,14 @@ export const STRENGTH_TOPS = {
 
 /** Ćwiczenia wielostawowe, które mówią też o sile innych partii, z normą dla tej partii. */
 export const STRENGTH_ALSO = {
-  squat: { Pośladki: 2.5 },
-  'barbell-box-squat': { Pośladki: 2.5 },
-  'barbell-wide-squat': { Pośladki: 2.5 },
-  deadlift: { 'Dwugłowe uda': 2.8, Pośladki: 2.8 },
-  'sumo-deadlift': { 'Dwugłowe uda': 2.8 },
-  'romanian-deadlift': { Pośladki: 2.2 },
-  'barbell-stiff-deadlift': { Pośladki: 2.2 },
+  squat: { Pośladki: 3, 'Dwugłowe uda': 3.6 },
+  'barbell-box-squat': { Pośladki: 3, 'Dwugłowe uda': 3.6 },
+  'barbell-wide-squat': { Pośladki: 3, 'Dwugłowe uda': 3.6 },
+  'front-squat': { Pośladki: 2.9, 'Dwugłowe uda': 3.5 },
+  deadlift: { 'Dwugłowe uda': 3.45, Pośladki: 3.45 },
+  'sumo-deadlift': { 'Dwugłowe uda': 3.45 },
+  'romanian-deadlift': { Pośladki: 2.6 },
+  'barbell-stiff-deadlift': { Pośladki: 2.6 },
 };
 
 /** Ćwiczenia z hantlami, w których wpisany ciężar to jeden hantel, a nie para. */
@@ -85,6 +88,9 @@ export const ONE_DUMBBELL = new Set([
   'db-one-arm-bench', 'db-pullover', 'db-row', 'one-arm-db-press', 'one-arm-lateral', 'external-rotation', 'concentration-curl',
   'overhead-db-ext', 'db-standing-ext', 'db-kickback', 'goblet-squat', 'single-leg-deadlift', 'db-leg-curl', 'calf-db-single', 'db-side-bend',
 ]);
+
+/** Odmiany martwego ciągu. W danych zawodników masa ciała pomaga w nich mniej niż w wyciskaniu i przysiadzie. */
+export const DEADLIFT_LIKE = new Set(['deadlift', 'rack-pull', 'sumo-deadlift', 'db-deadlift', 'romanian-deadlift', 'barbell-stiff-deadlift', 'db-romanian', 'db-stiff-deadlift']);
 
 /** Ćwiczenia z masą ciała, w których dociążenie dodaje się do całej masy, np. podciąganie. */
 export const LIFTS_BODY = new Set(['pull-up', 'wide-pull-up', 'chin-up']);

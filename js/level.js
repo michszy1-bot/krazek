@@ -2,10 +2,10 @@
 // Poziom główny to punkty XP za regularność i postęp. Poziomy partii to siła względem masy ciała.
 
 import { weightOn } from './body.js';
-import { MUSCLES } from './exercises.js';
+import { HELPER_MUSCLES, MUSCLES } from './exercises.js';
 import { dayKey, startOfWeek } from './format.js';
 import { estimate1RM, isWorking, muscleTopSets, recordTimeline } from './stats.js';
-import { LIFTS_BODY, ONE_DUMBBELL, STRENGTH_ALSO, STRENGTH_TOPS } from './strength-norms.js';
+import { DEADLIFT_LIKE, LIFTS_BODY, ONE_DUMBBELL, STRENGTH_ALSO, STRENGTH_TOPS } from './strength-norms.js';
 
 export const XP_WORKOUT = 50; // raz dziennie, żeby nie opłacało się dzielić treningu
 export const XP_RECORD = 100; // na ćwiczenie w treningu
@@ -15,8 +15,23 @@ const XP_MUSCLE_WEEK = 80;
 
 const MAIN_SCALE = 100;
 export const MAX_MUSCLE_LEVEL = 20;
-// Przy większej liczbie powtórzeń wzór na ciężar maksymalny za bardzo zawyża wynik.
-const MAX_COUNTED_REPS = 15;
+// Przy większej liczbie powtórzeń wzór na ciężar maksymalny staje się mało wiarygodny.
+const MAX_COUNTED_REPS = 12;
+// Siła rośnie wolniej niż masa ciała, więc sam procent masy ciała zaniżałby wynik cięższych. Wykładniki pochodzą
+// z danych zawodników: około 0,65 w wyciskaniu i przysiadzie oraz około 0,5 w martwym ciągu.
+// Dla 80 kg, czyli punktu odniesienia norm, nic się nie zmienia.
+const BODY_EXPONENT = 0.65;
+const DEADLIFT_EXPONENT = 0.5;
+const REFERENCE_KG = 80;
+const bodyFactor = (bodyKg, exerciseId) => (bodyKg / REFERENCE_KG) ** (1 - (DEADLIFT_LIKE.has(exerciseId) ? DEADLIFT_EXPONENT : BODY_EXPONENT));
+
+/** Nazwa poziomu siły. Elita zaczyna się dopiero na poziomie najwyższym. */
+export function strengthCategory(level) {
+  if (level >= MAX_MUSCLE_LEVEL) return 'Elita';
+  if (level >= 16) return 'Zaawansowany';
+  if (level >= 11) return 'Średnio zaawansowany';
+  return level >= 6 ? 'Nowicjusz' : 'Początkujący';
+}
 
 /** Kolory poziomów siły, te same co na mapie serii: od czerwonego do zielonego. */
 export const STRENGTH_BANDS = [
@@ -92,9 +107,30 @@ export function strengthRatio(exercise, set, bodyKg) {
 
 const usesMachine = (exercise) => exercise.equipment === 'Maszyna' || exercise.equipment === 'Wyciąg';
 
+// Ćwiczenie złożone niewiele mówi o sile partii pomocniczej, więc liczy się dla niej tylko 10% wyniku.
+const HELPER_SHARE = 0.1;
+// Kolejność źródeł wyniku: wolny ciężar, maszyna, a na końcu ćwiczenie, w którym partia tylko pomaga.
+const RANK_FREE = 3;
+const RANK_MACHINE = 2;
+const RANK_HELPER_FREE = 1;
+const RANK_HELPER_MACHINE = 0;
+
+/** Partie, którym ćwiczenie daje wynik siły, z normą i pierwszeństwem. */
+function strengthNorms(exercise, top) {
+  const machine = usesMachine(exercise);
+  const also = STRENGTH_ALSO[exercise.id] ?? {};
+  const main = [[exercise.muscle, top], ...Object.entries(also)]
+    .map(([muscle, norm]) => ({ muscle, norm, rank: machine ? RANK_MACHINE : RANK_FREE }));
+  const helpers = (HELPER_MUSCLES.get(exercise.id) ?? [])
+    .filter((muscle) => !also[muscle])
+    .map((muscle) => ({ muscle, norm: top / HELPER_SHARE, rank: machine ? RANK_HELPER_MACHINE : RANK_HELPER_FREE }));
+  return [...main, ...helpers];
+}
+
 /**
  * Najlepszy wynik każdej partii w historii, z wagą z dnia treningu, więc późniejsza zmiana wagi go nie obniża.
  * Wolne ciężary mają pierwszeństwo: maszyny i wyciągi liczą się tylko, gdy partia nie ma wyniku z wolnych ciężarów.
+ * Ćwiczenie, w którym partia tylko pomaga, liczy się dopiero wtedy, gdy nie ma żadnego ćwiczenia wprost na nią.
  */
 function bestStrength(workouts, exerciseById, bodyWeights) {
   const best = new Map();
@@ -105,17 +141,17 @@ function bestStrength(workouts, exerciseById, bodyWeights) {
       const exercise = exerciseById(item.exerciseId);
       const top = STRENGTH_TOPS[item.exerciseId];
       if (!exercise || !top) continue;
-      const norms = [[exercise.muscle, top], ...Object.entries(STRENGTH_ALSO[item.exerciseId] ?? {})];
-      const free = !usesMachine(exercise);
+      const norms = strengthNorms(exercise, top);
+      const factor = bodyFactor(bodyKg, exercise.id);
       for (const set of item.sets) {
         if (!isWorking(set)) continue;
         const ratio = strengthRatio(exercise, set, bodyKg);
         if (!(ratio > 0)) continue;
-        for (const [muscle, norm] of norms) {
-          const score = ratio / norm;
+        for (const { muscle, norm, rank } of norms) {
+          const score = (ratio * factor) / norm;
           const current = best.get(muscle);
-          const wins = !current || (free && !current.free) || (free === current.free && score > current.score);
-          if (wins) best.set(muscle, { score, ratio, top: norm, exercise: exercise.name, free });
+          const wins = !current || rank > current.rank || (rank === current.rank && score > current.score);
+          if (wins) best.set(muscle, { score, ratio, top: norm, factor, exercise: exercise.name, rank });
         }
       }
     }
@@ -135,7 +171,7 @@ function muscleRow(muscle, best) {
     ratio: best.ratio,
     exercise: best.exercise,
     // Wynik w tym samym ćwiczeniu, który da następny poziom.
-    nextRatio: atTop ? null : (best.top * level) / (MAX_MUSCLE_LEVEL - 1),
+    nextRatio: atTop ? null : (best.top * level) / (MAX_MUSCLE_LEVEL - 1) / best.factor,
   };
 }
 

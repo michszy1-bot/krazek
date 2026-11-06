@@ -39,6 +39,11 @@ Reszta aplikacji działa bez internetu. Spis powiązań jest w `js/animations.js
 Kształty sylwetki pochodzą z projektu [react-native-body-highlighter](https://github.com/HichamELBSI/react-native-body-highlighter) na licencji MIT.
 Dane i tekst licencji są w `js/muscle-shapes.js`.
 
+## Normy siły
+
+Górne normy wyciskania, przysiadu i martwego ciągu oraz wpływ masy ciała policzono z danych projektu [OpenPowerlifting](https://www.openpowerlifting.org). Kopię danych można pobrać z https://data.openpowerlifting.org, a skrypt liczący jest w `tools/opl-norms.mjs`.
+Pozostałe normy w `js/strength-norms.js` to szacunki.
+
 ## Aktualizacje
 
 Po zmianie plików podnieś `VERSION` w `sw.js`. Inaczej telefon zostanie przy starej wersji.

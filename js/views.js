@@ -304,6 +304,7 @@ function musclesSection() {
   return h('section.block',
     h('h2.block-title', `Mapa mięśni z ${MAP_DAYS} dni`),
     muscleMap(rows),
+    h('p.settings-text', 'Ćwiczenia wielostawowe liczą się też w połowie do partii pomocniczych. Np. seria przysiadu to cała seria na czworogłowe oraz po pół na pośladki i dwugłowe.'),
     wholeBody > 0 && h('p.settings-text', `Ćwiczenia na całe ciało: ${countOf(wholeBody, 'seria', 'serie', 'serii')}. Nie ma ich na mapie.`),
     h('h2.block-title.chart-second-title', 'Zaniedbane partie'),
     neglected.length

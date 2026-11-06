@@ -1,5 +1,6 @@
 // Obliczenia: objętość, 1RM, rekordy i agregaty do wykresów. Czysta logika, bez DOM.
 
+import { musclesOf } from './exercises.js';
 import { addDays, dayKey, startOfDay, startOfWeek } from './format.js';
 
 export const isWorking = (set) => set.kind !== 'warmup';
@@ -287,9 +288,10 @@ export function muscleSets(workouts, exerciseById, fromTs) {
   for (const workout of workouts) {
     if (workout.startedAt < fromTs) continue;
     for (const item of workout.exercises) {
-      const muscle = exerciseById(item.exerciseId)?.muscle;
-      if (!muscle) continue;
-      totals.set(muscle, (totals.get(muscle) || 0) + item.sets.filter(isWorking).length);
+      const sets = item.sets.filter(isWorking).length;
+      for (const [muscle, share] of musclesOf(exerciseById(item.exerciseId))) {
+        totals.set(muscle, (totals.get(muscle) || 0) + sets * share);
+      }
     }
   }
   return [...totals.entries()]
@@ -306,9 +308,10 @@ export function neglectedMuscles(workouts, exerciseById, muscles, now = new Date
   const last = new Map();
   for (const workout of workouts) {
     for (const item of workout.exercises) {
-      const muscle = exerciseById(item.exerciseId)?.muscle;
-      if (!muscle || !item.sets.some(isWorking)) continue;
-      last.set(muscle, Math.max(last.get(muscle) ?? 0, workout.startedAt));
+      if (!item.sets.some(isWorking)) continue;
+      for (const [muscle] of musclesOf(exerciseById(item.exerciseId))) {
+        last.set(muscle, Math.max(last.get(muscle) ?? 0, workout.startedAt));
+      }
     }
   }
   const today = startOfDay(now).getTime();
