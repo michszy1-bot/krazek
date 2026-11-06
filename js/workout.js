@@ -6,6 +6,7 @@ import { exerciseSessions, flagRecords, isComplete, isWorking, recordsFor, worki
 import { exerciseById, flushActive, newId, saveActiveSoon, saveExercise, saveWorkout, setActive, state } from './store.js';
 import { pickExercises } from './picker.js';
 import { demoUrl, exerciseDemo, hasDemo } from './demo.js';
+import { saveWorkoutAsRoutine } from './routine-views.js';
 import * as sound from './sound.js';
 
 const REST_OPTIONS = [0, 30, 45, 60, 90, 120, 150, 180, 240, 300];
@@ -32,6 +33,19 @@ export const isWorkoutOpen = () => Boolean(ctx);
 export async function startWorkout() {
   const now = Date.now();
   await setActive({ id: newId(), name: defaultName(), startedAt: now, note: '', exercises: [], restEndAt: null, restTotal: 0 });
+  resumeWorkout();
+}
+
+/** Nowy trening z rutyny: ma jej nazwę, ćwiczenia i liczbę serii. Ciężary podpowiada historia. */
+export async function startRoutine(routine) {
+  if (state.active) {
+    toast('Masz trening w toku. Zakończ go, żeby zacząć rutynę.', { actionLabel: 'Wróć', onAction: resumeWorkout });
+    return;
+  }
+  const exercises = routine.exercises
+    .filter((item) => exerciseById(item.exerciseId))
+    .map((item) => ({ exerciseId: item.exerciseId, note: '', sets: item.sets.map((kind) => emptySet(kind)) }));
+  await setActive({ id: newId(), name: routine.name, startedAt: Date.now(), note: '', exercises, restEndAt: null, restTotal: 0 });
   resumeWorkout();
 }
 
@@ -779,7 +793,8 @@ function showSummary(workout, records) {
         h('span.record-text',
           h('span.record-name', exerciseById(record.exerciseId).name),
           h('span.record-meta', `${record.label}: ${fmtUnit(record.value, record.unit)}`)))))),
-    h('button.btn.btn-primary.btn-block', { type: 'button', onclick: close }, 'Gotowe')),
+    h('button.btn.btn-primary.btn-block', { type: 'button', onclick: close }, 'Gotowe'),
+    h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => { close(); saveWorkoutAsRoutine(workout); } }, 'Zapisz jako rutynę')),
   { label: 'Trening zapisany' });
 }
 

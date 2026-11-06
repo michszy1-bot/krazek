@@ -5,6 +5,7 @@ import { fmtClock } from './format.js';
 import { load, state, subscribe } from './store.js';
 import { isWorkoutOpen, resumeWorkout } from './workout.js';
 import { exerciseView, homeView, journalView, libraryView, progressView, settingsView, workoutDetailView } from './views.js';
+import { profileView } from './profile.js';
 
 const main = document.getElementById('view');
 const nav = document.getElementById('tabs');
@@ -32,6 +33,7 @@ function route() {
     case 'cwiczenie':
       return { tab: lastTab, view: () => exerciseView(decodeURIComponent(id), lastTab) };
     case 'ustawienia': return { tab: '#/', view: settingsView };
+    case 'profil': return { tab: '#/', view: profileView };
     default: return { tab: '#/', view: homeView };
   }
 }

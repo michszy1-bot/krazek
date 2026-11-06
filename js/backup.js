@@ -1,10 +1,13 @@
 // Format pliku kopii zapasowej. Plik pochodzi z zewnątrz, więc każde pole jest sprawdzane przed zapisem.
 
+import { cleanProfile, cleanWeights } from './body.js';
+import { cleanRoutines } from './routines.js';
+
 const APP_ID = 'krazek'; // Dawna nazwa aplikacji. Zmiana unieważniłaby istniejące kopie.
 const VERSION = 1;
 
-export function buildBackup({ exercises, workouts, settings }, now = Date.now()) {
-  return { app: APP_ID, version: VERSION, exportedAt: now, settings, exercises, workouts };
+export function buildBackup({ exercises, workouts, settings, profile, bodyWeights, routines }, now = Date.now()) {
+  return { app: APP_ID, version: VERSION, exportedAt: now, settings, exercises, workouts, profile, bodyWeights, routines };
 }
 
 const isText = (v) => typeof v === 'string' && v.length > 0;
@@ -60,10 +63,10 @@ export function parseBackup(text) {
   try {
     data = JSON.parse(text);
   } catch {
-    throw new Error('Ten plik nie jest kopią Krążka: nie da się go odczytać.');
+    throw new Error('Ten plik nie jest kopią Formy: nie da się go odczytać.');
   }
   if (data?.app !== APP_ID || !Array.isArray(data.exercises) || !Array.isArray(data.workouts)) {
-    throw new Error('Ten plik nie jest kopią Krążka.');
+    throw new Error('Ten plik nie jest kopią Formy.');
   }
   if (data.version > VERSION) {
     throw new Error('Ta kopia pochodzi z nowszej wersji aplikacji. Zaktualizuj aplikację i spróbuj ponownie.');
@@ -84,5 +87,14 @@ export function parseBackup(text) {
   const settings = {};
   const rest = numOrNull(data.settings?.restSec);
   if (rest != null) settings.restSec = rest;
-  return { exercises, workouts, settings };
+  // Starsze kopie nie mają tych pól. Wczytują się wtedy z pustym profilem, dziennikiem wagi i rutynami.
+  const bodyWeights = cleanWeights(data.bodyWeights);
+  if (!bodyWeights) {
+    throw new Error('Kopia jest uszkodzona: dziennik wagi ma niepoprawne wpisy. Nic nie zostało zmienione.');
+  }
+  const routines = cleanRoutines(data.routines, known);
+  if (!routines) {
+    throw new Error('Kopia jest uszkodzona: rutyny mają niepoprawne wpisy. Nic nie zostało zmienione.');
+  }
+  return { exercises, workouts, settings, profile: cleanProfile(data.profile), bodyWeights, routines };
 }

@@ -6,7 +6,8 @@ import { columnChart, lineChart, rankedBars } from './chart.js';
 import { exerciseSessions, flagRecords, isWorking, METRICS, muscleSets, RECORD_TYPES, recordsFor, summarizeSets, weekDays, weeklyTotals, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
 import { backupText, deleteExercise, deleteWorkout, exerciseById, isExerciseUsed, markBackedUp, previewBackup, restoreBackup, saveSettings, state, visibleExercises, wipeAll } from './store.js';
 import { applyFilter, exerciseFilter, exerciseForm } from './picker.js';
-import { addPastWorkout, editWorkout, resumeWorkout, startWorkout, stat } from './workout.js';
+import { addPastWorkout, editWorkout, resumeWorkout, startRoutine, startWorkout, stat } from './workout.js';
+import { routinesSection, saveWorkoutAsRoutine } from './routine-views.js';
 import { exerciseDemo } from './demo.js';
 import * as sound from './sound.js';
 
@@ -59,7 +60,9 @@ export function homeView() {
   return h('div.page',
     h('header.page-head',
       h('p.eyebrow', fmtDayLong(now)),
-      h('div.page-actions', h('a.icon-btn', { href: '#/ustawienia', 'aria-label': 'Ustawienia', title: 'Ustawienia' }, icon('gear')))),
+      h('div.page-actions',
+        h('a.icon-btn', { href: '#/profil', 'aria-label': 'Profil', title: 'Profil' }, icon('person')),
+        h('a.icon-btn', { href: '#/ustawienia', 'aria-label': 'Ustawienia', title: 'Ustawienia' }, icon('gear')))),
     h('section.week',
       h('h1.page-title', 'Ten tydzień'),
       h('p.week-line', weekWorkouts.length
@@ -70,7 +73,7 @@ export function homeView() {
     state.active
       ? h('button.btn.btn-primary.btn-hero', { type: 'button', onclick: resumeWorkout }, 'Wróć do treningu', h('span.hero-time', { dataset: { elapsedFrom: state.active.startedAt } }, fmtClock((Date.now() - state.active.startedAt) / 1000)))
       : h('button.btn.btn-primary.btn-hero', { type: 'button', onclick: startWorkout }, 'Rozpocznij trening'),
-    h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => addPastWorkout() }, 'Dodaj wcześniejszy trening'),
+    routinesSection(startRoutine),
     last
       ? h('section.block', h('h2.block-title', 'Ostatni trening'), workoutRow(last))
       : h('p.first-hint', 'Po pierwszym treningu zobaczysz tu podsumowanie i pierwszy krążek na sztandze.'),
@@ -200,6 +203,7 @@ export function workoutDetailView(id) {
         }))));
     }),
     h('div.detail-actions',
+      h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => saveWorkoutAsRoutine(workout) }, 'Zapisz jako rutynę'),
       h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => editWorkout(workout) }, 'Edytuj trening'),
       h('button.btn.btn-text-danger.btn-block', { type: 'button', onclick: remove }, 'Usuń trening')));
 }
@@ -474,7 +478,7 @@ async function exportBackup() {
   const file = new File([backupText()], name, { type: 'application/json' });
   try {
     if (navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ files: [file], title: 'Kopia zapasowa Krążka' });
+      await navigator.share({ files: [file], title: 'Kopia zapasowa Formy' });
     } else {
       const url = URL.createObjectURL(file);
       h('a', { href: url, download: name }).click();
@@ -505,7 +509,7 @@ function importBackup() {
       }
       const confirmed = await ask({
         title: 'Zastąpić dane tą kopią?',
-        text: `Kopia ma ${countOf(parsed.workouts.length, 'trening', 'treningi', 'treningów')}. Obecne ${countOf(state.workouts.length, 'trening', 'treningi', 'treningów')} i trening w toku zostaną zastąpione.`,
+        text: `Kopia ma ${countOf(parsed.workouts.length, 'trening', 'treningi', 'treningów')} i ${countOf(parsed.bodyWeights.length, 'wpis', 'wpisy', 'wpisów')} wagi. Obecne ${countOf(state.workouts.length, 'trening', 'treningi', 'treningów')}, rutyny, profil, dziennik wagi i trening w toku zostaną zastąpione.`,
         confirm: 'Zastąp dane',
         danger: true,
       });
@@ -521,7 +525,7 @@ function importBackup() {
 async function wipeData() {
   const confirmed = await ask({
     title: 'Usunąć wszystkie dane?',
-    text: `Znikną wszystkie treningi (${state.workouts.length}) i własne ćwiczenia. Tego nie da się cofnąć bez kopii zapasowej.`,
+    text: `Znikną wszystkie treningi (${state.workouts.length}), własne ćwiczenia, rutyny, profil i dziennik wagi. Tego nie da się cofnąć bez kopii zapasowej.`,
     confirm: 'Usuń wszystko',
     danger: true,
   });
@@ -579,7 +583,7 @@ export function settingsView() {
       soundLine),
     h('section.block',
       h('h2.block-title', 'Kopia zapasowa'),
-      h('p.settings-text', 'Treningi są zapisane tylko na tym telefonie. Bez kopii utrata telefonu albo usunięcie aplikacji z ekranu początkowego oznacza utratę danych.'),
+      h('p.settings-text', 'Treningi, rutyny, profil i dziennik wagi są zapisane tylko na tym telefonie. Bez kopii utrata telefonu albo usunięcie aplikacji z ekranu początkowego oznacza utratę danych.'),
       h('p.settings-text', state.lastBackupAt ? `Ostatnia kopia: ${fmtDayMedium(state.lastBackupAt)}.` : 'Nie masz jeszcze kopii.'),
       h('button.btn.btn-primary.btn-block', { type: 'button', onclick: exportBackup }, 'Zapisz kopię'),
       h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: importBackup }, 'Wczytaj kopię')),

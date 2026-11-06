@@ -1,7 +1,7 @@
 # Forma
 
-Osobisty dziennik treningowy na iPhone'a: serie, minutnik przerwy, rekordy, wykresy i animacje ćwiczeń.
-Bez konta i bez serwera. Treningi są zapisane tylko na telefonie.
+Osobisty dziennik treningowy na iPhone'a: serie, minutnik przerwy, rekordy, wykresy, animacje ćwiczeń, profil i dziennik wagi.
+Bez konta i bez serwera. Wszystkie wpisy są zapisane tylko na telefonie.
 
 ## Podgląd na komputerze
 

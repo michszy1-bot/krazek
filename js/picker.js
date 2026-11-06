@@ -54,7 +54,7 @@ function recentExercises(limit = 6) {
 }
 
 /** Wielokrotny wybór ćwiczeń. onPick dostaje identyfikatory w kolejności zaznaczania. */
-export function pickExercises(onPick) {
+export function pickExercises(onPick, { actionLabel = 'Dodaj do treningu' } = {}) {
   const selected = [];
   openSheet((close) => {
     const list = h('div.picker-list');
@@ -65,7 +65,7 @@ export function pickExercises(onPick) {
     }, 'Wybierz ćwiczenia');
     const updateButton = () => {
       addBtn.disabled = selected.length === 0;
-      addBtn.textContent = selected.length ? `Dodaj do treningu (${selected.length})` : 'Wybierz ćwiczenia';
+      addBtn.textContent = selected.length ? `${actionLabel} (${selected.length})` : 'Wybierz ćwiczenia';
     };
     const rowFor = (exercise) => h('button.picker-row', {
       type: 'button',

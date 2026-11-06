@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import { addDays, dayKey, fmtClock, fmtDuration, fmtSet, fmtVolume, inputValue, parseNum, pastWorkoutStart, plural, startOfWeek } from '../js/format.js';
 import { estimate1RM, flagRecords, isComplete, muscleSets, niceTicks, recordsFor, summarizeSets, weekDays, weeklyTotals, workoutRecords, workoutVolume } from '../js/stats.js';
 import { buildBackup, parseBackup } from '../js/backup.js';
+import { ageOn, cleanProfile, cleanWeights, dayTime, isDay, putWeight, removeWeight, weightChange } from '../js/body.js';
+import { cleanRoutines, hasOwnName, isNameTaken, putRoutine, routineFromWorkout, routineSetCount } from '../js/routines.js';
 import { SEED_EXERCISES, MUSCLES, EQUIPMENT } from '../js/exercises.js';
 
 const nbsp = (s) => s.replace(/ /g, ' ');
@@ -192,6 +194,96 @@ test('niceTicks daje równe, okrągłe podziałki obejmujące zakres', () => {
   const step = ticks[1] - ticks[0];
   ticks.slice(1).forEach((t, i) => assert.ok(Math.abs(t - ticks[i] - step) < 1e-6));
   assert.ok(niceTicks(100, 100).length >= 2);
+});
+
+test('wiek rośnie dopiero w dniu urodzin', () => {
+  assert.equal(ageOn('2000-06-15', new Date(2026, 5, 14)), 25);
+  assert.equal(ageOn('2000-06-15', new Date(2026, 5, 15)), 26);
+  assert.equal(ageOn('2000-06-15', new Date(2026, 11, 31)), 26);
+  assert.equal(ageOn('2000-06-15', new Date(2027, 0, 1)), 26);
+});
+
+test('isDay odrzuca nieistniejące daty, a dayTime liczy dzień lokalnie', () => {
+  assert.equal(isDay('2026-02-28'), true);
+  assert.equal(isDay('2026-02-30'), false);
+  assert.equal(isDay('2026-2-3'), false);
+  assert.equal(isDay(null), false);
+  assert.equal(dayKey(dayTime('2026-03-01')), '2026-03-01');
+});
+
+test('dziennik wagi: jeden wpis na dzień, od najnowszego', () => {
+  let list = putWeight([], { day: '2026-11-01', kg: 80 });
+  list = putWeight(list, { day: '2026-11-03', kg: 79.5 });
+  list = putWeight(list, { day: '2026-11-02', kg: 80.2 });
+  assert.deepEqual(list.map((w) => w.day), ['2026-11-03', '2026-11-02', '2026-11-01']);
+
+  list = putWeight(list, { day: '2026-11-02', kg: 81 });
+  assert.equal(list.length, 3);
+  assert.equal(list[1].kg, 81);
+
+  const moved = putWeight(list, { day: '2026-10-30', kg: 81 }, '2026-11-02');
+  assert.deepEqual(moved.map((w) => w.day), ['2026-11-03', '2026-11-01', '2026-10-30']);
+
+  assert.deepEqual(removeWeight(moved, '2026-11-01').map((w) => w.day), ['2026-11-03', '2026-10-30']);
+});
+
+test('zmiana wagi jest liczona do wcześniejszego wpisu i zaokrąglana', () => {
+  const list = [{ day: '2026-11-03', kg: 80.3 }, { day: '2026-11-02', kg: 80.1 }];
+  assert.equal(weightChange(list, 0), 0.2);
+  assert.equal(weightChange(list, 1), null);
+});
+
+test('kopia zachowuje profil i dziennik wagi', () => {
+  const data = {
+    exercises: [],
+    workouts: [],
+    settings: {},
+    profile: { birthDate: '2000-06-15', heightCm: 180 },
+    bodyWeights: [{ day: '2026-11-01', kg: 80 }, { day: '2026-11-03', kg: 79.5 }],
+  };
+  const parsed = parseBackup(JSON.stringify(buildBackup(data)));
+  assert.deepEqual(parsed.profile, data.profile);
+  assert.deepEqual(parsed.bodyWeights.map((w) => w.day), ['2026-11-03', '2026-11-01']);
+});
+
+test('kopia bez profilu wczytuje się z pustymi danymi, a zły wpis wagi jest odrzucany', () => {
+  const base = { app: 'krazek', version: 1, exercises: [], workouts: [] };
+  const old = parseBackup(JSON.stringify(base));
+  assert.deepEqual(old.profile, { birthDate: null, heightCm: null });
+  assert.deepEqual(old.bodyWeights, []);
+  assert.throws(() => parseBackup(JSON.stringify({ ...base, bodyWeights: [{ day: '2026-11-01', kg: 'dużo' }] })), /dziennik wagi/);
+  assert.equal(cleanWeights([{ day: '2026-02-30', kg: 80 }]), null);
+  assert.deepEqual(cleanProfile({ birthDate: 'wczoraj', heightCm: 180 }), { birthDate: null, heightCm: 180 });
+});
+
+test('rutyna z treningu pamięta ćwiczenia i rodzaje serii, ale nie ciężary', () => {
+  const source = workout('a', '2026-11-01', { squat: [set(60, 10, { kind: 'warmup' }), set(100, 5), set(100, 5)] });
+  const routine = routineFromWorkout(source, { id: 'r1', name: 'Dzień nóg' });
+  assert.deepEqual(routine, { id: 'r1', name: 'Dzień nóg', exercises: [{ exerciseId: 'squat', sets: ['warmup', 'normal', 'normal'] }] });
+  assert.equal(routineSetCount(routine), 3);
+});
+
+test('rutyny: edycja podmienia wpis, a nazwa nie może się powtórzyć', () => {
+  const first = { id: 'r1', name: 'Dzień nóg', exercises: [] };
+  const list = putRoutine(putRoutine([], first), { id: 'r2', name: 'Plecy', exercises: [] });
+  assert.equal(list.length, 2);
+  assert.equal(putRoutine(list, { ...first, name: 'Nogi' })[0].name, 'Nogi');
+  assert.equal(isNameTaken(list, 'dzień NÓG'), true);
+  assert.equal(isNameTaken(list, 'Dzień nóg', 'r1'), false);
+  assert.equal(hasOwnName({ name: 'Trening poranny' }), false);
+  assert.equal(hasOwnName({ name: 'Dzień nóg' }), true);
+});
+
+test('kopia zachowuje rutyny i odrzuca takie z nieznanym ćwiczeniem', () => {
+  const exercises = SEED_EXERCISES.slice(0, 1);
+  const routines = [{ id: 'r1', name: 'Dzień nóg', exercises: [{ exerciseId: exercises[0].id, sets: ['normal'] }] }];
+  const parsed = parseBackup(JSON.stringify(buildBackup({ exercises, workouts: [], settings: {}, routines })));
+  assert.deepEqual(parsed.routines, routines);
+
+  const base = { app: 'krazek', version: 1, exercises: [], workouts: [] };
+  assert.deepEqual(parseBackup(JSON.stringify(base)).routines, []);
+  assert.throws(() => parseBackup(JSON.stringify({ ...base, routines })), /rutyny/);
+  assert.equal(cleanRoutines([{ id: 'r', name: 'x', exercises: [{ exerciseId: 'a', sets: ['zła'] }] }], new Set(['a'])), null);
 });
 
 test('starsza kopia z usuniętym trybem dźwięku nadal się wczytuje', () => {

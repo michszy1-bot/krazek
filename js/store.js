@@ -3,6 +3,7 @@
 import { getAll, getValue, put, remove, removeValue, replaceAll, setValue, STORES } from './db.js';
 import { SEED_EXERCISES } from './exercises.js';
 import { buildBackup, parseBackup } from './backup.js';
+import { EMPTY_PROFILE } from './body.js';
 
 const DEFAULT_SETTINGS = { restSec: 120 };
 
@@ -10,6 +11,9 @@ export const state = {
   exercises: new Map(),
   workouts: [], // od najnowszego
   settings: { ...DEFAULT_SETTINGS },
+  profile: { ...EMPTY_PROFILE },
+  bodyWeights: [], // od najnowszego: { day: 'RRRR-MM-DD', kg }
+  routines: [], // { id, name, exercises: [{ exerciseId, sets: ['normal' | 'warmup'] }] }
   active: null, // trening w toku
   lastBackupAt: null,
 };
@@ -36,6 +40,9 @@ export async function load() {
   state.workouts = await getAll(STORES.workouts);
   sortWorkouts();
   state.settings = { ...DEFAULT_SETTINGS, ...(await getValue('settings')) };
+  state.profile = { ...EMPTY_PROFILE, ...(await getValue('profile')) };
+  state.bodyWeights = (await getValue('bodyWeights')) ?? [];
+  state.routines = (await getValue('routines')) ?? [];
   state.active = (await getValue('active')) ?? null;
   state.lastBackupAt = (await getValue('lastBackupAt')) ?? null;
 }
@@ -89,9 +96,10 @@ export async function saveExercise(exercise) {
 
 export const isExerciseUsed = (id) =>
   state.workouts.some((w) => w.exercises.some((i) => i.exerciseId === id))
+  || state.routines.some((r) => r.exercises.some((i) => i.exerciseId === id))
   || Boolean(state.active?.exercises.some((i) => i.exerciseId === id));
 
-/** Użyte ćwiczenie jest tylko ukrywane, żeby historia zachowała jego nazwę. */
+/** Użyte ćwiczenie jest tylko ukrywane, żeby historia i rutyny zachowały jego nazwę. */
 export async function deleteExercise(id) {
   const exercise = state.exercises.get(id);
   if (!exercise) return;
@@ -119,6 +127,28 @@ export async function saveSettings(patch) {
   emit();
 }
 
+// --- Rutyny ---
+
+export async function saveRoutines(list) {
+  state.routines = list;
+  await setValue('routines', list);
+  emit();
+}
+
+// --- Profil i dziennik wagi ---
+
+export async function saveProfile(patch) {
+  state.profile = { ...state.profile, ...patch };
+  await setValue('profile', state.profile);
+  emit();
+}
+
+export async function saveBodyWeights(list) {
+  state.bodyWeights = list;
+  await setValue('bodyWeights', list);
+  emit();
+}
+
 // --- Kopia zapasowa ---
 
 export function backupText() {
@@ -126,6 +156,9 @@ export function backupText() {
     exercises: [...state.exercises.values()],
     workouts: state.workouts,
     settings: state.settings,
+    profile: state.profile,
+    bodyWeights: state.bodyWeights,
+    routines: state.routines,
   }));
 }
 
@@ -144,7 +177,7 @@ export async function restoreBackup(parsed) {
   await replaceAll({
     exercises: parsed.exercises,
     workouts: parsed.workouts,
-    kv: { settings, lastBackupAt: backedUpAt },
+    kv: { settings, lastBackupAt: backedUpAt, profile: parsed.profile, bodyWeights: parsed.bodyWeights, routines: parsed.routines },
   });
   await load();
   emit();
