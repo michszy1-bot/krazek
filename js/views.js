@@ -1,9 +1,9 @@
 // Ekrany aplikacji poza treningiem: start, dziennik, postępy, ćwiczenia i ustawienia.
 
 import { actionSheet, ask, emptyState, h, icon, iconButton, openSheet, pageHeader, recordChip, segmented, toast } from './ui.js';
-import { addDays, countOf, dayKey, fmtClock, fmtDayLong, fmtDayMedium, fmtDayShort, fmtDuration, fmtMonth, fmtNum, fmtSet, fmtTime, fmtUnit, fmtVolume, startOfWeek } from './format.js';
+import { addDays, countOf, dayKey, fmtClock, fmtDayLong, fmtDayMedium, fmtDayShort, fmtDuration, fmtMonth, fmtNum, fmtSet, fmtTime, fmtUnit, fmtVolume, plural, startOfWeek } from './format.js';
 import { columnChart, lineChart, rankedBars } from './chart.js';
-import { backupStatus, exerciseSessions, flagRecords, goalProgress, isWorking, METRICS, muscleSets, neglectedMuscles, RECORD_TYPES, recordsFor, recordTimeline, SET_KINDS, setLabels, summarizeSets, weekDays, weeklyTotals, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
+import { backupStatus, exerciseSessions, flagRecords, goalProgress, isWorking, loadBar, METRICS, muscleSets, neglectedMuscles, PLATE_TIERS, plateHeight, plateTier, plateWidth, RECORD_TYPES, recordsFor, recordTimeline, SET_KINDS, setLabels, summarizeSets, weekDays, weeklyTotals, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
 import { bodyWeightChart, weightsFrom } from './profile.js';
 import { dayTime, weightOn } from './body.js';
 import { clearMedia, downloadMedia, isDownloadingMedia, mediaStatus } from './media.js';
@@ -23,21 +23,62 @@ const workoutRecordsOf = (workout) => workoutRecords(workout, state.workouts, ex
 
 // --- Start ---
 
-/** Tydzień narysowany jak sztanga: każdy dzień treningowy to krążek, tym wyższy, im więcej serii. */
-function weekBarbell(days) {
-  const plates = days.map((day, i) => {
+const PLATE_EMPTY_HEIGHT = 92;
+
+/** Numer na krążku maleje razem z nim, a na bardzo wąskim się nie mieści. */
+const plateFont = (width) => (width >= 18 ? 17 : width >= 14 ? 14 : width >= 11 ? 12 : 0);
+
+function barSide(side, { plates, empty }, met) {
+  const width = plateWidth(plates.length + empty);
+  const font = plateFont(width);
+  return h(`span.bar-side.bar-side-${side}`,
+    plates.map((sets) => h(`span.bar-plate.tier-${plateTier(sets)}`,
+      { style: `width:${width}px;height:${plateHeight(sets)}px;font-size:${font}px` },
+      font > 0 && String(sets))),
+    Array.from({ length: empty }, () => h('span.bar-plate.bar-plate-empty', { style: `width:${width}px;height:${PLATE_EMPTY_HEIGHT}px` })),
+    met && h('span.bar-clamp'));
+}
+
+/** Tydzień narysowany jak ładowana sztanga: każdy trening to para krążków, a cel to pełny gryf. */
+function loadedBar(weekWorkouts) {
+  const goal = state.settings.weeklyGoal;
+  const done = weekWorkouts.length;
+  const load = loadBar(weekWorkouts, goal);
+  const met = goal != null && done >= goal;
+  const unit = goal == null
+    ? plural(done, 'trening', 'treningi', 'treningów')
+    : goal === 1 ? 'treningu' : 'treningów';
+  return h(`button.loaded-bar${met ? '.goal-met' : ''}`,
+    { type: 'button', onclick: goalSheet, 'aria-label': goal == null ? `${countOf(done, 'trening', 'treningi', 'treningów')}. Ustaw cel tygodniowy` : `Cel tygodniowy: ${done} z ${goal} ${unit}. Zmień` },
+    barSide('left', load, met),
+    h('span.bar-collar'),
+    h('span.bar-middle',
+      h('span.bar-count', goal == null ? String(done) : `${done} z ${goal}`),
+      h('span.bar-unit', unit)),
+    h('span.bar-collar'),
+    barSide('right', load, met));
+}
+
+/** Pasek dni pod sztangą: kolor jak krążek tego dnia, gwiazdka za rekord. */
+function weekTrack(days) {
+  return h('div.week-track', days.map((day, i) => {
     const hasRecord = day.workouts.some((w) => workoutRecordsOf(w).length > 0);
-    const height = day.sets ? Math.round(28 + Math.min(1, day.sets / 24) * 60) : 0;
-    const plate = day.sets
-      ? h(`span.plate${hasRecord ? '.plate-record' : ''}`, { style: `height:${height}px` })
-      : h('span.collar');
-    const label = h(`span.day-letter${day.isToday ? '.today' : ''}`, DAY_LETTERS[i]);
-    const name = `${fmtDayLong(day.date)}: ${day.sets ? countOf(day.sets, 'seria', 'serie', 'serii') : 'bez treningu'}${hasRecord ? ', nowy rekord' : ''}`;
+    const name = `${fmtDayLong(day.date)}: ${day.workouts.length ? countOf(day.sets, 'seria', 'serie', 'serii') : 'bez treningu'}${hasRecord ? ', nowy rekord' : ''}`;
+    const content = [
+      h('span.week-star', hasRecord && icon('star', 14)),
+      h(`span.week-mark${day.workouts.length ? `.tier-${plateTier(day.sets)}` : ''}`),
+      h(`span.day-letter${day.isToday ? '.today' : ''}`, DAY_LETTERS[i]),
+    ];
     return day.workouts.length
-      ? h('a.day', { href: `#/dziennik/${day.workouts[0].id}`, 'aria-label': name }, h('span.day-slot', plate), label)
-      : h('div.day', { 'aria-label': name, role: 'img' }, h('span.day-slot', plate), label);
-  });
-  return h('div.barbell', plates);
+      ? h('a.week-day', { href: `#/dziennik/${day.workouts[0].id}`, 'aria-label': name }, content)
+      : h('div.week-day', { 'aria-label': name, role: 'img' }, content);
+  }));
+}
+
+function plateKey(anyRecord) {
+  return h('p.plate-key',
+    PLATE_TIERS.map(({ tier, label }) => h('span', h(`i.tier-${tier}`), label)),
+    anyRecord && h('span', icon('star', 14), 'rekord'));
 }
 
 /** Wybór celu tygodniowego, wspólny dla ekranu startowego i ustawień. */
@@ -53,15 +94,14 @@ function goalSheet() {
   ]);
 }
 
-function goalLine() {
+/** Wynik tygodnia nad sztangą, razem z serią tygodni, w których cel się udał. */
+function weekLine(weekWorkouts, weekSets, weekVolume) {
   const goal = state.settings.weeklyGoal;
-  if (goal == null) {
-    return h('button.goal-line.goal-empty', { type: 'button', onclick: goalSheet }, 'Ustaw cel tygodniowy');
-  }
-  const { done, met, streak } = goalProgress(state.workouts, goal);
-  return h(`button.goal-line${met ? '.goal-met' : ''}`, { type: 'button', onclick: goalSheet, 'aria-label': `Cel tygodniowy: ${done} z ${goal}. Zmień` },
-    h('span', `Cel: ${done} z ${goal} ${goal === 1 ? 'treningu' : 'treningów'}`),
-    streak > 0 && h('span.goal-streak', `${countOf(streak, 'tydzień', 'tygodnie', 'tygodni')} z rzędu`));
+  const streak = goal == null ? 0 : goalProgress(state.workouts, goal).streak;
+  return [
+    weekWorkouts.length ? `${countOf(weekSets, 'seria', 'serie', 'serii')} · ${fmtVolume(weekVolume)}` : 'Jeszcze bez treningu',
+    streak > 0 && `${countOf(streak, 'tydzień', 'tygodnie', 'tygodni')} z rzędu`,
+  ].filter(Boolean).join(' · ');
 }
 
 function workoutRow(workout) {
@@ -94,12 +134,11 @@ export function homeView() {
         h('a.icon-btn', { href: '#/ustawienia', 'aria-label': 'Ustawienia', title: 'Ustawienia' }, icon('gear')))),
     h('section.week',
       h('h1.page-title', 'Ten tydzień'),
-      h('p.week-line', weekWorkouts.length
-        ? `${countOf(weekWorkouts.length, 'trening', 'treningi', 'treningów')} · ${countOf(weekSets, 'seria', 'serie', 'serii')} · ${fmtVolume(weekVolume)}`
-        : 'Jeszcze bez treningu'),
-      goalLine(),
-      weekBarbell(days),
-      anyRecord && h('p.week-legend', h('span.legend-plate'), 'Dzień z nowym rekordem')),
+      h('p.week-line', weekLine(weekWorkouts, weekSets, weekVolume)),
+      state.settings.weeklyGoal == null && h('button.goal-line.goal-empty', { type: 'button', onclick: goalSheet }, 'Ustaw cel tygodniowy'),
+      loadedBar(weekWorkouts),
+      weekTrack(days),
+      weekWorkouts.length > 0 && plateKey(anyRecord)),
     state.active
       ? h('button.btn.btn-primary.btn-hero', { type: 'button', onclick: resumeWorkout }, 'Wróć do treningu', h('span.hero-time', { dataset: { elapsedFrom: state.active.startedAt } }, fmtClock((Date.now() - state.active.startedAt) / 1000)))
       : h('button.btn.btn-primary.btn-hero', { type: 'button', onclick: startWorkout }, 'Rozpocznij trening'),
@@ -304,7 +343,7 @@ function musclesSection() {
   return h('section.block',
     h('h2.block-title', `Mapa mięśni z ${MAP_DAYS} dni`),
     muscleMap(rows),
-    h('p.settings-text', 'Ćwiczenia wielostawowe liczą się też w połowie do partii pomocniczych. Np. seria przysiadu to cała seria na czworogłowe oraz po pół na pośladki i dwugłowe.'),
+    h('p.settings-text', 'Ćwiczenia złożone na nogi liczą się też w połowie do pozostałych partii nóg. Np. seria przysiadu to cała seria na czworogłowe oraz po pół na pośladki i dwugłowe. Góra ciała liczy się tylko do partii głównej.'),
     wholeBody > 0 && h('p.settings-text', `Ćwiczenia na całe ciało: ${countOf(wholeBody, 'seria', 'serie', 'serii')}. Nie ma ich na mapie.`),
     h('h2.block-title.chart-second-title', 'Zaniedbane partie'),
     neglected.length

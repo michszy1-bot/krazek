@@ -264,6 +264,41 @@ export function weekDays(workouts, now = new Date()) {
   return days;
 }
 
+/** Kolory krążków jak na zawodach: im więcej serii, tym cięższy krążek. */
+export const PLATE_TIERS = [
+  { tier: 'green', label: 'do 9' },
+  { tier: 'yellow', label: '10–14' },
+  { tier: 'blue', label: '15–19' },
+  { tier: 'red', label: '20+ serii' },
+];
+
+export function plateTier(sets) {
+  if (sets >= 20) return 'red';
+  if (sets >= 15) return 'blue';
+  if (sets >= 10) return 'yellow';
+  return 'green';
+}
+
+/** Sztanga tygodnia: każdy trening to krążek, od największego przy kołnierzu, a brakujące do celu są puste. */
+export function loadBar(workouts, goal) {
+  const plates = workouts.map(workingSetCount).sort((a, b) => b - a);
+  return { plates, empty: goal == null ? 0 : Math.max(0, goal - plates.length) };
+}
+
+// Koniec gryfu ma 104 px, a reszta to odstęp od kołnierza i zacisk po wykonaniu celu.
+const BAR_SIDE = 94;
+const PLATE_GAP = 2;
+const MAX_PLATE_WIDTH = 22;
+
+/** Szerokość krążka tak, żeby wszystkie zmieściły się na końcu gryfu, także przy celu 7 treningów. */
+export function plateWidth(count) {
+  const slots = Math.max(1, count);
+  return Math.min(MAX_PLATE_WIDTH, (BAR_SIDE - PLATE_GAP * (slots - 1)) / slots);
+}
+
+/** Wysokość krążka w pikselach: 24 serie to już największy. */
+export const plateHeight = (sets) => Math.round(56 + Math.min(1, sets / 24) * 80);
+
 /** Objętość i liczba treningów tydzień po tygodniu, od najstarszego. */
 export function weeklyTotals(workouts, weeks, now = new Date()) {
   const thisWeek = startOfWeek(now);

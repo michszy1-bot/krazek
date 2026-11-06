@@ -280,16 +280,15 @@ export const SEED_EXERCISES = [
   row('db-snatch', 'Rwanie hantlem jednorącz', 'Całe ciało', 'Hantle'),
 ];
 
-/** Ćwiczenia wielostawowe pracują też na innych partiach. Grupy: partie pomocnicze i ćwiczenia, których to dotyczy. */
+/**
+ * Ćwiczenia na nogi pracują na kilka partii nóg. Grupy: partie pomocnicze i ćwiczenia, których to dotyczy.
+ * Góry ciała celowo tu nie ma: wyciskanie liczy się tylko do klatki, a wiosłowanie tylko do pleców.
+ */
 const HELPER_GROUPS = [
-  [['Triceps', 'Barki'], ['bench-press', 'incline-bench', 'decline-bench', 'wide-bench', 'guillotine-bench', 'db-bench', 'db-incline', 'db-decline', 'db-hammer-press', 'db-one-arm-bench', 'machine-press', 'machine-incline-press', 'machine-decline-press', 'smith-bench', 'smith-incline', 'cable-chest-press']],
-  [['Triceps'], ['ohp', 'seated-ohp', 'db-shoulder-press', 'arnold-press', 'one-arm-db-press', 'db-push-press', 'machine-shoulder', 'machine-one-arm-shoulder', 'cable-shoulder-press', 'smith-shoulder']],
-  [['Klatka', 'Barki'], ['close-bench', 'incline-close-bench', 'ez-close-bench', 'smith-close-bench', 'machine-dip', 'machine-overhand-dip', 'assisted-dip']],
-  [['Biceps'], ['barbell-row', 'pendlay-row', 't-bar-row', 'reverse-barbell-row', 'barbell-incline-row', 'db-row', 'db-bent-row', 'db-incline-row', 'cable-row', 'wide-cable-row', 'machine-row', 'machine-high-row', 'machine-high-row-single', 'machine-narrow-row', 'machine-one-arm-row', 'smith-row', 'lat-pulldown', 'close-pulldown', 'underhand-pulldown', 'machine-pulldown', 'pull-up', 'wide-pull-up', 'chin-up', 'inverted-row', 'machine-assisted-pull-up']],
   [['Pośladki', 'Dwugłowe uda'], ['squat', 'front-squat', 'barbell-box-squat', 'barbell-wide-squat', 'barbell-hack', 'zercher-squat', 'smith-squat', 'goblet-squat', 'db-squat', 'hack-squat', 'hack-close', 'leg-press', 'leg-press-wide', 'leg-press-single', 'bulgarian-squat', 'barbell-bulgarian', 'lunge', 'reverse-lunge', 'walking-lunge', 'barbell-lunge', 'barbell-forward-lunge', 'step-up', 'barbell-step-up', 'pistol-squat']],
-  [['Dwugłowe uda', 'Pośladki', 'Przedramiona'], ['deadlift', 'rack-pull', 'db-deadlift']],
-  [['Czworogłowe', 'Dwugłowe uda', 'Plecy'], ['sumo-deadlift']],
-  [['Pośladki', 'Plecy'], ['romanian-deadlift', 'barbell-stiff-deadlift', 'db-romanian', 'db-stiff-deadlift', 'good-morning', 'single-leg-deadlift']],
+  [['Dwugłowe uda', 'Pośladki'], ['deadlift', 'rack-pull', 'db-deadlift']],
+  [['Czworogłowe', 'Dwugłowe uda'], ['sumo-deadlift']],
+  [['Pośladki'], ['romanian-deadlift', 'barbell-stiff-deadlift', 'db-romanian', 'db-stiff-deadlift', 'good-morning', 'single-leg-deadlift']],
   [['Dwugłowe uda'], ['hip-thrust', 'barbell-glute-bridge', 'glute-bridge', 'bench-glute-bridge', 'machine-hip-extension', 'reverse-hyper']],
 ];
 

@@ -2,6 +2,7 @@
   Forma. Paleta pochodzi od kolorów krążków zawodowych:
   niebieski (20 kg) to działanie, zielony (10 kg) to zaliczona seria,
   żółty (15 kg) to rekord, czerwony (25 kg) to usuwanie.
+  Wyjątek to sztanga tygodnia: tam kolor krążka mówi o liczbie serii.
 */
 :root {
   color-scheme: dark;
@@ -154,43 +155,70 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .level-rules li { display: flex; justify-content: space-between; gap: 12px; }
 .level-rules strong { flex: none; color: var(--ink); font-weight: 600; }
 .goal-line { display: flex; flex-wrap: wrap; align-items: center; column-gap: 10px; min-height: 44px; margin-bottom: -8px; text-align: left; font-weight: 600; color: var(--ink); }
-.goal-line.goal-met { color: var(--green); }
 .goal-empty { font-weight: 500; color: var(--blue-line); }
-.goal-streak { font-weight: 500; color: var(--ink-2); }
 
-.barbell {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  margin: 14px -16px 0;
-  padding: 0 12px;
+/* Kolory krążków według liczby serii, te same na sztandze, pasku dni i w legendzie. */
+.tier-green { --tier: var(--green); --tier-plate: linear-gradient(90deg, #268a55, var(--green) 40%, #55cf8e 60%, #268a55); }
+.tier-yellow { --tier: var(--yellow); --tier-plate: linear-gradient(90deg, #d7a916, var(--yellow) 40%, #ffdc66 60%, #d7a916); color: #2a2206; }
+.tier-blue { --tier: var(--blue); --tier-plate: linear-gradient(90deg, #255cd0, var(--blue) 40%, #4f85f5 60%, #255cd0); }
+.tier-red { --tier: #e5484d; --tier-plate: linear-gradient(90deg, #b92f34, #e5484d 40%, #f26d71 60%, #b92f34); }
+
+/* Gryf biegnie przez całą szerokość ekranu, a krążki siedzą na jego końcach. */
+.loaded-bar {
+  --steel-bar: linear-gradient(#b4bdc7, #737c87 55%, #4d555e);
+  display: flex;
+  width: calc(100% + 32px);
+  height: 144px;
+  margin: 8px -16px 4px;
+  color: var(--ink);
 }
-/* Gryf biegnie przez całą szerokość ekranu, na wysokości środka krążków. */
-.barbell::before {
+.bar-side { position: relative; flex: none; display: flex; align-items: center; gap: 2px; width: 104px; }
+.bar-side::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 14px; margin-top: -7px; background: var(--steel-bar); }
+.bar-side-left { flex-direction: row-reverse; padding-right: 2px; }
+.bar-side-right { padding-left: 2px; }
+.bar-plate {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  background: var(--tier-plate);
+  color: #fff;
+  font-family: var(--font-data);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.bar-plate.tier-yellow { color: #2a2206; }
+.bar-plate-empty { border: 1.5px dashed #6a7480; background: none; }
+.bar-clamp { position: relative; flex: none; width: 6px; height: 30px; border-radius: 2px; background: var(--steel-bar); }
+.bar-collar { flex: none; align-self: center; width: 8px; height: 40px; border-radius: 2px; background: var(--steel-bar); }
+.bar-middle { position: relative; flex: 1; min-width: 0; display: grid; grid-template-rows: 1fr 1fr; justify-items: center; }
+.bar-middle::before {
   content: "";
   position: absolute;
   left: 0;
   right: 0;
-  top: 44px;
-  height: 6px;
-  margin-top: -3px;
-  background: linear-gradient(#a2acb7, #5d6670);
+  top: 50%;
+  height: 8px;
+  margin-top: -4px;
+  background: repeating-linear-gradient(115deg, rgb(255 255 255 / 18%) 0 1px, transparent 1px 4px), var(--steel-bar);
 }
-.day { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 0; }
-.day-slot { height: 88px; display: flex; align-items: center; justify-content: center; }
-.plate {
-  display: block;
-  width: 20px;
-  border-radius: 4px;
-  background: linear-gradient(90deg, #255cd0, var(--blue) 40%, #4f85f5 60%, #255cd0);
-  box-shadow: 0 0 0 2px var(--floor);
-}
-.plate-record { background: linear-gradient(90deg, #d7a916, var(--yellow) 40%, #ffdc66 60%, #d7a916); }
-.collar { display: block; width: 6px; height: 14px; border-radius: 2px; background: var(--steel); box-shadow: 0 0 0 2px var(--floor); }
+.bar-count { align-self: end; padding-bottom: 12px; font: 700 46px/1 var(--font-data); font-variant-numeric: tabular-nums; }
+.bar-unit { align-self: start; padding-top: 14px; font-size: 14px; font-weight: 500; line-height: 1; color: var(--ink-2); }
+.goal-met .bar-count { color: var(--green); }
+
+.week-track { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.week-day { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; }
+.week-star { display: flex; align-items: flex-end; justify-content: center; height: 16px; color: var(--yellow); }
+.week-mark { display: block; width: 100%; height: 6px; border-radius: 3px; background: var(--tier, var(--panel-raised)); }
 .day-letter { font-size: 13px; color: var(--ink-3); padding: 1px 6px; border-radius: 6px; }
 .day-letter.today { background: var(--ink); color: var(--floor); font-weight: 700; }
-.week-legend { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13px; color: var(--ink-2); }
-.legend-plate { width: 8px; height: 16px; border-radius: 2px; background: var(--yellow); }
+.plate-key { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 10px; font-size: 12px; color: var(--ink-2); }
+.plate-key span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.plate-key i { width: 7px; height: 14px; border-radius: 2px; background: var(--tier); }
+.plate-key svg { color: var(--yellow); }
 .first-hint { color: var(--ink-2); }
 
 /* Listy */

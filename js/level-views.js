@@ -51,7 +51,7 @@ export function levelSections(onAddWeight) {
         : h('button.notice', { type: 'button', onclick: onAddWeight },
           h('strong', 'Dodaj swoją wagę'),
           h('span', 'Siłę partii liczę jako procent masy ciała, więc potrzebny jest choć jeden wpis w dzienniku wagi.')),
-      state.bodyWeights.length > 0 && h('p.settings-text', `Poziomy 1–${MAX_MUSCLE_LEVEL} to najlepszy szacowany ciężar maksymalny względem wagi z dnia treningu, z poprawką na to, że siła rośnie wolniej niż masa ciała. Najpierw liczą się wolne ciężary, potem maszyny i wyciągi, a na końcu ćwiczenia złożone, w których partia tylko pomaga, np. wyciskanie dla tricepsa. Te ostatnie dają jej tylko 10% wyniku. Normy dla mężczyzn są orientacyjne, a dla ćwiczeń innych niż główne szacunkowe. Własne ćwiczenia i te bez obciążenia się nie liczą.`)),
+      state.bodyWeights.length > 0 && h('p.settings-text', `Poziomy 1–${MAX_MUSCLE_LEVEL} to najlepszy szacowany ciężar maksymalny względem wagi z dnia treningu, z poprawką na to, że siła rośnie wolniej niż masa ciała. Najpierw liczą się wolne ciężary, potem maszyny i wyciągi, a na końcu ćwiczenia na nogi, w których partia tylko pomaga, np. wykroki dla pośladków. Te ostatnie dają jej tylko 10% wyniku. Normy dla mężczyzn są orientacyjne, a dla ćwiczeń innych niż główne szacunkowe. Własne ćwiczenia i te bez obciążenia się nie liczą.`)),
   ];
 }
 
