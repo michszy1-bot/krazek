@@ -195,7 +195,7 @@ export function levelProgress(workouts, exerciseById, { weeklyGoal = null, bodyW
     .map((muscle) => muscleRow(muscle, best.get(muscle)))
     .sort((a, b) => (a.level == null) - (b.level == null) || (a.level + a.share) - (b.level + b.share));
   const records = recordTimeline(workouts, exerciseById);
-  const achievements = achievementProgress(workouts, exerciseById, { weeklyGoal, shieldedWeeks, records: records.length });
+  const achievements = achievementProgress(workouts, exerciseById, { weeklyGoal, shieldedWeeks, bodyWeights, records });
   const fromAchievements = achievementXp(achievements);
   const xp = earnedXp(workouts, exerciseById, weeklyGoal, shieldedWeeks, records) + fromAchievements;
   return { ...mainLevel(xp), achievementXp: fromAchievements, achievements, muscles };

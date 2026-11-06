@@ -56,6 +56,8 @@ const ICONS = {
   pause: '<path d="M7 4h4v16H7zM13 4h4v16h-4z"/>',
   play: '<path d="M7 4v16l13-8z"/>',
   timer: '<path fill-rule="evenodd" d="M9 1h6v2h-2v1.1A8.5 8.5 0 1 1 4.6 8.9l-.3.1L3 7.6l1.4-1.4 1.2 1.2A8.5 8.5 0 0 1 11 4.1V3H9zm3 5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zm-1 2h2v5h-2z"/>',
+  trophy: '<path fill-rule="evenodd" d="M7 3h10v2h4v3a4 4 0 0 1-4 4h-.4a5 5 0 0 1-3.600 2.900V18h3v3H8v-3h3v-3.100A5 5 0 0 1 7.400 12H7a4 4 0 0 1-4-4V5h4zM7 7H5v1a2 2 0 0 0 2 2zm10 0v3a2 2 0 0 0 2-2V7z"/>',
+  bag: '<path fill-rule="evenodd" d="M8 8V7a4 4 0 1 1 8 0v1h4l1 13H3L4 8zm2 0h4V7a2 2 0 1 0-4 0z"/>',
 };
 
 export function icon(name, size = 24) {

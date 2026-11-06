@@ -59,26 +59,21 @@ function muscleRow(row) {
     row.nextRatio != null && h('span.level-row-detail', `Poziom ${row.level + 1} od ${Math.ceil(row.nextRatio * 100)}%`));
 }
 
+const levelLink = (href, name, label) => h('a.level-link', { href, 'aria-label': label, title: label }, icon(name, 22));
+
 /** Poziom główny, mapa siły i poziomy partii, czyli górna część profilu. */
 export function levelSections(onAddWeight) {
   const progress = levelProgress(state.workouts, exerciseById, levelOptions());
   return [
     h('section.level-line',
       shownTitle(state.shop) && h('p.level-title', shownTitle(state.shop)),
-      h('p.level-line-top', h('strong', `Poziom ${progress.level}`), h('span', nextText(progress))),
+      h('div.level-head',
+        h('strong.level-name', `Poziom ${progress.level}`),
+        levelLink('#/osiagniecia', 'trophy', `Osiągnięcia, zdobyte: ${progress.achievements.filter((item) => item.done).length} z ${progress.achievements.length}`),
+        levelLink('#/sklep', 'bag', `Sklep, do wydania: ${fmtNum(spendable(progress.xp, state.shop))} XP`)),
       xpBar(`Postęp poziomu ${progress.level}`, progress.share),
-      h('p.level-meta', `${fmtNum(progress.xp)} XP`),
+      h('p.level-meta', h('span', `${fmtNum(progress.xp)} XP`), h('span', nextText(progress))),
       streakBlock()),
-    h('a.link-row', { href: '#/sklep' },
-      h('span.link-text',
-        h('span.link-name', 'Sklep'),
-        h('span.link-meta', `${fmtNum(spendable(progress.xp, state.shop))} XP do wydania`)),
-      h('span.flip', icon('back', 20))),
-    h('a.link-row', { href: '#/osiagniecia' },
-      h('span.link-text',
-        h('span.link-name', 'Osiągnięcia'),
-        h('span.link-meta', `Zdobyte: ${progress.achievements.filter((item) => item.done).length} z ${progress.achievements.length}`)),
-      h('span.flip', icon('back', 20))),
     h('section.block',
       h('h2.block-title', 'Siła partii'),
       state.bodyWeights.length

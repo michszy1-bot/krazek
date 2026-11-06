@@ -1181,7 +1181,8 @@ const achievedOne = (exerciseId, weight, reps = 1, kind = 'normal') => achieved(
 test('osiągnięcia: lista ma poprawne grupy, stałe nagrody i kolory krążków', () => {
   assert.equal(new Set(ACHIEVEMENTS.map((item) => item.id)).size, ACHIEVEMENTS.length);
   assert.ok(ACHIEVEMENTS.every((item) => ACHIEVEMENT_GROUPS.includes(item.group) && item.xp > 0 && item.target > 0));
-  assert.equal(ACHIEVEMENTS.reduce((sum, item) => sum + item.xp, 0), 22600);
+  assert.equal(ACHIEVEMENTS.reduce((sum, item) => sum + item.xp, 0), 40700);
+  assert.equal(ACHIEVEMENTS.length, 42);
   assert.deepEqual([50, 200, 300, 800, 1000, 2000, 2500, 5000].map(rewardTier), ['green', 'green', 'yellow', 'yellow', 'blue', 'blue', 'red', 'red']);
 });
 
@@ -1229,7 +1230,9 @@ test('osiągnięcia: tonaż, rekordy, wszystkie partie w tygodniu i pora trening
   assert.ok(achieved([heavy]).includes('tonnage-100'));
   assert.ok(!achieved([heavy]).includes('tonnage-500'));
   assert.equal(achievementProgress([heavy], levelLookup).find((item) => item.id === 'tonnage-100').value, 100000);
-  assert.ok(achieved([], levelLookup, { records: 10 }).includes('records-10'));
+  const tenRecords = Array.from({ length: 10 }, (_, i) => ({ workoutId: `r${i}` }));
+  assert.ok(achieved([], levelLookup, { records: tenRecords }).includes('records-10'));
+  assert.ok(!achieved([], levelLookup, { records: tenRecords }).includes('workout-records'));
 
   const muscles = ['Klatka', 'Plecy', 'Barki', 'Biceps', 'Triceps', 'Przedramiona', 'Czworogłowe', 'Dwugłowe uda', 'Pośladki', 'Łydki', 'Brzuch'];
   const lookup = (id) => ({ muscle: id, type: 'weight' });
@@ -1255,4 +1258,95 @@ test('osiągnięcia: nagroda bez mnożnika, a podsumowanie pokazuje tylko nowe',
   assert.equal(gain.xp, Math.round((50 + 5 + 150 + 100) * 1.1) + 1000);
   const again = levelWorkout('w5', new Date(2026, 10, 9, 9), 'bench-press', workSets(1, 100));
   assert.deepEqual(workoutGain([...weeks, strong, again], again, seedLookup, options).newAchievements, []);
+});
+
+const dayWorkout = (id, date, list) => ({ id, name: 'T', startedAt: date.getTime(), endedAt: date.getTime() + 3600000, note: '', exercises: list.map(([exerciseId, sets]) => ({ exerciseId, note: '', sets })) });
+const oneSet = (weight, reps = 1, kind = 'normal') => [{ weight, reps, seconds: null, kind }];
+const has = (workouts, id, options, lookup = seedLookup) => achievementProgress(workouts, lookup, options).find((item) => item.id === id);
+
+test('osiągnięcia względem wagi: waga z dnia treningu, a bez wpisu wagi nic nie wpada', () => {
+  const bench = dayWorkout('a', new Date(2026, 10, 2, 9), [['bench-press', oneSet(80)]]);
+  const weights = (kg) => ({ bodyWeights: [{ day: '2026-11-01', kg }] });
+  assert.equal(has([bench], 'body-bench', weights(80)).done, true);
+  assert.equal(has([bench], 'body-bench', weights(80)).value, 100);
+  assert.equal(has([bench], 'body-bench', weights(81)).done, false);
+  assert.equal(has([bench], 'body-bench').done, false);
+  // Późniejsza zmiana wagi nie zabiera osiągnięcia.
+  const later = { bodyWeights: [{ day: '2026-12-01', kg: 95 }, { day: '2026-11-01', kg: 80 }] };
+  assert.equal(has([bench], 'body-bench', later).done, true);
+  const squat = dayWorkout('b', new Date(2026, 10, 2, 9), [['squat', oneSet(120)]]);
+  assert.equal(has([squat], 'body-squat', weights(80)).done, true);
+  const deadlift = dayWorkout('c', new Date(2026, 10, 2, 9), [['sumo-deadlift', oneSet(160)]]);
+  assert.equal(has([deadlift], 'body-deadlift', weights(80)).done, true);
+  // Rozgrzewka się nie liczy.
+  const warmup = dayWorkout('d', new Date(2026, 10, 2, 9), [['bench-press', oneSet(200, 1, 'warmup')]]);
+  assert.equal(has([warmup], 'body-bench', weights(80)).done, false);
+});
+
+test('trzy boje: suma najlepszych ciężarów, a wyższe progi działają', () => {
+  const workouts = [
+    dayWorkout('a', new Date(2026, 10, 2, 9), [['squat', oneSet(130)], ['bench-press', oneSet(100)]]),
+    dayWorkout('b', new Date(2026, 10, 3, 9), [['deadlift', oneSet(170)], ['sumo-deadlift', oneSet(150)], ['squat', oneSet(90)]]),
+  ];
+  assert.equal(has(workouts, 'total-400').value, 400);
+  assert.equal(has(workouts, 'total-400').done, true);
+  assert.equal(has(workouts, 'total-500').done, false);
+  assert.equal(has(workouts, 'lift-200').done, false);
+  assert.equal(has([dayWorkout('c', new Date(2026, 10, 2, 9), [['deadlift', oneSet(200)]])], 'lift-200').done, true);
+  assert.equal(has([dayWorkout('d', new Date(2026, 10, 2, 9), [['bench-press', oneSet(120)]])], 'bench-120').done, true);
+});
+
+test('krążki i mapa: czerwony krążek, czerwona sztanga i zielona mapa', () => {
+  const lookup = (id) => ({ id, muscle: id, type: 'weight' });
+  const red = (id, date) => dayWorkout(id, date, [['Klatka', workSets(20)]]);
+  const weaker = dayWorkout('w', new Date(2026, 10, 4, 9), [['Klatka', workSets(19)]]);
+  assert.equal(has([weaker], 'red-plate', {}, lookup).done, false);
+  assert.equal(has([weaker], 'red-plate', {}, lookup).value, 19);
+  assert.equal(has([red('a', new Date(2026, 10, 2, 9))], 'red-plate', {}, lookup).done, true);
+
+  const two = [red('a', new Date(2026, 10, 2, 9)), red('b', new Date(2026, 10, 3, 9))];
+  assert.equal(has(two, 'red-bar', { weeklyGoal: 2 }, lookup).done, true);
+  // Bez celu, przy niewykonanym celu albo z jednym słabszym krążkiem nie ma czerwonej sztangi.
+  assert.equal(has(two, 'red-bar', {}, lookup).done, false);
+  assert.equal(has(two, 'red-bar', { weeklyGoal: 3 }, lookup).done, false);
+  assert.equal(has([...two, weaker], 'red-bar', { weeklyGoal: 2 }, lookup).done, false);
+
+  const legs = new Set(['Czworogłowe', 'Dwugłowe uda', 'Pośladki', 'Łydki']);
+  const muscles = ['Klatka', 'Plecy', 'Barki', 'Biceps', 'Triceps', 'Przedramiona', 'Czworogłowe', 'Dwugłowe uda', 'Pośladki', 'Łydki', 'Brzuch'];
+  const greenWeek = (shortBy) => dayWorkout('g', new Date(2026, 10, 2, 9), muscles.map((muscle) => [muscle, workSets((legs.has(muscle) ? 8 : 16) - (muscle === 'Brzuch' ? shortBy : 0))]));
+  assert.equal(has([greenWeek(0)], 'green-map', {}, lookup).done, true);
+  assert.equal(has([greenWeek(1)], 'green-map', {}, lookup).done, false);
+  assert.equal(has([greenWeek(1)], 'green-map', {}, lookup).value, 10);
+});
+
+test('jeden trening i wytrwałość: tonaż treningu, rekordy, godziny, serie i różne ćwiczenia', () => {
+  const heavy = dayWorkout('a', new Date(2026, 10, 2, 9), [['bench', [{ weight: 100, reps: 100, seconds: null, kind: 'normal' }]]]);
+  assert.equal(has([heavy], 'workout-10t', {}, levelLookup).done, true);
+  const split = [dayWorkout('b', new Date(2026, 10, 2, 9), [['bench', [{ weight: 100, reps: 60, seconds: null, kind: 'normal' }]]]), dayWorkout('c', new Date(2026, 10, 3, 9), [['bench', [{ weight: 100, reps: 60, seconds: null, kind: 'normal' }]]])];
+  assert.equal(has(split, 'workout-10t', {}, levelLookup).done, false);
+
+  const inOne = Array.from({ length: 5 }, () => ({ workoutId: 'x' }));
+  assert.equal(has([], 'workout-records', { records: inOne }, levelLookup).done, true);
+  assert.equal(has([], 'workout-records', { records: inOne.slice(1) }, levelLookup).value, 4);
+
+  const hour = dayWorkout('d', new Date(2026, 10, 2, 9), [['bench', workSets(1)]]);
+  assert.equal(has([hour], 'hours-100', {}, levelLookup).value, 3600000);
+  // Trening z samą rozgrzewką nie dolicza ani czasu, ani ćwiczenia.
+  const warmup = dayWorkout('e', new Date(2026, 10, 3, 9), [['squat', oneSet(50, 5, 'warmup')]]);
+  assert.equal(has([hour, warmup], 'hours-100', {}, levelLookup).value, 3600000);
+  assert.equal(has([hour, warmup], 'exercises-25', {}, levelLookup).value, 1);
+  assert.equal(has([hour, warmup], 'sets-1000', {}, levelLookup).value, 1);
+});
+
+test('okazje: powrót dopiero po 30 dniach przerwy, a Nowy Rok tylko 1 stycznia', () => {
+  const at = (id, date) => dayWorkout(id, date, [['bench', workSets(1)]]);
+  const first = at('a', new Date(2026, 9, 1, 9));
+  assert.equal(has([first], 'comeback', {}, levelLookup).done, false);
+  assert.equal(has([first, at('b', new Date(2026, 9, 30, 9))], 'comeback', {}, levelLookup).done, false);
+  assert.equal(has([at('c', new Date(2026, 9, 31, 9)), first], 'comeback', {}, levelLookup).done, true);
+  // Trening z samą rozgrzewką nie przerywa przerwy.
+  const warmup = dayWorkout('d', new Date(2026, 9, 15, 9), [['bench', oneSet(20, 5, 'warmup')]]);
+  assert.equal(has([first, warmup, at('e', new Date(2026, 9, 31, 9))], 'comeback', {}, levelLookup).done, true);
+  assert.equal(has([at('f', new Date(2027, 0, 1, 10))], 'new-year', {}, levelLookup).done, true);
+  assert.equal(has([at('g', new Date(2027, 0, 2, 10))], 'new-year', {}, levelLookup).done, false);
 });
