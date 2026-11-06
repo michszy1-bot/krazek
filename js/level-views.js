@@ -1,13 +1,35 @@
 // Poziomy na ekranie: sekcje profilu i wynik w podsumowaniu treningu.
 
 import { h, icon } from './ui.js';
-import { fmtNum } from './format.js';
+import { countOf, fmtMultiplier, fmtNum } from './format.js';
 import { shownTitle, spendable } from './shop.js';
+import { streakStatus } from './stats.js';
 import { levelProgress, MAX_MUSCLE_LEVEL, strengthCategory, strengthColour, XP_GOAL, XP_RECORD, XP_WORKOUT } from './level.js';
 import { strengthMap } from './muscle-map.js';
 import { exerciseById, state } from './store.js';
 
-export const levelOptions = () => ({ weeklyGoal: state.settings.weeklyGoal, bodyWeights: state.bodyWeights });
+export const levelOptions = () => ({ weeklyGoal: state.settings.weeklyGoal, bodyWeights: state.bodyWeights, shieldedWeeks: state.shop.shieldedWeeks });
+
+/** Co jeszcze trzeba zrobić, żeby mnożnik wzrósł. */
+function nextMultiplierText(next) {
+  if (!next) return 'To najwyższy mnożnik. Utrzymaj serię.';
+  const target = fmtMultiplier(next.multiplier);
+  return next.left > 0
+    ? `Jeszcze ${countOf(next.left, 'udany tydzień', 'udane tygodnie', 'udanych tygodni')} do ${target}`
+    : `${target} od następnego tygodnia`;
+}
+
+/** Seria tygodni i mnożnik XP w karcie poziomu. */
+function streakBlock() {
+  const status = streakStatus(state.workouts, state.settings.weeklyGoal, state.shop.shieldedWeeks);
+  if (!status) return h('p.level-meta', h('span', 'Ustaw cel tygodniowy, żeby liczyć serię tygodni i mnożnik XP.'));
+  return [
+    h('p.level-streak',
+      h('span', `Seria: ${countOf(status.streak, 'tydzień', 'tygodnie', 'tygodni')} z rzędu`),
+      h(`strong${status.multiplier > 1 ? '.on' : ''}`, `XP ${fmtMultiplier(status.multiplier)}`)),
+    h('p.level-meta', h('span', nextMultiplierText(status.next))),
+  ];
+}
 
 const percent = (share) => Math.round(share * 100);
 
@@ -45,7 +67,8 @@ export function levelSections(onAddWeight) {
       shownTitle(state.shop) && h('p.level-title', shownTitle(state.shop)),
       h('p.level-line-top', h('strong', `Poziom ${progress.level}`), h('span', nextText(progress))),
       xpBar(`Postęp poziomu ${progress.level}`, progress.share),
-      h('p.level-meta', `${fmtNum(progress.xp)} XP`)),
+      h('p.level-meta', `${fmtNum(progress.xp)} XP`),
+      streakBlock()),
     h('a.link-row', { href: '#/sklep' },
       h('span.link-text',
         h('span.link-name', 'Sklep'),
@@ -72,16 +95,19 @@ export function pointsSection() {
       h('li', h('span', 'Seria robocza, do 16 serii partii w tygodniu'), h('strong', '5 XP')),
       h('li', h('span', 'Seria na nogi, do 8 serii partii w tygodniu'), h('strong', '10 XP')),
       h('li', h('span', 'Nowy rekord w ćwiczeniu'), h('strong', `${XP_RECORD} XP`)),
-      h('li', h('span', goal == null ? 'Wykonany cel tygodniowy (nie masz ustawionego celu)' : 'Wykonany cel tygodniowy'), h('strong', `${XP_GOAL} XP`))),
+      h('li', h('span', goal == null ? 'Wykonany cel tygodniowy (nie masz ustawionego celu)' : 'Wykonany cel tygodniowy'), h('strong', `${XP_GOAL} XP`)),
+      h('li', h('span', 'Seria tygodni: co 4 tygodnie z rzędu mnożnik rośnie o 0,1'), h('strong', `do ${fmtMultiplier(1.5)}`))),
+    h('p.settings-text', 'Mnożnik działa na całe XP z danego tygodnia i zależy od serii sprzed tego tygodnia. Tydzień bez celu zeruje serię, chyba że masz tarczę.'),
     h('p.settings-text', 'Rozgrzewka się nie liczy. Wszystko wynika z historii, więc usunięcie treningu albo podniesienie celu może obniżyć wynik.'));
 }
 
 /** Wynik treningu w podsumowaniu. Bez punktów nie ma czego pokazywać. */
-export function levelGainBlock({ xp, before, after, muscleUps }) {
+export function levelGainBlock({ xp, multiplier, before, after, muscleUps }) {
   if (!(xp > 0)) return null;
   const leveledUp = after.level > before.level;
   return h('div.level-gain',
     h('p.level-line-top', h('strong.level-gain-xp', `+${fmtNum(xp)} XP`), h('span', leveledUp ? `Nowy poziom: ${after.level}!` : nextText(after))),
     xpBar(`Postęp poziomu ${after.level}`, after.share, leveledUp ? 0 : before.share),
+    multiplier > 1 && h('p.level-meta', `Z mnożnikiem za serię tygodni: ${fmtMultiplier(multiplier)}`),
     muscleUps.length > 0 && h('p.level-meta', `Siła: ${muscleUps.map((row) => `${row.muscle} ${row.level}`).join(' · ')}`));
 }

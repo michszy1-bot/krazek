@@ -1,9 +1,9 @@
 // Ekrany aplikacji poza treningiem: start, dziennik, postępy, ćwiczenia i ustawienia.
 
 import { actionSheet, ask, emptyState, h, icon, iconButton, openSheet, pageHeader, recordChip, segmented, toast } from './ui.js';
-import { addDays, countOf, dayKey, fmtClock, fmtDayLong, fmtDayMedium, fmtDayShort, fmtDuration, fmtMonth, fmtNum, fmtSet, fmtTime, fmtUnit, fmtVolume, plural, startOfWeek } from './format.js';
+import { addDays, countOf, dayKey, fmtClock, fmtDayLong, fmtDayMedium, fmtDayShort, fmtDuration, fmtMonth, fmtMultiplier, fmtNum, fmtSet, fmtTime, fmtUnit, fmtVolume, plural, startOfWeek } from './format.js';
 import { columnChart, lineChart, rankedBars } from './chart.js';
-import { backupStatus, exerciseSessions, flagRecords, goalProgress, isWorking, loadBar, METRICS, muscleSets, neglectedMuscles, PLATE_TIERS, plateHeight, plateTier, plateTravel, plateWidth, RECORD_TYPES, recordsFor, recordTimeline, SET_KINDS, setLabels, summarizeSets, weekDays, weeklyTotals, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
+import { backupStatus, exerciseSessions, flagRecords, isWorking, loadBar, METRICS, muscleSets, neglectedMuscles, PLATE_TIERS, plateHeight, plateTier, plateTravel, plateWidth, RECORD_TYPES, recordsFor, recordTimeline, SET_KINDS, setLabels, streakStatus, summarizeSets, weekDays, weeklyTotals, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
 import { bodyWeightChart, weightsFrom } from './profile.js';
 import { dayTime, weightOn } from './body.js';
 import { clearMedia, downloadMedia, isDownloadingMedia, mediaStatus } from './media.js';
@@ -136,11 +136,11 @@ function goalSheet() {
 
 /** Wynik tygodnia nad sztangą, razem z serią tygodni, w których cel się udał. */
 function weekLine(weekWorkouts, weekSets, weekVolume) {
-  const goal = state.settings.weeklyGoal;
-  const streak = goal == null ? 0 : goalProgress(state.workouts, goal, new Date(), state.shop.shieldedWeeks).streak;
+  const status = streakStatus(state.workouts, state.settings.weeklyGoal, state.shop.shieldedWeeks);
   return [
     weekWorkouts.length ? `${countOf(weekSets, 'seria', 'serie', 'serii')} · ${fmtVolume(weekVolume)}` : 'Jeszcze bez treningu',
-    streak > 0 && `${countOf(streak, 'tydzień', 'tygodnie', 'tygodni')} z rzędu`,
+    status?.streak > 0 && `${countOf(status.streak, 'tydzień', 'tygodnie', 'tygodni')} z rzędu`,
+    status?.multiplier > 1 && `XP ${fmtMultiplier(status.multiplier)}`,
   ].filter(Boolean).join(' · ');
 }
 

@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { addDays, dayKey, fmtClock, fmtDuration, fmtSet, fmtSetChange, fmtVolume, inputValue, parseNum, pastWorkoutStart, plural, startOfWeek } from '../js/format.js';
-import { backupStatus, bestSet, compareSets, estimate1RM, flagRecords, goalProgress, isComplete, loadBar, MUSCLE_SCALES, muscleLevel, muscleSets, neglectedMuscles, niceTicks, plateHeight, plateTier, plateTravel, plateWidth, recordsFor, recordTimeline, restAfterSet, setLabels, stepBaseWeight, steppedWeight, suggestNextWeight, summarizeSets, swapExercise, warmupSets, weekDays, weeklyTotals, weeksToShield, weightStep, workoutComparison, workoutRecords, workoutVolume } from '../js/stats.js';
+import { addDays, dayKey, fmtClock, fmtDuration, fmtMultiplier, fmtSet, fmtSetChange, fmtVolume, inputValue, parseNum, pastWorkoutStart, plural, startOfWeek } from '../js/format.js';
+import { backupStatus, bestSet, compareSets, estimate1RM, flagRecords, goalProgress, isComplete, loadBar, MUSCLE_SCALES, muscleLevel, muscleSets, neglectedMuscles, niceTicks, plateHeight, plateTier, plateTravel, plateWidth, recordsFor, recordTimeline, restAfterSet, setLabels, stepBaseWeight, steppedWeight, streakMultiplier, streakStatus, suggestNextWeight, summarizeSets, swapExercise, warmupSets, weekDays, weeklyTotals, weeksToShield, weightStep, workoutComparison, workoutRecords, workoutVolume } from '../js/stats.js';
 import { workoutsCsv } from '../js/csv.js';
 import { levelProgress, strengthCategory, strengthColour, strengthRatio, workoutGain } from '../js/level.js';
 import { LIFTS_BODY, ONE_DUMBBELL, STRENGTH_ALSO, STRENGTH_TOPS } from '../js/strength-norms.js';
@@ -589,6 +589,48 @@ const levelExercises = new Map([
 const levelLookup = (id) => levelExercises.get(id);
 const workSets = (count, weight = 50) => Array.from({ length: count }, () => ({ weight, reps: 8, seconds: null, kind: 'normal' }));
 const levelWorkout = (id, date, exerciseId, sets) => ({ id, name: 'T', startedAt: date.getTime(), endedAt: date.getTime() + 1, note: '', exercises: [{ exerciseId, note: '', sets }] });
+
+test('mnożnik serii: co 4 tygodnie o 0,1, najwyżej ×1,5', () => {
+  assert.deepEqual([0, 3, 4, 7, 8, 12, 16, 20, 40].map(streakMultiplier), [1, 1, 1.1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.5]);
+  assert.equal(fmtMultiplier(1.1), '×1,1');
+  assert.equal(fmtMultiplier(1 + 2 * 0.1), '×1,2');
+});
+
+test('mnożnik serii: działa na XP tygodnia i zależy od tygodni przed nim', () => {
+  // Pięć poniedziałków po jednym treningu, cel 1. Ten sam ciężar nie jest rekordem.
+  const weeks = [5, 12, 19, 26].map((day, i) => levelWorkout(`w${i}`, new Date(2026, 9, day, 9), 'bench', workSets(4)));
+  const fifth = levelWorkout('w4', new Date(2026, 10, 2, 9), 'bench', workSets(4));
+  const week = 50 + 20;
+  // Bez celu nie ma mnożnika.
+  assert.equal(levelProgress([...weeks, fifth], levelLookup).xp, 5 * week);
+  // Pierwsze cztery tygodnie bez mnożnika, piąty ×1,1, także premia za cel.
+  assert.equal(levelProgress(weeks, levelLookup, { weeklyGoal: 1 }).xp, 4 * (week + 150));
+  assert.equal(levelProgress([...weeks, fifth], levelLookup, { weeklyGoal: 1 }).xp, 4 * (week + 150) + Math.round((week + 150) * 1.1));
+  // Przerwa zeruje serię, a tydzień z tarczą nie.
+  const afterGap = levelWorkout('w5', new Date(2026, 10, 9, 9), 'bench', workSets(4));
+  const gap = [...weeks, afterGap];
+  assert.equal(levelProgress(gap, levelLookup, { weeklyGoal: 1 }).xp, 5 * (week + 150));
+  assert.equal(levelProgress(gap, levelLookup, { weeklyGoal: 1, shieldedWeeks: ['2026-11-02'] }).xp, 4 * (week + 150) + Math.round((week + 150) * 1.1));
+  const gain = workoutGain([...weeks, fifth], fifth, levelLookup, { weeklyGoal: 1 });
+  assert.equal(gain.multiplier, 1.1);
+  assert.equal(gain.xp, Math.round((week + 150) * 1.1));
+  assert.equal(workoutGain([...weeks, fifth], fifth, levelLookup).multiplier, 1);
+});
+
+test('stan serii: mnożnik tygodnia i ile brakuje do następnego', () => {
+  const on = (m, d) => levelWorkout(`${m}-${d}`, new Date(2026, m, d, 9), 'bench', workSets(1));
+  const now = new Date(2026, 10, 6, 12);
+  assert.equal(streakStatus([], null, [], now), null);
+  assert.deepEqual(streakStatus([], 1, [], now), { streak: 0, multiplier: 1, next: { multiplier: 1.1, left: 4 } });
+  const three = [on(9, 12), on(9, 19), on(9, 26)];
+  assert.deepEqual(streakStatus(three, 1, [], now), { streak: 3, multiplier: 1, next: { multiplier: 1.1, left: 1 } });
+  // Cel w tym tygodniu domyka czwarty tydzień: ×1,1 dopiero od następnego.
+  assert.deepEqual(streakStatus([...three, on(10, 2)], 1, [], now), { streak: 4, multiplier: 1, next: { multiplier: 1.1, left: 0 } });
+  const four = [on(9, 5), ...three];
+  assert.deepEqual(streakStatus(four, 1, [], now), { streak: 4, multiplier: 1.1, next: { multiplier: 1.2, left: 4 } });
+  const twenty = Array.from({ length: 20 }, (_, i) => levelWorkout(`t${i}`, new Date(2026, 9, 26 - i * 7, 9), 'bench', workSets(1)));
+  assert.deepEqual(streakStatus(twenty, 1, [], now), { streak: 20, multiplier: 1.5, next: null });
+});
 
 test('XP: trening raz dziennie, seria za 5, a seria na nogi za 10', () => {
   const monday = new Date(2026, 10, 2, 9);

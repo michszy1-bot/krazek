@@ -249,16 +249,42 @@ export function goalProgress(workouts, goal, now = new Date(), shieldedWeeks = [
   const thisWeek = startOfWeek(now);
   const done = countIn(thisWeek);
   const met = done >= goal;
-  let streak = met ? 1 : 0;
-  // Tydzień z tarczą nie dolicza się do serii, ale też jej nie przerywa.
-  for (let week = addDays(thisWeek, -7); ; week = addDays(week, -7)) {
-    if (countIn(week) >= goal) streak += 1;
-    else if (!shieldedWeeks.includes(dayKey(week))) break;
-  }
+  const streak = (met ? 1 : 0) + streakFrom(countIn, goal, thisWeek, shieldedWeeks);
   return { done, goal, met, streak };
 }
 
-function weekCounter(workouts) {
+/** Udane tygodnie z rzędu tuż przed podanym. Tydzień z tarczą nie dolicza się, ale też nie przerywa serii. */
+export function streakFrom(countIn, goal, week, shieldedWeeks = []) {
+  let streak = 0;
+  for (let earlier = addDays(week, -7); ; earlier = addDays(earlier, -7)) {
+    if (countIn(earlier) >= goal) streak += 1;
+    else if (!shieldedWeeks.includes(dayKey(earlier))) return streak;
+  }
+}
+
+const STREAK_STEP_WEEKS = 4;
+const STREAK_STEP_BONUS = 0.1;
+const STREAK_MAX_STEPS = 5;
+
+/** Mnożnik XP: co 4 tygodnie serii o 0,1 więcej, najwyżej ×1,5. */
+export const streakMultiplier = (streak) => 1 + Math.min(STREAK_MAX_STEPS, Math.floor(streak / STREAK_STEP_WEEKS)) * STREAK_STEP_BONUS;
+
+/**
+ * Seria i mnożnik do pokazania. Mnożnik tygodnia zależy od tygodni przed nim,
+ * więc cel wykonany w tym tygodniu podnosi go dopiero od następnego.
+ */
+export function streakStatus(workouts, goal, shieldedWeeks = [], now = new Date()) {
+  if (goal == null) return null;
+  const { streak } = goalProgress(workouts, goal, now, shieldedWeeks);
+  const before = streakFrom(weekCounter(workouts), goal, startOfWeek(now), shieldedWeeks);
+  const multiplier = streakMultiplier(before);
+  const steps = Math.floor(before / STREAK_STEP_WEEKS);
+  if (steps >= STREAK_MAX_STEPS) return { streak, multiplier, next: null };
+  const left = Math.max(0, (steps + 1) * STREAK_STEP_WEEKS - streak);
+  return { streak, multiplier, next: { multiplier: streakMultiplier((steps + 1) * STREAK_STEP_WEEKS), left } };
+}
+
+export function weekCounter(workouts) {
   const counts = new Map();
   for (const workout of workouts) {
     const key = dayKey(startOfWeek(workout.startedAt));

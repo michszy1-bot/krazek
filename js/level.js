@@ -4,7 +4,7 @@
 import { weightOn } from './body.js';
 import { HELPER_MUSCLES, MUSCLES } from './exercises.js';
 import { dayKey, startOfWeek } from './format.js';
-import { estimate1RM, isWorking, muscleTopSets, recordTimeline } from './stats.js';
+import { estimate1RM, isWorking, muscleTopSets, recordTimeline, streakFrom, streakMultiplier, weekCounter } from './stats.js';
 import { DEADLIFT_LIKE, LIFTS_BODY, ONE_DUMBBELL, STRENGTH_ALSO, STRENGTH_TOPS } from './strength-norms.js';
 
 export const XP_WORKOUT = 50; // raz dziennie, żeby nie opłacało się dzielić treningu
@@ -54,8 +54,14 @@ function mainLevel(xp) {
   return { xp, level, toNext: end - xp, share: (xp - start) / (end - start) };
 }
 
-function earnedXp(workouts, exerciseById, weeklyGoal) {
-  let xp = 0;
+function earnedXp(workouts, exerciseById, weeklyGoal, shieldedWeeks) {
+  const weekXp = new Map();
+  const add = (time, amount) => {
+    const week = dayKey(startOfWeek(time));
+    const entry = weekXp.get(week) ?? { start: startOfWeek(time), xp: 0 };
+    entry.xp += amount;
+    weekXp.set(week, entry);
+  };
   const days = new Set();
   const weekSets = new Map();
   const weekWorkouts = new Map();
@@ -73,21 +79,26 @@ function earnedXp(workouts, exerciseById, weeklyGoal) {
         const key = `${week}|${muscle}`;
         const count = weekSets.get(key) ?? 0;
         weekSets.set(key, count + 1);
-        if (count < muscleTopSets(muscle)) xp += xpPerSet(muscle);
+        if (count < muscleTopSets(muscle)) add(workout.startedAt, xpPerSet(muscle));
       }
     }
     const day = dayKey(workout.startedAt);
     if (hasWorkingSet && !days.has(day)) {
       days.add(day);
-      xp += XP_WORKOUT;
+      add(workout.startedAt, XP_WORKOUT);
     }
+    if (weeklyGoal != null && weekWorkouts.get(week) === weeklyGoal) add(workout.startedAt, XP_GOAL);
   }
 
-  xp += recordTimeline(workouts, exerciseById).length * XP_RECORD;
-  if (weeklyGoal != null) {
-    for (const count of weekWorkouts.values()) if (count >= weeklyGoal) xp += XP_GOAL;
+  for (const { date } of recordTimeline(workouts, exerciseById)) add(date, XP_RECORD);
+
+  // Bez celu nie ma serii, więc nie ma też mnożnika.
+  const countIn = weekCounter(workouts);
+  let xp = 0;
+  for (const { start, xp: earned } of weekXp.values()) {
+    xp += earned * (weeklyGoal == null ? 1 : streakMultiplier(streakFrom(countIn, weeklyGoal, start, shieldedWeeks)));
   }
-  return xp;
+  return Math.round(xp);
 }
 
 /**
@@ -176,13 +187,13 @@ function muscleRow(muscle, best) {
 }
 
 /** Poziom główny i poziomy partii, od najsłabszej. Partie bez wyniku są na końcu. */
-export function levelProgress(workouts, exerciseById, { weeklyGoal = null, bodyWeights = [] } = {}) {
+export function levelProgress(workouts, exerciseById, { weeklyGoal = null, bodyWeights = [], shieldedWeeks = [] } = {}) {
   const best = bestStrength(workouts, exerciseById, bodyWeights);
   const muscles = MUSCLES
     .filter((muscle) => muscle !== 'Całe ciało')
     .map((muscle) => muscleRow(muscle, best.get(muscle)))
     .sort((a, b) => (a.level == null) - (b.level == null) || (a.level + a.share) - (b.level + b.share));
-  return { ...mainLevel(earnedXp(workouts, exerciseById, weeklyGoal)), muscles };
+  return { ...mainLevel(earnedXp(workouts, exerciseById, weeklyGoal, shieldedWeeks)), muscles };
 }
 
 /** Co dał zapisany trening: różnica między historią z nim i bez niego. */
@@ -190,8 +201,12 @@ export function workoutGain(workouts, workout, exerciseById, options = {}) {
   const before = levelProgress(workouts.filter((w) => w.id !== workout.id), exerciseById, options);
   const after = levelProgress(workouts, exerciseById, options);
   const levelBefore = new Map(before.muscles.map((row) => [row.muscle, row.level ?? 0]));
+  const multiplier = options.weeklyGoal == null
+    ? 1
+    : streakMultiplier(streakFrom(weekCounter(workouts), options.weeklyGoal, startOfWeek(workout.startedAt), options.shieldedWeeks ?? []));
   return {
     xp: after.xp - before.xp,
+    multiplier,
     before,
     after,
     muscleUps: after.muscles.filter((row) => row.level > levelBefore.get(row.muscle)),

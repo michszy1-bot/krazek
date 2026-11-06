@@ -225,6 +225,11 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .look-clamp-gold { --clamp: linear-gradient(#fff0a8, #f6c62e 55%, #b98a0c); }
 .look-theme-black { --floor: #000; --panel: #15181c; --panel-raised: #23272d; --line: #2f353c; --chrome: #0e1013; }
 
+/* Seria tygodni w karcie poziomu */
+.level-streak { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 10px; margin: 6px 0 0; padding-top: 10px; border-top: 1px solid var(--line); font-size: 15px; }
+.level-streak strong { font: 700 20px/1 var(--font-data); color: var(--ink-2); }
+.level-streak strong.on { color: var(--yellow); }
+
 /* Sklep */
 .level-title { margin: 0; font: 700 18px/1.1 var(--font-data); letter-spacing: 0.01em; color: var(--yellow); }
 .shop-balance { display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: var(--radius); background: var(--panel); }

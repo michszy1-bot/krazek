@@ -68,6 +68,9 @@ export function fmtSet(set, type, { compact = false } = {}) {
   return compact && result && set.rpe ? `${result} @${set.rpe}` : result;
 }
 
+/** Mnożnik, np. ×1,2. */
+export const fmtMultiplier = (value) => `×${fmtNum(Math.round(value * 10) / 10)}`;
+
 const signed = (value, unit) => `${value > 0 ? '+' : '−'}${fmtNum(Math.abs(value))} ${unit}`;
 
 /** Zmiana względem poprzedniego razu słownie, np. +2,5 kg, −1 powt. albo RPE 9 → 8. */
