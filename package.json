@@ -1,0 +1,12 @@
+{
+  "name": "krazek",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Osobisty dziennik treningowy na iPhone'a (PWA, bez zależności).",
+  "scripts": {
+    "start": "node tools/serve.mjs",
+    "test": "node --test \"tests/*.test.mjs\"",
+    "icons": "node tools/make-icons.mjs"
+  }
+}
