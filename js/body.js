@@ -47,6 +47,11 @@ export function weightChange(list, index) {
   return earlier ? roundWeight(list[index].kg - earlier.kg) : null;
 }
 
+/** Waga z danego dnia albo ostatnia wcześniejsza, a gdy takiej brak, najstarsza zapisana. Lista od najnowszego. */
+export function weightOn(list, day) {
+  return list.find((item) => item.day <= day) ?? list.at(-1) ?? null;
+}
+
 const validWeight = (kg) => typeof kg === 'number' && kg >= WEIGHT_MIN && kg <= WEIGHT_MAX;
 
 /** Dane z pliku kopii. Niepoprawne pole profilu przepada, bo użytkownik łatwo wpisze je ponownie. */

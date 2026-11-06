@@ -133,6 +133,10 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 
 .week { display: flex; flex-direction: column; gap: 4px; }
 .week-line { color: var(--ink-2); }
+.goal-line { display: flex; flex-wrap: wrap; align-items: center; column-gap: 10px; min-height: 44px; margin-bottom: -8px; text-align: left; font-weight: 600; color: var(--ink); }
+.goal-line.goal-met { color: var(--green); }
+.goal-empty { font-weight: 500; color: var(--blue-line); }
+.goal-streak { font-weight: 500; color: var(--ink-2); }
 
 .barbell {
   position: relative;
@@ -213,6 +217,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .routine-stepper { display: flex; align-items: center; gap: 8px; padding-right: 6px; }
 .routine-stepper .btn-chip { min-width: 52px; font-size: 20px; background: var(--panel); }
 .routine-stepper .btn-chip:disabled { opacity: 0.35; }
+.routine-stepper .icon-btn { flex: none; }
 .routine-sets { flex: 1; text-align: center; font: 700 20px/1 var(--font-data); }
 
 .notice { display: flex; flex-direction: column; gap: 2px; border-left: 4px solid var(--yellow); }
@@ -335,6 +340,11 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .ranked-value { font: 700 17px/1 var(--font-data); }
 
 /* Rekordy */
+
+.record-row { align-items: flex-start; }
+.record-row > .pr-chip { flex: none; margin-top: 2px; }
+.record-row-date { font-size: 13px; color: var(--ink-3); margin-top: 2px; }
+.chart-second-title { margin-top: 14px; }
 
 .records { background: var(--panel); border-radius: var(--radius); padding: 14px; }
 .record-hero-label { font-size: 14px; color: var(--ink-2); }
@@ -529,6 +539,8 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .set-row.done { background: linear-gradient(var(--green-wash), var(--green-wash)), var(--panel); }
 .set-num { height: 44px; font: 700 20px/1 var(--font-data); color: var(--ink-2); border-radius: 6px; }
 .set-row.warmup .set-num { color: var(--yellow); }
+.set-row.failure .set-num { color: var(--red); }
+.set-row.drop .set-num { color: var(--blue-line); }
 .set-prev { font: 600 16px/1.1 var(--font-data); color: var(--ink-3); padding-left: 2px; overflow-wrap: anywhere; }
 .set-input {
   width: 100%;

@@ -4,6 +4,27 @@ import { addDays, dayKey, startOfWeek } from './format.js';
 
 export const isWorking = (set) => set.kind !== 'warmup';
 
+/** Rodzaje serii. Wszystkie poza rozgrzewkową liczą się do objętości i rekordów. */
+export const SET_KINDS = {
+  normal: { label: 'Robocza', name: 'Seria' },
+  warmup: { label: 'Rozgrzewkowa', mark: 'R', name: 'Seria rozgrzewkowa', hint: 'Nie liczy się do objętości ani rekordów' },
+  failure: { label: 'Do upadku', mark: 'U', name: 'Seria do upadku' },
+  drop: { label: 'Dropset', mark: 'D', name: 'Dropset' },
+};
+
+export const isSetKind = (kind) => Object.hasOwn(SET_KINDS, kind);
+
+/** Oznaczenia serii: zwykłe numerowane po kolei, pozostałe literą, np. R, 1, 2, U, D. */
+export function setLabels(sets) {
+  let number = 0;
+  return sets.map((set) => {
+    const mark = SET_KINDS[set.kind]?.mark;
+    if (mark) return mark;
+    number += 1;
+    return String(number);
+  });
+}
+
 /** Szacowany ciężar maksymalny (wzór Epleya). */
 export function estimate1RM(weight, reps) {
   if (!(weight > 0) || !(reps > 0)) return 0;
@@ -146,27 +167,81 @@ export function flagRecords(sets, type, baseline) {
   return empty;
 }
 
+/** Zamienia oznaczenia serii na listę rekordów ćwiczenia; po jednym wpisie na rodzaj rekordu. */
+function recordsFromFlags(exerciseId, type, sets, flags) {
+  const found = [];
+  for (const record of RECORD_TYPES[type]) {
+    let best = null;
+    flags.forEach((keys, i) => {
+      if (keys.includes(record.key)) best = { set: sets[i], value: setRecordValues(sets[i])[record.key] };
+    });
+    if (best) found.push({ exerciseId, key: record.key, label: record.label, unit: record.unit, ...best });
+  }
+  return found;
+}
+
+const uniqueExerciseIds = (workout) => [...new Set(workout.exercises.map((i) => i.exerciseId))];
+const setsOf = (workout, exerciseId) => workout.exercises.filter((i) => i.exerciseId === exerciseId).flatMap((i) => i.sets);
+
 /** Rekordy pobite w całym treningu; po jednym wpisie na rodzaj rekordu i ćwiczenie. */
 export function workoutRecords(workout, workouts, exerciseById) {
   const found = [];
-  const seen = new Set();
-  for (const item of workout.exercises) {
-    if (seen.has(item.exerciseId)) continue;
-    seen.add(item.exerciseId);
-    const exercise = exerciseById(item.exerciseId);
+  for (const exerciseId of uniqueExerciseIds(workout)) {
+    const exercise = exerciseById(exerciseId);
     if (!exercise) continue;
-    const sets = workout.exercises.filter((i) => i.exerciseId === item.exerciseId).flatMap((i) => i.sets);
-    const baseline = recordsFor(workouts, item.exerciseId, { beforeTs: workout.startedAt, excludeId: workout.id });
-    const flags = flagRecords(sets, exercise.type, baseline);
-    for (const record of RECORD_TYPES[exercise.type]) {
-      let best = null;
-      flags.forEach((keys, i) => {
-        if (keys.includes(record.key)) best = { set: sets[i], value: setRecordValues(sets[i])[record.key] };
-      });
-      if (best) found.push({ exerciseId: item.exerciseId, key: record.key, label: record.label, unit: record.unit, ...best });
-    }
+    const sets = setsOf(workout, exerciseId);
+    const baseline = recordsFor(workouts, exerciseId, { beforeTs: workout.startedAt, excludeId: workout.id });
+    found.push(...recordsFromFlags(exerciseId, exercise.type, sets, flagRecords(sets, exercise.type, baseline)));
   }
   return found;
+}
+
+/**
+ * Wszystkie pobite rekordy od najnowszego, po jednym wpisie na ćwiczenie w treningu.
+ * Jeden przebieg po historii z narastającym stanem, bo to najcięższe liczenie na ekranie Postępy.
+ */
+export function recordTimeline(workouts, exerciseById) {
+  const baselines = new Map();
+  const timeline = [];
+  for (const workout of [...workouts].sort(byDateAsc)) {
+    for (const exerciseId of uniqueExerciseIds(workout)) {
+      const exercise = exerciseById(exerciseId);
+      if (!exercise) continue;
+      const sets = setsOf(workout, exerciseId);
+      const baseline = baselines.get(exerciseId) ?? { hasHistory: false, values: {} };
+      const records = recordsFromFlags(exerciseId, exercise.type, sets, flagRecords(sets, exercise.type, baseline));
+      if (records.length) timeline.push({ workoutId: workout.id, date: workout.startedAt, exerciseId, records });
+
+      for (const set of sets) {
+        if (!isWorking(set)) continue;
+        baseline.hasHistory = true;
+        for (const [key, value] of Object.entries(setRecordValues(set))) {
+          if (value > 0 && value > (baseline.values[key]?.value ?? 0)) baseline.values[key] = { value };
+        }
+      }
+      baselines.set(exerciseId, baseline);
+    }
+  }
+  return timeline.reverse();
+}
+
+/**
+ * Stan celu tygodniowego. Seria to kolejne tygodnie z wykonanym celem:
+ * trwający tydzień dolicza się dopiero po wykonaniu, ale wcześniej jej nie przerywa.
+ */
+export function goalProgress(workouts, goal, now = new Date()) {
+  const counts = new Map();
+  for (const workout of workouts) {
+    const key = dayKey(startOfWeek(workout.startedAt));
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  const countIn = (date) => counts.get(dayKey(date)) ?? 0;
+  const thisWeek = startOfWeek(now);
+  const done = countIn(thisWeek);
+  const met = done >= goal;
+  let streak = met ? 1 : 0;
+  for (let week = addDays(thisWeek, -7); countIn(week) >= goal; week = addDays(week, -7)) streak += 1;
+  return { done, goal, met, streak };
 }
 
 /** Dane do paska tygodnia na ekranie głównym: siedem dni od poniedziałku. */

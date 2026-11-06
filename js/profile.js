@@ -118,22 +118,31 @@ function weightForm(entry = null) {
   h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: close }, 'Anuluj')), { label: title });
 }
 
+/** Wpisy wagi od najstarszego, od podanego momentu. */
+export const weightsFrom = (from) => state.bodyWeights.filter((item) => dayTime(item.day) >= from).reverse();
+
+/** Wykres wagi ciała, używany w profilu i obok wyników ćwiczeń. */
+export function bodyWeightChart(entries, { xDomain = null, height = 220 } = {}) {
+  return lineChart({
+    points: entries.map((item) => ({ x: dayTime(item.day), y: item.kg, label: fmtDay(item.day), value: fmtKg(item.kg) })),
+    formatTick: fmtNum,
+    formatEnd: (point) => point.value,
+    formatDate: fmtDayShort,
+    label: 'Waga ciała w czasie. Wszystkie wpisy są w historii w profilu.',
+    xDomain,
+    height,
+  });
+}
+
 function weightChart() {
   const host = h('div');
   const draw = () => {
-    const from = weightRange ? Date.now() - weightRange * 86400000 : 0;
-    const visible = state.bodyWeights.filter((item) => dayTime(item.day) >= from).reverse();
+    const visible = weightsFrom(weightRange ? Date.now() - weightRange * 86400000 : 0);
     if (!visible.length) {
       host.replaceChildren(h('p.muted.chart-empty', 'Brak wpisów w tym okresie.'));
       return;
     }
-    host.replaceChildren(lineChart({
-      points: visible.map((item) => ({ x: dayTime(item.day), y: item.kg, label: fmtDay(item.day), value: fmtKg(item.kg) })),
-      formatTick: fmtNum,
-      formatEnd: (point) => point.value,
-      formatDate: fmtDayShort,
-      label: 'Waga w czasie. Wszystkie wpisy są też w historii poniżej.',
-    }));
+    host.replaceChildren(bodyWeightChart(visible));
   };
   draw();
   return h('section.block',

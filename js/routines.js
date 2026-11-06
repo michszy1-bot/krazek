@@ -1,6 +1,8 @@
 // Rutyny, czyli zapisane zestawy ćwiczeń: reguły bez zależności od DOM, testowane w Node.
 // Rutyna pamięta ćwiczenia i rodzaje serii. Ciężary podpowiada ostatni trening, więc nie starzeją się.
 
+import { isSetKind } from './stats.js';
+
 const GENERIC_NAMES = new Set(['Trening', 'Trening poranny', 'Trening popołudniowy', 'Trening wieczorny']);
 
 /** Automatyczna nazwa treningu nie nadaje się na rutynę, więc formularz jej nie podpowiada. */
@@ -25,6 +27,15 @@ export function putRoutine(list, routine) {
     : [...list, routine];
 }
 
+/** Nowa lista z elementem przesuniętym o `delta` miejsc. Ruch poza listę niczego nie zmienia. */
+export function moveItem(list, index, delta) {
+  const target = index + delta;
+  if (target < 0 || target >= list.length) return list;
+  const moved = [...list];
+  [moved[index], moved[target]] = [moved[target], moved[index]];
+  return moved;
+}
+
 /** Czy inna rutyna ma już taką nazwę, bez względu na wielkość liter. */
 export const isNameTaken = (list, name, ownId = null) =>
   list.some((item) => item.id !== ownId && item.name.toLocaleLowerCase('pl') === name.toLocaleLowerCase('pl'));
@@ -40,7 +51,7 @@ export function cleanRoutines(raw, knownExercises) {
       && Array.isArray(routine.exercises) && routine.exercises.length
       && routine.exercises.every((item) => knownExercises.has(item?.exerciseId)
         && Array.isArray(item.sets) && item.sets.length
-        && item.sets.every((kind) => kind === 'normal' || kind === 'warmup'));
+        && item.sets.every(isSetKind));
     if (!valid) return null;
     clean.push({
       id: routine.id,

@@ -4,7 +4,7 @@ import { actionSheet, h, icon, iconButton, openSheet, toast } from './ui.js';
 import { countOf } from './format.js';
 import { pickExercises } from './picker.js';
 import { exerciseById, newId, saveRoutines, state } from './store.js';
-import { hasOwnName, isNameTaken, putRoutine, routineFromWorkout, routineSetCount } from './routines.js';
+import { hasOwnName, isNameTaken, moveItem, putRoutine, routineFromWorkout, routineSetCount } from './routines.js';
 
 const NAME_HINT = 'np. Dzień nóg';
 const DEFAULT_SETS = ['normal', 'normal', 'normal'];
@@ -47,15 +47,20 @@ export function saveWorkoutAsRoutine(workout) {
 }
 
 function routineEditor(initial = null) {
-  const items = structuredClone(initial?.exercises ?? []);
+  let items = structuredClone(initial?.exercises ?? []);
   const name = nameField(initial?.name ?? '');
   const title = initial ? 'Edytuj rutynę' : 'Nowa rutyna';
   const list = h('div.routine-items');
 
   const render = () => {
-    list.replaceChildren(...items.map((item) => {
+    list.replaceChildren(...items.map((item, index) => {
       const exerciseName = exerciseById(item.exerciseId)?.name ?? 'Ćwiczenie';
       const change = (apply) => { apply(); render(); };
+      const moveButton = (name, label, delta) => {
+        const button = iconButton(name, `${label}: ${exerciseName}`, () => change(() => { items = moveItem(items, index, delta); }));
+        button.disabled = moveItem(items, index, delta) === items;
+        return button;
+      };
       return h('div.routine-item',
         h('div.routine-item-top',
           h('span.routine-item-name', exerciseName),
@@ -72,7 +77,9 @@ function routineEditor(initial = null) {
             type: 'button',
             'aria-label': `Więcej serii: ${exerciseName}`,
             onclick: () => change(() => item.sets.push('normal')),
-          }, '+')));
+          }, '+'),
+          moveButton('up', 'Przesuń wyżej', -1),
+          moveButton('down', 'Przesuń niżej', 1)));
     }));
     if (!items.length) list.append(h('p.muted', 'Dodaj ćwiczenia, które robisz w tej rutynie.'));
   };

@@ -3,7 +3,10 @@
 import { actionSheet, ask, emptyState, h, icon, iconButton, openSheet, pageHeader, recordChip, segmented, toast } from './ui.js';
 import { addDays, countOf, dayKey, fmtClock, fmtDayLong, fmtDayMedium, fmtDayShort, fmtDuration, fmtMonth, fmtNum, fmtSet, fmtTime, fmtUnit, fmtVolume, startOfWeek } from './format.js';
 import { columnChart, lineChart, rankedBars } from './chart.js';
-import { exerciseSessions, flagRecords, isWorking, METRICS, muscleSets, RECORD_TYPES, recordsFor, summarizeSets, weekDays, weeklyTotals, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
+import { exerciseSessions, flagRecords, goalProgress, isWorking, METRICS, muscleSets, RECORD_TYPES, recordsFor, recordTimeline, SET_KINDS, setLabels, summarizeSets, weekDays, weeklyTotals, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
+import { bodyWeightChart, weightsFrom } from './profile.js';
+import { dayTime, weightOn } from './body.js';
+import { clearMedia, downloadMedia, isDownloadingMedia, mediaStatus } from './media.js';
 import { backupText, deleteExercise, deleteWorkout, exerciseById, isExerciseUsed, markBackedUp, previewBackup, restoreBackup, saveSettings, state, visibleExercises, wipeAll } from './store.js';
 import { applyFilter, exerciseFilter, exerciseForm } from './picker.js';
 import { addPastWorkout, editWorkout, resumeWorkout, startRoutine, startWorkout, stat } from './workout.js';
@@ -33,6 +36,30 @@ function weekBarbell(days) {
       : h('div.day', { 'aria-label': name, role: 'img' }, h('span.day-slot', plate), label);
   });
   return h('div.barbell', plates);
+}
+
+/** Wybór celu tygodniowego, wspólny dla ekranu startowego i ustawień. */
+function goalSheet() {
+  const current = state.settings.weeklyGoal;
+  actionSheet('Cel tygodniowy', [
+    ...[1, 2, 3, 4, 5, 6, 7].map((goal) => ({
+      label: `${countOf(goal, 'trening', 'treningi', 'treningów')} w tygodniu`,
+      selected: goal === current,
+      onClick: () => saveSettings({ weeklyGoal: goal }),
+    })),
+    { label: 'Bez celu', selected: current == null, onClick: () => saveSettings({ weeklyGoal: null }) },
+  ]);
+}
+
+function goalLine() {
+  const goal = state.settings.weeklyGoal;
+  if (goal == null) {
+    return h('button.goal-line.goal-empty', { type: 'button', onclick: goalSheet }, 'Ustaw cel tygodniowy');
+  }
+  const { done, met, streak } = goalProgress(state.workouts, goal);
+  return h(`button.goal-line${met ? '.goal-met' : ''}`, { type: 'button', onclick: goalSheet, 'aria-label': `Cel tygodniowy: ${done} z ${goal}. Zmień` },
+    h('span', `Cel: ${done} z ${goal} ${goal === 1 ? 'treningu' : 'treningów'}`),
+    streak > 0 && h('span.goal-streak', `${countOf(streak, 'tydzień', 'tygodnie', 'tygodni')} z rzędu`));
 }
 
 function workoutRow(workout) {
@@ -68,6 +95,7 @@ export function homeView() {
       h('p.week-line', weekWorkouts.length
         ? `${countOf(weekWorkouts.length, 'trening', 'treningi', 'treningów')} · ${countOf(weekSets, 'seria', 'serie', 'serii')} · ${fmtVolume(weekVolume)}`
         : 'Jeszcze bez treningu'),
+      goalLine(),
       weekBarbell(days),
       anyRecord && h('p.week-legend', h('span.legend-plate'), 'Dzień z nowym rekordem')),
     state.active
@@ -190,14 +218,14 @@ export function workoutDetailView(id) {
       if (!exercise) return null;
       const baseline = recordsFor(state.workouts, item.exerciseId, { beforeTs: workout.startedAt, excludeId: workout.id });
       const flags = flagRecords(item.sets, exercise.type, baseline);
-      let number = 0;
+      const labels = setLabels(item.sets);
       return h('section.detail-card',
         h('a.detail-ex', { href: `#/cwiczenie/${exercise.id}` }, exercise.name),
         item.note && h('p.detail-note', item.note),
         h('table.detail-sets', h('tbody', item.sets.map((set, i) => {
-          if (isWorking(set)) number += 1;
+          const kind = SET_KINDS[set.kind];
           return h('tr',
-            h('th', { scope: 'row', 'aria-label': isWorking(set) ? `Seria ${number}` : 'Seria rozgrzewkowa' }, isWorking(set) ? String(number) : 'R'),
+            h('th', { scope: 'row', 'aria-label': kind?.mark ? kind.name : `Seria ${labels[i]}` }, labels[i]),
             h('td', fmtSet(set, exercise.type)),
             h('td.right', flags[i].length > 0 && recordChip()));
         }))));
@@ -226,6 +254,48 @@ const dataTable = (summary, headers, rows) => h('details.data-table',
   h('table',
     h('thead', h('tr', headers.map((text) => h('th', { scope: 'col' }, text)))),
     h('tbody', rows.map((cells) => h('tr', cells.map((text) => h('td', text)))))));
+
+const RECORDS_PREVIEW = 8;
+
+function recordRow(entry) {
+  const exercise = exerciseById(entry.exerciseId);
+  return h('a.link-row.record-row', { href: `#/dziennik/${entry.workoutId}` },
+    recordChip(),
+    h('span.link-text',
+      h('span.link-name', exercise.name),
+      h('span.link-meta', entry.records.map((record) => `${record.label}: ${fmtUnit(record.value, record.unit)}`).join(' · ')),
+      h('span.record-row-date', fmtDayMedium(entry.date))),
+    h('span.flip', icon('back', 20)));
+}
+
+/** Pobite rekordy z wybranego okresu, od najnowszego. */
+function recordsTimelineSection(from) {
+  const entries = recordTimeline(state.workouts, exerciseById).filter((entry) => entry.date >= from);
+  const rows = h('div.rows', entries.slice(0, RECORDS_PREVIEW).map(recordRow));
+  const hiddenCount = entries.length - RECORDS_PREVIEW;
+  const more = hiddenCount > 0 && h('button.btn.btn-ghost.btn-block', {
+    type: 'button',
+    onclick: (event) => {
+      rows.append(...entries.slice(RECORDS_PREVIEW).map(recordRow));
+      event.currentTarget.remove();
+    },
+  }, `Pokaż jeszcze ${fmtNum(hiddenCount)}`);
+  return h('section.block',
+    h('h2.block-title', 'Historia rekordów'),
+    entries.length ? rows : h('p.muted', 'W tym okresie nie ma nowych rekordów.'),
+    more);
+}
+
+/** Waga ciała z tego samego okresu co wykresy powyżej. */
+function progressWeightSection(from) {
+  const entries = weightsFrom(from);
+  return h('section.block',
+    h('h2.block-title', 'Waga ciała'),
+    entries.length
+      ? bodyWeightChart(entries, { xDomain: [from, Date.now()], height: 180 })
+      : h('p.muted', 'W tym okresie nie ma wpisów wagi.'),
+    h('a.btn.btn-ghost.btn-block', { href: '#/profil' }, entries.length ? 'Otwórz dziennik wagi' : 'Dodaj wagę w profilu'));
+}
 
 export function progressView() {
   const host = h('div.page');
@@ -277,6 +347,8 @@ export function progressView() {
         muscles.length
           ? rankedBars(muscles.map((m) => ({ label: m.muscle, value: m.sets })), (v) => fmtNum(v))
           : h('p.muted', 'W tym okresie nie ma zapisanych serii.')),
+      progressWeightSection(from),
+      recordsTimelineSection(from),
       h('section.block',
         h('h2.block-title', 'Ćwiczenia'),
         h('div.rows', [...exercises.entries()].map(([id, entry]) => {
@@ -359,6 +431,10 @@ export function exerciseView(id, backTo) {
       if (metric.unit === 'volume') return volumeTick(value, maxValue);
       return fmtNum(value);
     };
+    // Waga ciała pod wynikami, z tymi samymi datami, żeby dało się porównać oba wykresy.
+    const weights = weightsFrom(from);
+    const times = [...visible.map((session) => session.date), ...weights.map((item) => dayTime(item.day))];
+    const xDomain = weights.length ? [Math.min(...times), Math.max(...times)] : null;
     chartHost.replaceChildren(
       h('h2.block-title', metric.title),
       lineChart({
@@ -373,7 +449,11 @@ export function exerciseView(id, backTo) {
         formatDate: fmtDayShort,
         minStep: metric.unit === 'reps' || metric.unit === 'seconds' ? 1 : 0,
         label: `${metric.title}, ${exercise.name}. Dane są też w historii poniżej.`,
+        xDomain,
       }),
+      weights.length > 0 && h('h2.block-title.chart-second-title', 'Waga ciała'),
+      weights.length > 0 && bodyWeightChart(weights, { xDomain, height: 160 }),
+      relativeStrength(visible, type),
     );
   };
 
@@ -398,6 +478,15 @@ export function exerciseView(id, backTo) {
   );
   render();
   return host;
+}
+
+/** Ostatni szacowany 1RM względem wagi ciała z tamtego dnia, np. 1,3 × masa ciała. */
+function relativeStrength(sessions, type) {
+  const last = sessions.at(-1);
+  const body = weightOn(state.bodyWeights, dayKey(last.date));
+  if (type !== 'weight' || !body || !(last.summary.est1RM > 0)) return null;
+  const ratio = (last.summary.est1RM / body.kg).toFixed(2).replace('.', ',');
+  return h('p.settings-text', `Ostatni szacowany 1RM to ${ratio} × waga ciała (${fmtUnit(body.kg, 'kg')}).`);
 }
 
 function recordsSection(type, records) {
@@ -536,8 +625,63 @@ async function wipeData() {
   toast('Usunięto wszystkie dane.');
 }
 
+/** Sekcja pobierania animacji, żeby działały na siłowni bez zasięgu. */
+function mediaSection() {
+  const line = h('p.settings-text', { role: 'status' }, 'Sprawdzam zapisane animacje…');
+  const button = h('button.btn.btn-ghost.btn-block', { type: 'button', disabled: true }, 'Pobierz wszystkie');
+  const clearButton = h('button.btn.btn-text-danger.btn-block', { type: 'button', hidden: true }, 'Usuń zapisane animacje');
+  const showProgress = ({ done, total }) => { line.textContent = `Pobieranie: ${done} z ${total}`; };
+
+  const refresh = async () => {
+    const status = await mediaStatus();
+    if (!status) {
+      line.textContent = 'Ta przeglądarka nie może zapisać animacji.';
+      button.hidden = true;
+      return;
+    }
+    line.textContent = `Zapisane na telefonie: ${status.saved} z ${status.total}.`;
+    button.disabled = status.saved >= status.total;
+    button.textContent = status.saved >= status.total ? 'Wszystkie są zapisane' : 'Pobierz wszystkie';
+    clearButton.hidden = status.saved === 0;
+  };
+
+  const start = async () => {
+    button.disabled = true;
+    clearButton.hidden = true;
+    button.textContent = 'Pobieranie…';
+    const { failed, noRoom } = await downloadMedia(showProgress);
+    await refresh();
+    if (noRoom) toast('Za mało miejsca na telefonie. Część animacji nie została zapisana.');
+    else toast(failed ? `Nie udało się pobrać: ${failed}. Spróbuj ponownie przy dobrym zasięgu.` : 'Wszystkie animacje są zapisane.');
+  };
+  button.addEventListener('click', start);
+  clearButton.addEventListener('click', async () => {
+    const confirmed = await ask({
+      title: 'Usunąć zapisane animacje?',
+      text: 'Treningi zostaną. Animacje znów będą wymagały internetu, dopóki nie zapiszą się ponownie.',
+      confirm: 'Usuń animacje',
+      danger: true,
+    });
+    if (!confirmed) return;
+    await clearMedia();
+    await refresh();
+    toast('Usunięto zapisane animacje.');
+  });
+
+  if (isDownloadingMedia()) start();
+  else refresh();
+
+  return h('section.block',
+    h('h2.block-title', 'Animacje bez internetu'),
+    h('p.settings-text', 'Obejrzane animacje zapisują się same. Możesz też pobrać wszystkie od razu: około 24 MB, najlepiej na Wi-Fi.'),
+    line,
+    button,
+    clearButton);
+}
+
 export function settingsView() {
   const rest = state.settings.restSec;
+  const goal = state.settings.weeklyGoal;
   const soundLine = h('p.sound-status', { role: 'status', hidden: true });
   let soundTimer = null;
   const showSound = () => {
@@ -572,6 +716,13 @@ export function settingsView() {
         h('span.link-meta', 'Każde ćwiczenie może mieć własną, ustawianą na ekranie treningu')),
       h('span.setting-value', fmtClock(rest)))),
     h('section.block',
+      h('h2.block-title', 'Cel tygodniowy'),
+      h('button.link-row.wide', { type: 'button', onclick: goalSheet },
+        h('span.link-text',
+          h('span.link-name', 'Treningi w tygodniu'),
+          h('span.link-meta', 'Liczy tygodnie z rzędu z wykonanym celem')),
+        h('span.setting-value', goal == null ? '–' : String(goal)))),
+    h('section.block',
       h('h2.block-title', 'Dźwięk końca przerwy'),
       h('p.settings-text', 'Muzyka gra dalej, a sygnał nakłada się na nią. Zostaw aplikację otwartą i ekran włączony, bo po zablokowaniu telefonu lub przejściu do innej aplikacji sygnał nie zagra.'),
       h('button.btn.btn-ghost.btn-block', {
@@ -582,6 +733,7 @@ export function settingsView() {
         },
       }, 'Zagraj sygnał teraz'),
       soundLine),
+    mediaSection(),
     h('section.block',
       h('h2.block-title', 'Kopia zapasowa'),
       h('p.settings-text', 'Treningi, rutyny, profil i dziennik wagi są zapisane tylko na tym telefonie. Bez kopii utrata telefonu albo usunięcie aplikacji z ekranu początkowego oznacza utratę danych.'),

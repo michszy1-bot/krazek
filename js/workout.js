@@ -2,7 +2,7 @@
 
 import { actionSheet, ask, h, icon, iconButton, openSheet, recordChip, toast } from './ui.js';
 import { countOf, fmtClock, fmtDuration, fmtSet, fmtUnit, fmtVolume, inputValue, parseNum, pastWorkoutStart, toLocalInput } from './format.js';
-import { exerciseSessions, flagRecords, isComplete, isWorking, recordsFor, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
+import { exerciseSessions, flagRecords, isComplete, recordsFor, SET_KINDS, setLabels, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
 import { exerciseById, flushActive, newId, saveActiveSoon, saveExercise, saveWorkout, setActive, state } from './store.js';
 import { pickExercises } from './picker.js';
 import { demoUrl, exerciseDemo, hasDemo } from './demo.js';
@@ -244,11 +244,7 @@ function buildCard(item) {
     return null;
   };
 
-  const numberLabel = (index) => {
-    const set = item.sets[index];
-    if (!isWorking(set)) return 'R';
-    return String(item.sets.slice(0, index + 1).filter(isWorking).length);
-  };
+  const numberLabel = (index) => setLabels(item.sets)[index];
 
   const deleteSet = (set) => {
     const index = item.sets.indexOf(set);
@@ -270,11 +266,12 @@ function buildCard(item) {
   const setMenu = (index) => {
     const set = item.sets[index];
     actionSheet(`Seria ${numberLabel(index)}`, [
-      {
-        label: isWorking(set) ? 'Oznacz jako rozgrzewkową' : 'Oznacz jako roboczą',
-        hint: isWorking(set) ? 'Nie liczy się do objętości ani rekordów' : null,
-        onClick: () => { set.kind = isWorking(set) ? 'warmup' : 'normal'; rebuild(); },
-      },
+      ...Object.entries(SET_KINDS).map(([kind, { label, hint }]) => ({
+        label,
+        hint,
+        selected: (set.kind ?? 'normal') === kind,
+        onClick: () => { set.kind = kind; rebuild(); },
+      })),
       {
         label: 'Usuń serię',
         danger: true,
@@ -486,7 +483,7 @@ function buildSetRow({ set, type, hint, label, onMenu, onChange, onDelete, exerc
     onclick: () => toggleDone(),
   }, icon('check', 22));
 
-  const node = h(`div.set-row${set.done ? '.done' : ''}${set.kind === 'warmup' ? '.warmup' : ''}`,
+  const node = h(`div.set-row${set.done ? '.done' : ''}${set.kind && set.kind !== 'normal' ? `.${set.kind}` : ''}`,
     h('button.set-num', { type: 'button', onclick: onMenu, 'aria-label': `Opcje serii ${label}` }, label),
     prevCell,
     fields.map((f) => f.input),

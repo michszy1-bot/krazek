@@ -5,7 +5,7 @@ import { syncExercises } from './exercises.js';
 import { buildBackup, parseBackup } from './backup.js';
 import { EMPTY_PROFILE } from './body.js';
 
-const DEFAULT_SETTINGS = { restSec: 120 };
+const DEFAULT_SETTINGS = { restSec: 120, weeklyGoal: null };
 
 export const state = {
   exercises: new Map(),
@@ -13,7 +13,7 @@ export const state = {
   settings: { ...DEFAULT_SETTINGS },
   profile: { ...EMPTY_PROFILE },
   bodyWeights: [], // od najnowszego: { day: 'RRRR-MM-DD', kg }
-  routines: [], // { id, name, exercises: [{ exerciseId, sets: ['normal' | 'warmup'] }] }
+  routines: [], // { id, name, exercises: [{ exerciseId, sets: [rodzaj serii z SET_KINDS] }] }
   active: null, // trening w toku
   lastBackupAt: null,
 };

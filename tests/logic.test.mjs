@@ -2,10 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { addDays, dayKey, fmtClock, fmtDuration, fmtSet, fmtVolume, inputValue, parseNum, pastWorkoutStart, plural, startOfWeek } from '../js/format.js';
-import { estimate1RM, flagRecords, isComplete, muscleSets, niceTicks, recordsFor, summarizeSets, weekDays, weeklyTotals, workoutRecords, workoutVolume } from '../js/stats.js';
+import { estimate1RM, flagRecords, goalProgress, isComplete, muscleSets, niceTicks, recordsFor, recordTimeline, setLabels, summarizeSets, weekDays, weeklyTotals, workoutRecords, workoutVolume } from '../js/stats.js';
 import { buildBackup, parseBackup } from '../js/backup.js';
-import { ageOn, cleanProfile, cleanWeights, dayTime, isDay, putWeight, removeWeight, weightChange } from '../js/body.js';
-import { cleanRoutines, hasOwnName, isNameTaken, putRoutine, routineFromWorkout, routineSetCount } from '../js/routines.js';
+import { ageOn, cleanProfile, cleanWeights, dayTime, isDay, putWeight, removeWeight, weightChange, weightOn } from '../js/body.js';
+import { cleanRoutines, hasOwnName, isNameTaken, moveItem, putRoutine, routineFromWorkout, routineSetCount } from '../js/routines.js';
 import { SEED_EXERCISES, MUSCLES, EQUIPMENT, RETIRED_EXERCISES, syncExercises } from '../js/exercises.js';
 import { ANIMATIONS } from '../js/animations.js';
 
@@ -245,6 +245,76 @@ test('uzgadnianie: drugi przebieg nie ma już nic do zrobienia', () => {
   const second = syncExercises([...first.exercises.values()], () => false);
   assert.deepEqual(second.toSave, []);
   assert.deepEqual(second.toRemove, []);
+});
+
+test('rodzaje serii: litery zamiast numeru, a do upadku i dropset liczą się do objętości', () => {
+  const sets = [set(40, 10, { kind: 'warmup' }), set(100, 5), set(100, 5), set(100, 4, { kind: 'failure' }), set(70, 8, { kind: 'drop' })];
+  assert.deepEqual(setLabels(sets), ['R', '1', '2', 'U', 'D']);
+  assert.equal(summarizeSets(sets).setCount, 4);
+  assert.equal(summarizeSets(sets).volume, 100 * 5 + 100 * 5 + 100 * 4 + 70 * 8);
+});
+
+test('kopia i rutyna zachowują nowe rodzaje serii, a nieznany rodzaj wraca do roboczej', () => {
+  const exercises = SEED_EXERCISES.filter((e) => e.id === 'squat');
+  const w = workout('a', '2026-10-01', { squat: [set(100, 5, { kind: 'failure' }), set(70, 8, { kind: 'drop' }), set(50, 8, { kind: 'dziwna' })] });
+  const parsed = parseBackup(JSON.stringify(buildBackup({ exercises, workouts: [w], settings: {} })));
+  assert.deepEqual(parsed.workouts[0].exercises[0].sets.map((s) => s.kind), ['failure', 'drop', 'normal']);
+  const routine = routineFromWorkout(parsed.workouts[0], { id: 'r', name: 'x' });
+  assert.deepEqual(cleanRoutines([routine], new Set(['squat']))[0].exercises[0].sets, ['failure', 'drop', 'normal']);
+});
+
+test('moveItem przesuwa element i nie wychodzi poza listę', () => {
+  const list = ['a', 'b', 'c'];
+  assert.deepEqual(moveItem(list, 2, -1), ['a', 'c', 'b']);
+  assert.deepEqual(moveItem(list, 0, 1), ['b', 'a', 'c']);
+  assert.equal(moveItem(list, 0, -1), list);
+  assert.equal(moveItem(list, 2, 1), list);
+  assert.deepEqual(list, ['a', 'b', 'c']);
+});
+
+test('historia rekordów zgadza się z rekordami pojedynczych treningów', () => {
+  const lookup = (id) => SEED_EXERCISES.find((e) => e.id === id);
+  const history = [
+    workout('w1', '2026-10-01', { squat: [set(100, 5)], 'bench-press': [set(60, 5)] }),
+    workout('w2', '2026-10-08', { squat: [set(90, 5)], 'bench-press': [set(70, 5)] }),
+    workout('w3', '2026-10-15', { squat: [set(110, 3, { kind: 'failure' }), set(40, 20, { kind: 'warmup' })] }),
+    workout('w4', '2026-10-22', { squat: [set(105, 3)] }),
+  ];
+  const timeline = recordTimeline(history, lookup);
+  assert.deepEqual(timeline.map((entry) => `${entry.workoutId}:${entry.exerciseId}`), ['w3:squat', 'w2:bench-press']);
+  for (const w of history) {
+    const expected = workoutRecords(w, history, lookup);
+    const actual = timeline.filter((entry) => entry.workoutId === w.id).flatMap((entry) => entry.records);
+    assert.deepEqual(actual.map((r) => [r.exerciseId, r.key, r.value]), expected.map((r) => [r.exerciseId, r.key, r.value]));
+  }
+});
+
+test('cel tygodniowy: trwający tydzień nie przerywa serii, a pusty tydzień już tak', () => {
+  // 2026-11-04 to środa, a tygodnie zaczynają się 2 listopada, 26 i 19 października.
+  const now = new Date(2026, 10, 4, 12);
+  const on = (id, month, day) => workout(id, new Date(2026, month, day, 18).toISOString(), { squat: [set(100, 5)] });
+  const lastTwoWeeks = [on('a', 9, 26), on('b', 9, 28), on('c', 9, 19), on('d', 9, 21)];
+
+  assert.deepEqual(goalProgress(lastTwoWeeks, 2, now), { done: 0, goal: 2, met: false, streak: 2 });
+  const withThisWeek = [...lastTwoWeeks, on('e', 10, 2), on('f', 10, 3)];
+  assert.deepEqual(goalProgress(withThisWeek, 2, now), { done: 2, goal: 2, met: true, streak: 3 });
+  assert.equal(goalProgress([on('a', 9, 26), on('c', 9, 12)], 1, now).streak, 1);
+  assert.equal(goalProgress(lastTwoWeeks, 3, now).streak, 0);
+  assert.equal(goalProgress([], 1, now).streak, 0);
+});
+
+test('kopia zachowuje cel tygodniowy i odrzuca złą wartość', () => {
+  const base = { app: 'krazek', version: 1, exercises: [], workouts: [] };
+  assert.equal(parseBackup(JSON.stringify({ ...base, settings: { weeklyGoal: 4 } })).settings.weeklyGoal, 4);
+  assert.equal('weeklyGoal' in parseBackup(JSON.stringify({ ...base, settings: { weeklyGoal: 9 } })).settings, false);
+});
+
+test('weightOn bierze wagę z dnia albo ostatnią wcześniejszą', () => {
+  const list = [{ day: '2026-11-03', kg: 80 }, { day: '2026-10-20', kg: 82 }];
+  assert.equal(weightOn(list, '2026-11-03').kg, 80);
+  assert.equal(weightOn(list, '2026-11-01').kg, 82);
+  assert.equal(weightOn(list, '2026-01-01').kg, 82);
+  assert.equal(weightOn([], '2026-01-01'), null);
 });
 
 test('wiek rośnie dopiero w dniu urodzin', () => {

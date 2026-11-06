@@ -44,8 +44,9 @@ function makeTooltip(host) {
 /**
  * Wykres liniowy z jedną serią.
  * points: [{ x: znacznik czasu, y: liczba, label: data w dymku, value: wartość w dymku }]
+ * xDomain: opcjonalny zakres osi czasu [od, do], żeby dwa wykresy jeden pod drugim miały te same daty.
  */
-export function lineChart({ points, formatTick, formatEnd, formatDate, label, minStep = 0, height = 220 }) {
+export function lineChart({ points, formatTick, formatEnd, formatDate, label, minStep = 0, height = 220, xDomain = null }) {
   const host = h('div.chart', { role: 'img', tabindex: '0', 'aria-label': label });
   const plot = h('div.chart-plot');
   host.append(plot);
@@ -61,9 +62,10 @@ export function lineChart({ points, formatTick, formatEnd, formatDate, label, mi
     const yMin = ticks[0];
     const yMax = ticks.at(-1);
     const endLabel = formatEnd(points.at(-1));
-    const right = Math.min(70, 16 + endLabel.length * 4);
-    const xMin = points[0].x;
-    const xMax = points.at(-1).x;
+    // Wspólny zakres dat wymaga też stałego marginesu, inaczej osie by się rozjechały.
+    const right = xDomain ? 44 : Math.min(70, 16 + endLabel.length * 4);
+    const xMin = xDomain?.[0] ?? points[0].x;
+    const xMax = xDomain?.[1] ?? points.at(-1).x;
     const X = (x) => (xMax === xMin ? (left + width - right) / 2 : left + ((x - xMin) / (xMax - xMin)) * (width - left - right));
     const Y = (y) => top + (1 - (y - yMin) / (yMax - yMin)) * (height - top - bottom);
 
