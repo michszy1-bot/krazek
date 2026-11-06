@@ -7,6 +7,8 @@ import { exerciseById, flushActive, newId, saveActiveSoon, saveExercise, saveRou
 import { pickExercises, stickyNoteSheet } from './picker.js';
 import { hasOwnName, putRoutine, routineDiffers, routineFromWorkout } from './routines.js';
 import { demoUrl, exerciseDemo, hasDemo } from './demo.js';
+import { workoutGain } from './level.js';
+import { levelGainBlock, levelOptions } from './level-views.js';
 import { saveWorkoutAsRoutine } from './routine-views.js';
 import * as sound from './sound.js';
 
@@ -838,11 +840,12 @@ async function finishLive() {
   workout.endedAt = Date.now();
   await saveWorkout(workout);
   const records = workoutRecords(workout, state.workouts, exerciseById);
+  const gain = workoutGain(state.workouts, workout, exerciseById, levelOptions());
   // Porównanie z planem z treningu, a nie z zapisem, bo pominięta seria to jeszcze nie zmiana rutyny.
   const routine = state.routines.find((r) => r.id === draft.routineId) ?? null;
   const planned = routine ? routineFromWorkout(draft, routine) : null;
   await closeLive();
-  showSummary(workout, records, routine, planned?.exercises.length && routineDiffers(routine, planned) ? planned : null);
+  showSummary(workout, records, gain, routine, planned?.exercises.length && routineDiffers(routine, planned) ? planned : null);
 }
 
 async function discardLive() {
@@ -907,13 +910,14 @@ async function saveEdit() {
   onSaved?.();
 }
 
-function showSummary(workout, records, routine, updatedRoutine) {
+function showSummary(workout, records, gain, routine, updatedRoutine) {
   openSheet((close) => h('div.sheet-body',
     h('h2.sheet-title', 'Trening zapisany'),
     h('div.stats',
       stat('Czas', fmtDuration(workout.endedAt - workout.startedAt)),
       stat('Objętość', fmtVolume(workoutVolume(workout))),
       stat('Serie', String(workingSetCount(workout)))),
+    levelGainBlock(gain),
     records.length > 0 && h('div.summary-records',
       h('h3.list-label', 'Nowe rekordy'),
       h('ul.record-list', records.map((record) => h('li',

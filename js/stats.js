@@ -340,6 +340,9 @@ export const MUSCLE_SCALES = [
   { name: 'Nogi', levels: levelLabels(LEG_TOPS) },
 ];
 
+/** Liczba serii w tygodniu, od której partia jest na mapie zielona. */
+export const muscleTopSets = (muscle) => (LEG_MUSCLES.has(muscle) ? LEG_TOPS : UPPER_TOPS).at(-1) + 1;
+
 /** Poziom koloru na mapie mięśni. Stałe progi, bo 10 serii tygodniowo znaczy to samo w każdym tygodniu. */
 export function muscleLevel(sets, muscle) {
   if (!(sets > 0)) return 0;

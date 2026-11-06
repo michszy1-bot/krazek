@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import { addDays, dayKey, fmtClock, fmtDuration, fmtSet, fmtVolume, inputValue, parseNum, pastWorkoutStart, plural, startOfWeek } from '../js/format.js';
 import { backupStatus, estimate1RM, flagRecords, goalProgress, isComplete, MUSCLE_SCALES, muscleLevel, muscleSets, neglectedMuscles, niceTicks, recordsFor, recordTimeline, restAfterSet, setLabels, stepBaseWeight, steppedWeight, suggestNextWeight, summarizeSets, swapExercise, warmupSets, weekDays, weeklyTotals, weightStep, workoutRecords, workoutVolume } from '../js/stats.js';
 import { workoutsCsv } from '../js/csv.js';
+import { levelProgress, strengthRatio, workoutGain } from '../js/level.js';
+import { LIFTS_BODY, ONE_DUMBBELL, STRENGTH_ALSO, STRENGTH_TOPS } from '../js/strength-norms.js';
 import { applyFilter } from '../js/picker.js';
 import { SHAPE_TO_MUSCLE } from '../js/muscle-map.js';
 import { BODY_BACK, BODY_FRONT } from '../js/muscle-shapes.js';
@@ -447,6 +449,145 @@ test('poziom koloru mapy mięśni idzie za liczbą serii', () => {
   for (const legs of ['Czworogłowe', 'Dwugłowe uda', 'Pośladki', 'Łydki']) {
     assert.deepEqual(levels(legs, [0, 1, 2, 3, 5, 6, 7, 8, 20]), [0, 1, 1, 2, 2, 3, 3, 4, 4]);
   }
+});
+
+const levelExercises = new Map([
+  ['bench', { muscle: 'Klatka', type: 'weight' }],
+  ['squat', { muscle: 'Czworogłowe', type: 'weight' }],
+  ['burpee', { muscle: 'Całe ciało', type: 'bodyweight' }],
+]);
+const levelLookup = (id) => levelExercises.get(id);
+const workSets = (count, weight = 50) => Array.from({ length: count }, () => ({ weight, reps: 8, seconds: null, kind: 'normal' }));
+const levelWorkout = (id, date, exerciseId, sets) => ({ id, name: 'T', startedAt: date.getTime(), endedAt: date.getTime() + 1, note: '', exercises: [{ exerciseId, note: '', sets }] });
+
+test('XP: trening raz dziennie, seria za 5, a seria na nogi za 10', () => {
+  const monday = new Date(2026, 10, 2, 9);
+  assert.equal(levelProgress([], levelLookup).xp, 0);
+  assert.equal(levelProgress([], levelLookup).level, 1);
+  assert.equal(levelProgress([levelWorkout('a', monday, 'bench', workSets(4))], levelLookup).xp, 50 + 20);
+  assert.equal(levelProgress([levelWorkout('a', monday, 'squat', workSets(4))], levelLookup).xp, 50 + 40);
+  // Drugi trening tego samego dnia daje tylko serie. Ten sam ciężar nie jest rekordem.
+  const twice = [levelWorkout('a', monday, 'bench', workSets(1)), levelWorkout('b', new Date(2026, 10, 2, 18), 'bench', workSets(1))];
+  assert.equal(levelProgress(twice, levelLookup).xp, 50 + 5 + 5);
+});
+
+test('XP: rozgrzewka nie daje punktów, a trening z samą rozgrzewką też nie', () => {
+  const warmup = [{ weight: 20, reps: 10, seconds: null, kind: 'warmup' }];
+  assert.equal(levelProgress([levelWorkout('a', new Date(2026, 10, 2, 9), 'bench', warmup)], levelLookup).xp, 0);
+});
+
+test('XP: tygodniowy limit serii na partię, od nowa w kolejnym tygodniu', () => {
+  const week1 = levelWorkout('a', new Date(2026, 10, 2, 9), 'bench', workSets(30));
+  const sameWeek = levelWorkout('b', new Date(2026, 10, 8, 9), 'bench', workSets(5));
+  const week2 = levelWorkout('c', new Date(2026, 10, 9, 9), 'bench', workSets(5));
+  assert.equal(levelProgress([week1], levelLookup).xp, 50 + 16 * 5);
+  assert.equal(levelProgress([week1, sameWeek], levelLookup).xp, 100 + 16 * 5);
+  assert.equal(levelProgress([week1, sameWeek, week2], levelLookup).xp, 150 + 21 * 5);
+  const legs = levelProgress([levelWorkout('a', new Date(2026, 10, 2, 9), 'squat', workSets(30))], levelLookup);
+  assert.equal(legs.xp, 50 + 8 * 10);
+});
+
+test('XP: rekord i cel tygodniowy, a pierwszy raz nie jest rekordem', () => {
+  const first = levelWorkout('a', new Date(2026, 10, 2, 9), 'bench', workSets(1, 50));
+  const better = levelWorkout('b', new Date(2026, 10, 3, 9), 'bench', workSets(1, 60));
+  const plain = 2 * 50 + 2 * 5;
+  assert.equal(levelProgress([first, better], levelLookup).xp, plain + 100);
+  assert.equal(levelProgress([first, better], levelLookup, { weeklyGoal: 2 }).xp, plain + 100 + 150);
+  assert.equal(levelProgress([first, better], levelLookup, { weeklyGoal: 3 }).xp, plain + 100);
+});
+
+test('poziom główny: próg rośnie z kwadratem, a bez wagi partie nie mają wyniku', () => {
+  const body = levelProgress([levelWorkout('a', new Date(2026, 10, 2, 9), 'burpee', workSets(10))], levelLookup);
+  assert.equal(body.xp, 100);
+  assert.equal(body.level, 2);
+  assert.equal(body.toNext, 300);
+  assert.equal(body.share, 0);
+  assert.equal(body.muscles.length, 11);
+  assert.ok(body.muscles.every((row) => row.level === null));
+});
+
+const seedLookup = (id) => SEED_EXERCISES.find((e) => e.id === id);
+const lift = (weight, reps, kind = 'normal') => ({ weight, reps, seconds: null, kind });
+const strengthOf = (workouts, bodyWeights, muscle) => levelProgress(workouts, seedLookup, { bodyWeights }).muscles.find((row) => row.muscle === muscle);
+const at75 = [{ day: '2026-01-01', kg: 75 }];
+
+test('siła partii: 30 kg × 6 na hantel przy 75 kg to 96% masy ciała', () => {
+  const row = strengthOf([levelWorkout('a', new Date(2026, 10, 2, 9), 'db-incline', [lift(30, 6)])], at75, 'Klatka');
+  assert.ok(Math.abs(row.ratio - 0.96) < 1e-9);
+  assert.equal(row.level, 14);
+  assert.equal(row.exercise, 'Wyciskanie hantli na ławce skośnej');
+  assert.ok(Math.abs(row.nextRatio - (1.4 * 14) / 19) < 1e-9);
+  assert.ok(row.share > 0 && row.share < 1);
+});
+
+test('siła partii: jeden hantel, podciąganie i ciężar liczony przez ograniczoną liczbę powtórzeń', () => {
+  const ratio = (id, set, kg = 80) => strengthRatio(seedLookup(id), set, kg);
+  assert.equal(ratio('db-row', lift(40, 1)), 0.5);
+  assert.equal(ratio('db-curl', lift(10, 1)), 0.25);
+  assert.equal(ratio('bench-press', lift(80, 1)), 1);
+  assert.equal(ratio('bench-press', lift(40, 30)), ratio('bench-press', lift(40, 15)));
+  assert.equal(ratio('pull-up', lift(null, 1)), 1);
+  assert.equal(ratio('pull-up', lift(20, 1)), 1.25);
+  assert.equal(ratio('crunch', lift(null, 20)), 0);
+  assert.equal(ratio('bench-press', lift(0, 5)), 0);
+  assert.equal(ratio('bench-press', lift(80, 1), 0), 0);
+});
+
+test('siła partii: najlepszy wynik zostaje z wagą z tamtego dnia, a rozgrzewka się nie liczy', () => {
+  const weights = [{ day: '2026-06-01', kg: 100 }, { day: '2026-01-01', kg: 50 }];
+  const early = levelWorkout('a', new Date(2026, 1, 2, 9), 'bench-press', [lift(50, 1)]);
+  const late = levelWorkout('b', new Date(2026, 6, 2, 9), 'bench-press', [lift(50, 1)]);
+  assert.equal(strengthOf([early], weights, 'Klatka').ratio, 1);
+  assert.equal(strengthOf([early, late], weights, 'Klatka').ratio, 1);
+  assert.equal(strengthOf([late], weights, 'Klatka').ratio, 0.5);
+  const warmup = levelWorkout('c', new Date(2026, 6, 2, 9), 'bench-press', [lift(200, 1, 'warmup')]);
+  assert.equal(strengthOf([warmup], weights, 'Klatka').level, null);
+});
+
+test('siła partii: bez wagi i przy ćwiczeniu bez normy nie ma wyniku, a powyżej normy jest poziom najwyższy', () => {
+  const heavy = levelWorkout('a', new Date(2026, 10, 2, 9), 'bench-press', [lift(500, 1)]);
+  assert.equal(strengthOf([heavy], [], 'Klatka').level, null);
+  const top = strengthOf([heavy], at75, 'Klatka');
+  assert.equal(top.level, 20);
+  assert.equal(top.share, 1);
+  assert.equal(top.nextRatio, null);
+  const assisted = levelWorkout('b', new Date(2026, 10, 2, 9), 'machine-assisted-pull-up', [lift(60, 8)]);
+  assert.equal(strengthOf([assisted], at75, 'Plecy').level, null);
+});
+
+test('siła partii: przysiad i martwy ciąg liczą się też do innych partii nóg', () => {
+  const squat = levelWorkout('a', new Date(2026, 10, 2, 9), 'squat', [lift(100, 1)]);
+  assert.equal(strengthOf([squat], at75, 'Czworogłowe').exercise, 'Przysiad ze sztangą');
+  assert.equal(strengthOf([squat], at75, 'Pośladki').exercise, 'Przysiad ze sztangą');
+  assert.equal(strengthOf([squat], at75, 'Dwugłowe uda').level, null);
+  const deadlift = levelWorkout('b', new Date(2026, 10, 3, 9), 'deadlift', [lift(100, 1)]);
+  assert.equal(strengthOf([deadlift], at75, 'Plecy').exercise, 'Martwy ciąg');
+  assert.equal(strengthOf([deadlift], at75, 'Dwugłowe uda').exercise, 'Martwy ciąg');
+});
+
+test('normy siły obejmują wszystkie ćwiczenia z ciężarem poza świadomymi wyjątkami', () => {
+  const skipped = SEED_EXERCISES.filter((e) => e.type === 'weight' && !STRENGTH_TOPS[e.id]).map((e) => e.id).sort();
+  assert.deepEqual(skipped, ['assisted-dip', 'barbell-thruster', 'clean-press', 'db-clean', 'db-snatch', 'machine-assisted-pull-up', 'power-clean', 'wrist-roller']);
+  const ids = new Set(SEED_EXERCISES.map((e) => e.id));
+  assert.deepEqual(Object.keys(STRENGTH_TOPS).filter((id) => !ids.has(id)), []);
+  assert.deepEqual(Object.keys(STRENGTH_ALSO).filter((id) => !STRENGTH_TOPS[id]), []);
+  for (const norms of Object.values(STRENGTH_ALSO)) assert.deepEqual(Object.keys(norms).filter((m) => !MUSCLES.includes(m)), []);
+  assert.deepEqual([...ONE_DUMBBELL].filter((id) => seedLookup(id)?.equipment !== 'Hantle'), []);
+  assert.deepEqual([...LIFTS_BODY].filter((id) => seedLookup(id)?.type !== 'bodyweight' || !STRENGTH_TOPS[id]), []);
+});
+
+test('zysk z treningu to różnica historii, razem z awansami siły', () => {
+  const earlier = levelWorkout('a', new Date(2026, 10, 2, 9), 'bench-press', workSets(4, 50));
+  const today = levelWorkout('b', new Date(2026, 10, 3, 9), 'bench-press', workSets(4, 60));
+  const options = { bodyWeights: at75 };
+  const gain = workoutGain([today, earlier], today, seedLookup, options);
+  assert.equal(gain.xp, 50 + 20 + 100);
+  assert.equal(gain.before.level, 1);
+  assert.equal(gain.after.level, 2);
+  assert.deepEqual(gain.muscleUps.map((row) => row.muscle), ['Klatka']);
+  assert.ok(gain.muscleUps[0].level > gain.before.muscles.find((row) => row.muscle === 'Klatka').level);
+  const same = levelWorkout('c', new Date(2026, 10, 4, 9), 'bench-press', workSets(1, 50));
+  assert.deepEqual(workoutGain([same, today], same, seedLookup, options).muscleUps, []);
 });
 
 test('przerwa po rozgrzewce jest krótka, ale nie dłuższa od ustawionej', () => {

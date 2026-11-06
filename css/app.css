@@ -133,6 +133,26 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 
 .week { display: flex; flex-direction: column; gap: 4px; }
 .week-line { color: var(--ink-2); }
+.level-line { display: flex; flex-direction: column; gap: 8px; width: 100%; background: var(--panel); border-radius: var(--radius); padding: 12px 14px; text-align: left; }
+.level-line-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 10px; margin: 0; color: var(--ink-2); font-size: 14px; }
+.level-line-top strong { color: var(--ink); font-size: 16px; }
+.xp-bar { display: block; width: 100%; height: 8px; background: var(--panel-raised); border-radius: 4px; overflow: hidden; }
+.xp-fill { display: block; height: 100%; background: var(--yellow); border-radius: 4px; }
+.xp-fill-gain { animation: xp-grow 900ms ease-out 200ms both; }
+@keyframes xp-grow { from { width: var(--xp-from); } to { width: var(--xp-to); } }
+@media (prefers-reduced-motion: reduce) { .xp-fill-gain { animation: none; } }
+.level-gain { display: flex; flex-direction: column; gap: 8px; }
+.level-line-top .level-gain-xp { color: var(--yellow); font-size: 20px; }
+.level-main { display: flex; flex-direction: column; gap: 8px; }
+.level-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 10px; margin: 0; color: var(--ink-2); font-size: 14px; }
+.level-list, .level-rules { display: flex; flex-direction: column; gap: 12px; list-style: none; padding: 0; margin: 0; }
+.level-row { display: grid; grid-template-columns: 1fr auto; gap: 5px 10px; font-size: 15px; }
+.level-row-value { color: var(--ink-2); font-size: 14px; }
+.level-row .xp-bar { grid-column: 1 / -1; height: 6px; }
+.level-row-detail { grid-column: 1 / -1; color: var(--ink-3); font-size: 13px; }
+.level-rules { gap: 8px; font-size: 14px; color: var(--ink-2); }
+.level-rules li { display: flex; justify-content: space-between; gap: 12px; }
+.level-rules strong { flex: none; color: var(--ink); font-weight: 600; }
 .goal-line { display: flex; flex-wrap: wrap; align-items: center; column-gap: 10px; min-height: 44px; margin-bottom: -8px; text-align: left; font-weight: 600; color: var(--ink); }
 .goal-line.goal-met { color: var(--green); }
 .goal-empty { font-weight: 500; color: var(--blue-line); }

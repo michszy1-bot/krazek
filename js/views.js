@@ -9,6 +9,7 @@ import { dayTime, weightOn } from './body.js';
 import { clearMedia, downloadMedia, isDownloadingMedia, mediaStatus } from './media.js';
 import { backupText, deleteExercise, deleteWorkout, exerciseById, isExerciseUsed, markBackedUp, previewBackup, restoreBackup, saveSettings, state, visibleExercises, wipeAll } from './store.js';
 import { workoutsCsv } from './csv.js';
+import { levelLine } from './level-views.js';
 import { MUSCLES } from './exercises.js';
 import { muscleMap } from './muscle-map.js';
 import { applyFilter, exerciseFilter, exerciseForm, favoriteButton, stickyNoteSheet } from './picker.js';
@@ -103,6 +104,7 @@ export function homeView() {
     state.active
       ? h('button.btn.btn-primary.btn-hero', { type: 'button', onclick: resumeWorkout }, 'Wróć do treningu', h('span.hero-time', { dataset: { elapsedFrom: state.active.startedAt } }, fmtClock((Date.now() - state.active.startedAt) / 1000)))
       : h('button.btn.btn-primary.btn-hero', { type: 'button', onclick: startWorkout }, 'Rozpocznij trening'),
+    last && levelLine(),
     backup.due && h('button.notice', { type: 'button', onclick: exportBackup },
       h('strong', state.lastBackupAt ? 'Czas na kopię zapasową' : 'Zrób pierwszą kopię zapasową'),
       h('span', `Poza kopią: ${countOf(backup.unsaved, 'trening', 'treningi', 'treningów')}. Stuknij, żeby ją zapisać.`)),
