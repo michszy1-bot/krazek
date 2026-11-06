@@ -3,7 +3,7 @@
 import { h } from './ui.js';
 import { fmtNum, plural } from './format.js';
 import { BODY_BACK, BODY_FRONT } from './muscle-shapes.js';
-import { MUSCLE_LEVELS, muscleLevel } from './stats.js';
+import { MUSCLE_SCALES, muscleLevel } from './stats.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 // Kadr obejmuje całą sylwetkę razem z dłońmi. Tył leży na tym samym płótnie, 720 jednostek w prawo.
@@ -50,7 +50,7 @@ export function muscleMap(rows) {
       for (const d of paths) {
         const path = document.createElementNS(SVG_NS, 'path');
         path.setAttribute('d', d);
-        path.setAttribute('class', muscle ? `muscle muscle-${muscleLevel(setsOf.get(muscle) ?? 0)}` : 'muscle-body');
+        path.setAttribute('class', muscle ? `muscle muscle-${muscleLevel(setsOf.get(muscle) ?? 0, muscle)}` : 'muscle-body');
         if (muscle) path.dataset.muscle = muscle;
         root.append(path);
       }
@@ -80,7 +80,9 @@ export function muscleMap(rows) {
   return h('div.muscle-map',
     figures,
     info,
-    h('ul.muscle-legend', { 'aria-label': 'Liczba serii' },
-      MUSCLE_LEVELS.map(({ level, label }) => h('li', h(`span.muscle-swatch.muscle-${level}`), label)),
-      h('li.muscle-legend-unit', 'serii')));
+    h('div.muscle-legend',
+      h('p.muscle-legend-title', 'Serie na partię'),
+      MUSCLE_SCALES.map(({ name, levels }) => h('ul.muscle-legend-row', { 'aria-label': `${name}, liczba serii` },
+        h('li.muscle-legend-name', name),
+        levels.map(({ level, label }) => h('li', h(`span.muscle-swatch.muscle-${level}`), label))))));
 }

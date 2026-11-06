@@ -2,7 +2,7 @@
 
 import { actionSheet, ask, h, icon, iconButton, openSheet, recordChip, toast } from './ui.js';
 import { countOf, fmtClock, fmtDuration, fmtNum, fmtSet, fmtUnit, fmtVolume, inputValue, parseNum, pastWorkoutStart, toLocalInput } from './format.js';
-import { exerciseSessions, flagRecords, isComplete, recordsFor, SET_KINDS, setLabels, stepBaseWeight, steppedWeight, suggestNextWeight, weightStep, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
+import { emptySet, exerciseSessions, flagRecords, isComplete, isWorking, recordsFor, restAfterSet, SET_KINDS, setLabels, stepBaseWeight, steppedWeight, suggestNextWeight, swapExercise, warmupSets, weightStep, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
 import { exerciseById, flushActive, newId, saveActiveSoon, saveExercise, saveRoutines, saveWorkout, setActive, state } from './store.js';
 import { pickExercises, stickyNoteSheet } from './picker.js';
 import { hasOwnName, putRoutine, routineDiffers, routineFromWorkout } from './routines.js';
@@ -19,8 +19,6 @@ let ctx = null; // { draft, mode: 'live' | 'edit', layer, cards, onSaved }
 let tickTimer = null;
 let restEndedTimer = null;
 let wakeLock = null;
-
-const emptySet = (kind = 'normal') => ({ weight: null, reps: null, seconds: null, kind, done: false });
 
 function defaultName(date = new Date()) {
   const hour = date.getHours();
@@ -250,8 +248,9 @@ function buildCard(item) {
     const position = item.sets.slice(0, index).filter((s) => s.kind === set.kind).length;
     const fromHistory = previous.filter((s) => s.kind === set.kind)[position];
     if (fromHistory) return { ...fromHistory, fromHistory: true };
+    // Rozgrzewka nie podpowiada ciężaru serii roboczej.
     for (let i = index - 1; i >= 0; i -= 1) {
-      if (isComplete(item.sets[i], type)) return item.sets[i];
+      if (isWorking(item.sets[i]) === isWorking(set) && isComplete(item.sets[i], type)) return item.sets[i];
     }
     return null;
   };
@@ -387,9 +386,59 @@ function buildCard(item) {
     rebuild();
   };
 
+  const swapTo = ([id]) => {
+    const { draft } = ctx;
+    const list = draft.exercises;
+    if (list.some((other) => other.exerciseId === id)) {
+      toast('To ćwiczenie już jest w treningu.');
+      return;
+    }
+    const { kept, fresh } = swapExercise(item, id);
+    const replacement = kept ? [kept, fresh] : [fresh];
+    list.splice(list.indexOf(item), 1, ...replacement);
+    renderCards();
+    touch();
+    toast(`Zamieniono na: ${exerciseById(id).name}.`, {
+      actionLabel: 'Cofnij',
+      onAction: () => {
+        if (ctx?.draft !== draft || !replacement.every((part) => list.includes(part))) return;
+        list.splice(list.indexOf(replacement[0]), replacement.length, item);
+        renderCards();
+        touch();
+      },
+    });
+  };
+
+  const swapOption = () => {
+    if (ctx.mode !== 'live' || item.sets.every((s) => s.done)) return null;
+    return {
+      label: 'Zamień ćwiczenie',
+      hint: item.sets.some((s) => s.done) ? 'Odhaczone serie zostają przy tym ćwiczeniu' : 'Liczba serii zostaje',
+      onClick: () => pickExercises(swapTo, { single: true, title: `Zamień: ${exercise.name}`, muscle: exercise.muscle }),
+    };
+  };
+
+  const warmupOption = () => {
+    // Rozgrzewka ma sens przed pierwszą serią, więc opcja znika po odhaczeniu serii albo gdy rozgrzewka już jest.
+    if (ctx.mode !== 'live' || type !== 'weight' || !item.sets.length || item.sets.some((s) => s.done || !isWorking(s))) return null;
+    const base = stepBaseWeight(item.sets, 0, hintFor(0)?.weight);
+    const sets = warmupSets(base, exercise.equipment);
+    if (sets.length) {
+      return {
+        label: 'Dodaj rozgrzewkę',
+        hint: sets.map((set) => `${fmtUnit(set.weight, 'kg')} × ${set.reps}`).join(', '),
+        onClick: () => { item.sets.unshift(...sets); rebuild(); },
+      };
+    }
+    if (base > 0) return null; // Ciężar jest za mały, żeby go jeszcze dzielić.
+    return { label: 'Dodaj rozgrzewkę', hint: 'Najpierw wpisz ciężar pierwszej serii', onClick: () => toast('Wpisz ciężar pierwszej serii, a wyliczę rozgrzewkę.') };
+  };
+
   const openMenu = () => {
     const position = ctx.draft.exercises.indexOf(item);
     actionSheet(exercise.name, [
+      swapOption(),
+      warmupOption(),
       { label: item.note || !noteField.hidden ? 'Edytuj notatkę' : 'Dodaj notatkę', hint: 'Tylko w tym treningu', onClick: () => { noteField.hidden = false; noteField.focus(); } },
       { label: exercise.stickyNote ? 'Edytuj stałą notatkę' : 'Dodaj stałą notatkę', hint: 'Przy każdym treningu', onClick: editStickyNote },
       position > 0 && { label: 'Przesuń wyżej', onClick: () => moveTo(-1) },
@@ -575,7 +624,7 @@ function buildSetRow({ set, type, hint, label, onMenu, onChange, onDelete, exerc
         return;
       }
       set.done = true;
-      if (ctx.mode === 'live') startRest(restFor(exercise));
+      if (ctx.mode === 'live') startRest(restAfterSet(set, restFor(exercise)));
     }
     node.classList.toggle('done', set.done);
     disc.setAttribute('aria-pressed', String(set.done));

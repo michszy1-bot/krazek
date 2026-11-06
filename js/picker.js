@@ -62,8 +62,8 @@ export function stickyNoteSheet(exercise, onSaved) {
 }
 
 /** Pole wyszukiwania, filtr partii i filtr sprzętu, wspólne dla biblioteki i wyboru ćwiczeń. */
-export function exerciseFilter(onChange) {
-  const filter = { query: '', muscle: null, equipment: null };
+export function exerciseFilter(onChange, { muscle: startMuscle = null } = {}) {
+  const filter = { query: '', muscle: startMuscle, equipment: null };
   const input = h('input.search-input', {
     type: 'search',
     placeholder: 'Szukaj ćwiczenia',
@@ -73,7 +73,7 @@ export function exerciseFilter(onChange) {
   });
   const chips = [null, ...MUSCLES].map((muscle) => h('button.chip', {
     type: 'button',
-    'aria-pressed': String(muscle === null),
+    'aria-pressed': String(muscle === startMuscle),
     onclick: (event) => {
       filter.muscle = muscle;
       chips.forEach((c) => c.setAttribute('aria-pressed', String(c === event.currentTarget)));
@@ -93,6 +93,10 @@ export function exerciseFilter(onChange) {
     h('label.search', icon('search', 20), input),
     h('div.chips', { role: 'group', 'aria-label': 'Partia' }, chips),
     h('div.chips', { role: 'group', 'aria-label': 'Sprzęt' }, equipmentChips));
+  // Filtr ustawiony z góry musi być widoczny, także gdy jego przycisk jest poza ekranem.
+  if (startMuscle) {
+    requestAnimationFrame(() => chips[MUSCLES.indexOf(startMuscle) + 1]?.scrollIntoView({ block: 'nearest', inline: 'center' }));
+  }
   return { node, filter, input };
 }
 
@@ -114,11 +118,15 @@ function recentExercises(limit = 6) {
   return out;
 }
 
-/** Wielokrotny wybór ćwiczeń. onPick dostaje identyfikatory w kolejności zaznaczania. */
-export function pickExercises(onPick, { actionLabel = 'Dodaj do treningu' } = {}) {
+/**
+ * Wybór ćwiczeń. onPick dostaje identyfikatory w kolejności zaznaczania.
+ * Przy single stuknięcie od razu wybiera jedno ćwiczenie, a muscle ustawia filtr partii.
+ */
+export function pickExercises(onPick, { actionLabel = 'Dodaj do treningu', title = 'Dodaj ćwiczenie', single = false, muscle = null } = {}) {
   let refresh = () => {};
   const selected = [];
   openSheet((close) => {
+    const pickOne = (id) => { close(); onPick([id]); };
     const list = h('div.picker-list');
     const addBtn = h('button.btn.btn-primary.btn-block', {
       type: 'button',
@@ -134,6 +142,10 @@ export function pickExercises(onPick, { actionLabel = 'Dodaj do treningu' } = {}
         type: 'button',
         'aria-pressed': String(selected.includes(exercise.id)),
         onclick: (event) => {
+          if (single) {
+            pickOne(exercise.id);
+            return;
+          }
           const index = selected.indexOf(exercise.id);
           if (index >= 0) selected.splice(index, 1);
           else selected.push(exercise.id);
@@ -143,7 +155,7 @@ export function pickExercises(onPick, { actionLabel = 'Dodaj do treningu' } = {}
       },
       exerciseThumb(exercise),
       h('span.picker-text', h('span.picker-name', exercise.name), h('span.picker-meta', `${exercise.muscle} · ${exercise.equipment}`)),
-      h('span.picker-mark', icon('check', 18))),
+      !single && h('span.picker-mark', icon('check', 18))),
       favoriteButton(exercise, () => refresh()));
 
     const render = (filter) => {
@@ -164,6 +176,10 @@ export function pickExercises(onPick, { actionLabel = 'Dodaj do treningu' } = {}
           h('button.btn.btn-ghost', {
             type: 'button',
             onclick: () => exerciseForm({ name: filter.query.trim() }, (created) => {
+              if (single) {
+                pickOne(created.id);
+                return;
+              }
               selected.push(created.id);
               controls.input.value = '';
               filter.query = '';
@@ -173,22 +189,26 @@ export function pickExercises(onPick, { actionLabel = 'Dodaj do treningu' } = {}
           }, 'Dodaj własne ćwiczenie')));
       }
     };
-    const controls = exerciseFilter(render);
+    const controls = exerciseFilter(render, { muscle });
     refresh = () => render(controls.filter);
     render(controls.filter);
 
     return h('div.sheet-column',
-      h('div.sheet-head', h('h2.sheet-title', 'Dodaj ćwiczenie'), iconButton('close', 'Zamknij', close)),
+      h('div.sheet-head', h('h2.sheet-title', title), iconButton('close', 'Zamknij', close)),
       controls.node,
       list,
       h('div.sheet-foot',
         h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => exerciseForm({}, (created) => {
+          if (single) {
+            pickOne(created.id);
+            return;
+          }
           selected.push(created.id);
           render(controls.filter);
           updateButton();
         }) }, 'Nowe własne ćwiczenie'),
-        addBtn));
-  }, { full: true, label: 'Dodaj ćwiczenie' });
+        !single && addBtn));
+  }, { full: true, label: title });
 }
 
 const selectField = (label, options, value) => {

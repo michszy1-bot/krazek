@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { addDays, dayKey, fmtClock, fmtDuration, fmtSet, fmtVolume, inputValue, parseNum, pastWorkoutStart, plural, startOfWeek } from '../js/format.js';
-import { estimate1RM, flagRecords, goalProgress, isComplete, muscleLevel, muscleSets, neglectedMuscles, niceTicks, recordsFor, recordTimeline, setLabels, stepBaseWeight, steppedWeight, suggestNextWeight, summarizeSets, weekDays, weeklyTotals, weightStep, workoutRecords, workoutVolume } from '../js/stats.js';
+import { backupStatus, estimate1RM, flagRecords, goalProgress, isComplete, MUSCLE_SCALES, muscleLevel, muscleSets, neglectedMuscles, niceTicks, recordsFor, recordTimeline, restAfterSet, setLabels, stepBaseWeight, steppedWeight, suggestNextWeight, summarizeSets, swapExercise, warmupSets, weekDays, weeklyTotals, weightStep, workoutRecords, workoutVolume } from '../js/stats.js';
+import { workoutsCsv } from '../js/csv.js';
 import { applyFilter } from '../js/picker.js';
 import { SHAPE_TO_MUSCLE } from '../js/muscle-map.js';
 import { BODY_BACK, BODY_FRONT } from '../js/muscle-shapes.js';
@@ -441,7 +442,92 @@ test('szybka zmiana ciężaru: punkt wyjścia i skok', () => {
 });
 
 test('poziom koloru mapy mięśni idzie za liczbą serii', () => {
-  assert.deepEqual([0, 1, 5, 6, 10, 11, 15, 16, 40].map(muscleLevel), [0, 1, 1, 2, 2, 3, 3, 4, 4]);
+  const levels = (muscle, counts) => counts.map((sets) => muscleLevel(sets, muscle));
+  assert.deepEqual(levels('Klatka', [0, 1, 5, 6, 10, 11, 15, 16, 40]), [0, 1, 1, 2, 2, 3, 3, 4, 4]);
+  for (const legs of ['Czworogłowe', 'Dwugłowe uda', 'Pośladki', 'Łydki']) {
+    assert.deepEqual(levels(legs, [0, 1, 2, 3, 5, 6, 7, 8, 20]), [0, 1, 1, 2, 2, 3, 3, 4, 4]);
+  }
+});
+
+test('przerwa po rozgrzewce jest krótka, ale nie dłuższa od ustawionej', () => {
+  assert.equal(restAfterSet({ kind: 'warmup' }, 120), 45);
+  assert.equal(restAfterSet({ kind: 'warmup' }, 30), 30);
+  assert.equal(restAfterSet({ kind: 'warmup' }, 0), 0);
+  assert.equal(restAfterSet({ kind: 'normal' }, 120), 120);
+  assert.equal(restAfterSet({ kind: 'drop' }, 120), 120);
+});
+
+test('przypomnienie o kopii: co tydzień, ale tylko gdy są nowe treningi', () => {
+  const day = 86400000;
+  const now = 100 * day;
+  const workouts = [{ endedAt: now - day }, { endedAt: now - 2 * day }, { endedAt: now - 20 * day }];
+  assert.deepEqual(backupStatus([], null, now), { unsaved: 0, due: false });
+  assert.deepEqual(backupStatus(workouts, null, now), { unsaved: 3, due: true });
+  assert.deepEqual(backupStatus(workouts, now - 7 * day, now), { unsaved: 2, due: true });
+  assert.deepEqual(backupStatus(workouts, now - 6 * day, now), { unsaved: 2, due: false });
+  assert.deepEqual(backupStatus(workouts, now - 12 * 3600000, now), { unsaved: 0, due: false });
+  assert.deepEqual(backupStatus([{ endedAt: now - 20 * day }], now - 10 * day, now), { unsaved: 0, due: false });
+});
+
+test('rozgrzewka: gryf, 50% i 75%, bez powtórek i bez ciężaru roboczego', () => {
+  const plan = (weight, equipment) => warmupSets(weight, equipment).map((set) => [set.weight, set.reps]);
+  assert.deepEqual(plan(100, 'Sztanga'), [[20, 10], [50, 8], [75, 4]]);
+  assert.deepEqual(plan(40, 'Sztanga'), [[20, 10], [30, 4]]);
+  assert.deepEqual(plan(25, 'Sztanga'), [[20, 10]]);
+  assert.deepEqual(plan(20, 'Sztanga'), []);
+  assert.deepEqual(plan(30, 'Hantle'), [[16, 8], [22, 4]]);
+  assert.deepEqual(plan(60, 'Maszyna'), [[30, 8], [45, 4]]);
+  assert.deepEqual(plan(2, 'Hantle'), []);
+  assert.deepEqual(plan(0, 'Sztanga'), []);
+  assert.ok(warmupSets(100, 'Sztanga').every((set) => set.kind === 'warmup' && !set.done));
+});
+
+test('zamiana ćwiczenia: odhaczone serie zostają, reszta przechodzi pusta', () => {
+  const done = { weight: 60, reps: 8, seconds: null, kind: 'normal', done: true };
+  const open = { weight: 60, reps: null, seconds: null, kind: 'failure', done: false };
+  const item = { exerciseId: 'a', note: 'bark', sets: [done, open], repRange: { min: 8, max: 12 } };
+
+  const split = swapExercise(item, 'b');
+  assert.deepEqual(split.kept.sets, [done]);
+  assert.equal(split.kept.exerciseId, 'a');
+  assert.equal(split.kept.note, 'bark');
+  assert.deepEqual(split.fresh, {
+    exerciseId: 'b',
+    note: '',
+    sets: [{ weight: null, reps: null, seconds: null, kind: 'failure', done: false }],
+    repRange: { min: 8, max: 12 },
+  });
+  assert.equal(item.sets.length, 2, 'oryginał zostaje na wypadek cofnięcia');
+
+  const whole = swapExercise({ exerciseId: 'a', note: 'bark', sets: [open] }, 'b');
+  assert.equal(whole.kept, null);
+  assert.equal(whole.fresh.note, 'bark');
+  assert.equal('repRange' in whole.fresh, false);
+});
+
+test('CSV: jeden wiersz na serię, od najstarszego, w formacie polskiego Excela', () => {
+  const exercises = new Map([['a', { name: 'Wyciskanie; leżąc', muscle: 'Klatka', equipment: 'Sztanga' }], ['b', { name: 'Plank', muscle: 'Brzuch', equipment: 'Masa ciała' }]]);
+  const at = (hour) => new Date(2026, 10, 5, hour, 5).getTime();
+  const workouts = [
+    { name: 'Nowszy', startedAt: at(18), note: '', exercises: [{ exerciseId: 'b', note: '', sets: [{ weight: null, reps: null, seconds: 60, kind: 'normal' }] }] },
+    { name: '=Starszy', startedAt: at(9), note: 'Mówił "dobrze"', exercises: [{ exerciseId: 'a', note: '', sets: [
+      { weight: 20, reps: 10, seconds: null, kind: 'warmup' },
+      { weight: 62.5, reps: 8, seconds: null, kind: 'normal' },
+    ] }] },
+  ];
+  const lines = workoutsCsv(workouts, (id) => exercises.get(id)).split('\r\n');
+  assert.ok(lines[0].startsWith('﻿Data;Godzina;Trening;'));
+  assert.equal(lines[1], `2026-11-05;09:05;'=Starszy;"Wyciskanie; leżąc";Klatka;Sztanga;R;Rozgrzewkowa;20;10;;;"Mówił ""dobrze"""`);
+  assert.equal(lines[2], `2026-11-05;09:05;'=Starszy;"Wyciskanie; leżąc";Klatka;Sztanga;1;Robocza;62,5;8;;;"Mówił ""dobrze"""`);
+  assert.equal(lines[3], '2026-11-05;18:05;Nowszy;Plank;Brzuch;Masa ciała;1;Robocza;;;60;;');
+  assert.equal(lines[4], '');
+});
+
+test('legenda mapy mięśni pokazuje te same progi co kolory', () => {
+  assert.deepEqual(MUSCLE_SCALES.map(({ name, levels }) => [name, levels.map(({ label }) => label)]), [
+    ['Góra', ['1–5', '6–10', '11–15', '16+']],
+    ['Nogi', ['1–2', '3–5', '6–7', '8+']],
+  ]);
 });
 
 test('wiek rośnie dopiero w dniu urodzin', () => {

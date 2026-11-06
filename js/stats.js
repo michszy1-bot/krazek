@@ -321,19 +321,31 @@ export function neglectedMuscles(workouts, exerciseById, muscles, now = new Date
     .sort((a, b) => (b.days ?? -1) - (a.days ?? -1));
 }
 
-/** Poziom koloru na mapie mięśni. Stałe progi, bo 10 serii tygodniowo znaczy to samo w każdym tygodniu. */
-export const MUSCLE_LEVELS = [
-  { level: 1, label: '1–5' },
-  { level: 2, label: '6–10' },
-  { level: 3, label: '11–15' },
-  { level: 4, label: '16+' },
+const LEG_MUSCLES = new Set(['Czworogłowe', 'Dwugłowe uda', 'Pośladki', 'Łydki']);
+// Górne granice trzech niższych poziomów. Powyżej ostatniej partia jest na najwyższym poziomie.
+const UPPER_TOPS = [5, 10, 15];
+const LEG_TOPS = [2, 5, 7];
+
+function levelLabels(tops) {
+  const labels = tops.map((top, i) => {
+    const from = i === 0 ? 1 : tops[i - 1] + 1;
+    return from === top ? String(top) : `${from}–${top}`;
+  });
+  return [...labels, `${tops.at(-1) + 1}+`].map((label, i) => ({ level: i + 1, label }));
+}
+
+/** Skale kolorów do legendy mapy mięśni. Nogom wystarcza mniej serii niż reszcie ciała. */
+export const MUSCLE_SCALES = [
+  { name: 'Góra', levels: levelLabels(UPPER_TOPS) },
+  { name: 'Nogi', levels: levelLabels(LEG_TOPS) },
 ];
 
-export function muscleLevel(sets) {
+/** Poziom koloru na mapie mięśni. Stałe progi, bo 10 serii tygodniowo znaczy to samo w każdym tygodniu. */
+export function muscleLevel(sets, muscle) {
   if (!(sets > 0)) return 0;
-  if (sets <= 5) return 1;
-  if (sets <= 10) return 2;
-  return sets <= 15 ? 3 : 4;
+  const tops = LEG_MUSCLES.has(muscle) ? LEG_TOPS : UPPER_TOPS;
+  const below = tops.findIndex((top) => sets <= top);
+  return below === -1 ? tops.length + 1 : below + 1;
 }
 
 /** Skok ciężaru: 2,5 kg, a przy hantlach 2 kg, bo zwykle rosną co 1 kg na stronę. */
@@ -352,6 +364,60 @@ export function stepBaseWeight(sets, index, hintWeight) {
 
 /** Ciężar po zmianie, bez wartości ujemnych i błędów zaokrągleń. */
 export const steppedWeight = (base, delta) => Math.max(0, Math.round((base + delta) * 100) / 100);
+
+export const emptySet = (kind = 'normal') => ({ weight: null, reps: null, seconds: null, kind, done: false });
+
+const WARMUP_REST_SEC = 45;
+
+/** Przerwa po odhaczonej serii. Rozgrzewka nie męczy, więc nie czeka się po niej pełnego czasu. */
+export const restAfterSet = (set, restSec) => (set.kind === 'warmup' ? Math.min(WARMUP_REST_SEC, restSec) : restSec);
+
+const BACKUP_REMINDER_DAYS = 7;
+
+/**
+ * Stan kopii zapasowej: ile treningów nie jest w kopii i czy czas o niej przypomnieć.
+ * Przypomnienie wraca co tydzień, ale tylko gdy od ostatniej kopii przybył co najmniej jeden trening.
+ */
+export function backupStatus(workouts, lastBackupAt, now = Date.now()) {
+  const unsaved = lastBackupAt == null ? workouts.length : workouts.filter((w) => w.endedAt > lastBackupAt).length;
+  const due = unsaved > 0 && (lastBackupAt == null || now - lastBackupAt >= BACKUP_REMINDER_DAYS * 86400000);
+  return { unsaved, due };
+}
+
+const BAR_KG = 20;
+
+/**
+ * Serie rozgrzewkowe przed ciężarem roboczym: przy sztandze sam gryf, potem 50% i 75%.
+ * Ciężar jest zaokrąglany do skoku sprzętu, a serie, które wypadłyby tak samo, są pomijane.
+ */
+export function warmupSets(weight, equipment) {
+  if (!(weight > 0)) return [];
+  const step = weightStep(equipment);
+  const share = (part) => Math.round((weight * part) / step) * step;
+  const isBar = equipment === 'Sztanga';
+  const plan = [...(isBar ? [[BAR_KG, 10]] : []), [share(0.5), 8], [share(0.75), 4]];
+  const sets = [];
+  for (const [kg, reps] of plan) {
+    const heavierThanLast = kg > (sets.at(-1)?.weight ?? (isBar ? BAR_KG - 1 : 0));
+    if (heavierThanLast && kg < weight) sets.push({ ...emptySet('warmup'), weight: kg, reps });
+  }
+  return sets;
+}
+
+/**
+ * Zamiana ćwiczenia w trwającym treningu. Odhaczone serie zostają przy starym ćwiczeniu,
+ * bo tak było naprawdę, a pozostałe przechodzą na nowe jako puste, z tym samym rodzajem.
+ */
+export function swapExercise(item, exerciseId) {
+  const done = item.sets.filter((set) => set.done);
+  const fresh = {
+    exerciseId,
+    note: done.length ? '' : (item.note ?? ''),
+    sets: item.sets.filter((set) => !set.done).map((set) => emptySet(set.kind ?? 'normal')),
+    ...(item.repRange ? { repRange: item.repRange } : {}),
+  };
+  return { kept: done.length ? { ...item, sets: done } : null, fresh };
+}
 
 /**
  * Proponowany ciężar po sesji, w której wszystkie serie sięgnęły górnej granicy zakresu.

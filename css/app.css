@@ -228,8 +228,11 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .muscle-3 { fill: #ffd93b; background: #ffd93b; }
 .muscle-4 { fill: #2fd46b; background: #2fd46b; }
 .muscle-info { min-height: 22px; text-align: center; font-size: 15px; font-weight: 500; }
-.muscle-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 12px; list-style: none; padding: 0; margin: 0; font-size: 13px; color: var(--ink-2); }
-.muscle-legend li { display: flex; align-items: center; gap: 5px; }
+.muscle-legend { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--ink-2); }
+.muscle-legend-title { margin: 0; text-align: center; }
+.muscle-legend-row { display: grid; grid-template-columns: 38px repeat(4, 1fr); gap: 4px; list-style: none; padding: 0; margin: 0; }
+.muscle-legend-row li { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.muscle-legend-name { font-weight: 500; color: var(--ink); }
 .muscle-swatch { width: 14px; height: 14px; border-radius: 4px; }
 .neglected { display: flex; flex-direction: column; gap: 4px; list-style: none; padding: 0; margin: 0; color: var(--ink-2); }
 
@@ -253,7 +256,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .routine-stepper .icon-btn { flex: none; }
 .routine-sets { flex: 1; text-align: center; font: 700 20px/1 var(--font-data); }
 
-.notice { display: flex; flex-direction: column; gap: 2px; border-left: 4px solid var(--yellow); }
+.notice { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; border-left: 4px solid var(--yellow); }
 .notice span { color: var(--ink-2); font-size: 14px; }
 
 .pr-chip {
@@ -672,6 +675,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 8px 8px 16px; }
 .sheet-foot { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; padding: 10px 16px calc(var(--safe-bottom) + 12px); border-top: 1px solid var(--line); }
 .sheet-foot .btn { padding: 0 8px; font-size: 15px; }
+.sheet-foot > :only-child { grid-column: 1 / -1; }
 
 .sheet .search { background: var(--panel-raised); }
 .sheet .chip { background: var(--panel-raised); }

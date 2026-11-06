@@ -3,11 +3,12 @@
 import { actionSheet, ask, emptyState, h, icon, iconButton, openSheet, pageHeader, recordChip, segmented, toast } from './ui.js';
 import { addDays, countOf, dayKey, fmtClock, fmtDayLong, fmtDayMedium, fmtDayShort, fmtDuration, fmtMonth, fmtNum, fmtSet, fmtTime, fmtUnit, fmtVolume, startOfWeek } from './format.js';
 import { columnChart, lineChart, rankedBars } from './chart.js';
-import { exerciseSessions, flagRecords, goalProgress, isWorking, METRICS, muscleSets, neglectedMuscles, RECORD_TYPES, recordsFor, recordTimeline, SET_KINDS, setLabels, summarizeSets, weekDays, weeklyTotals, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
+import { backupStatus, exerciseSessions, flagRecords, goalProgress, isWorking, METRICS, muscleSets, neglectedMuscles, RECORD_TYPES, recordsFor, recordTimeline, SET_KINDS, setLabels, summarizeSets, weekDays, weeklyTotals, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
 import { bodyWeightChart, weightsFrom } from './profile.js';
 import { dayTime, weightOn } from './body.js';
 import { clearMedia, downloadMedia, isDownloadingMedia, mediaStatus } from './media.js';
 import { backupText, deleteExercise, deleteWorkout, exerciseById, isExerciseUsed, markBackedUp, previewBackup, restoreBackup, saveSettings, state, visibleExercises, wipeAll } from './store.js';
+import { workoutsCsv } from './csv.js';
 import { MUSCLES } from './exercises.js';
 import { muscleMap } from './muscle-map.js';
 import { applyFilter, exerciseFilter, exerciseForm, favoriteButton, stickyNoteSheet } from './picker.js';
@@ -16,7 +17,6 @@ import { routinesSection, saveWorkoutAsRoutine } from './routine-views.js';
 import { exerciseDemo, exerciseThumb } from './demo.js';
 import * as sound from './sound.js';
 
-const BACKUP_REMINDER_DAYS = 30;
 const DAY_LETTERS = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'];
 
 const workoutRecordsOf = (workout) => workoutRecords(workout, state.workouts, exerciseById);
@@ -84,7 +84,7 @@ export function homeView() {
   const last = state.workouts[0];
   const anyRecord = weekWorkouts.some((w) => workoutRecordsOf(w).length > 0);
 
-  const stale = state.lastBackupAt == null || Date.now() - state.lastBackupAt > BACKUP_REMINDER_DAYS * 86400000;
+  const backup = backupStatus(state.workouts, state.lastBackupAt);
 
   return h('div.page',
     h('header.page-head',
@@ -103,13 +103,13 @@ export function homeView() {
     state.active
       ? h('button.btn.btn-primary.btn-hero', { type: 'button', onclick: resumeWorkout }, 'Wróć do treningu', h('span.hero-time', { dataset: { elapsedFrom: state.active.startedAt } }, fmtClock((Date.now() - state.active.startedAt) / 1000)))
       : h('button.btn.btn-primary.btn-hero', { type: 'button', onclick: startWorkout }, 'Rozpocznij trening'),
+    backup.due && h('button.notice', { type: 'button', onclick: exportBackup },
+      h('strong', state.lastBackupAt ? 'Czas na kopię zapasową' : 'Zrób pierwszą kopię zapasową'),
+      h('span', `Poza kopią: ${countOf(backup.unsaved, 'trening', 'treningi', 'treningów')}. Stuknij, żeby ją zapisać.`)),
     routinesSection(startRoutine),
     last
       ? h('section.block', h('h2.block-title', 'Ostatni trening'), workoutRow(last))
-      : h('p.first-hint', 'Po pierwszym treningu zobaczysz tu podsumowanie i pierwszy krążek na sztandze.'),
-    last && stale && h('a.notice', { href: '#/ustawienia' },
-      h('strong', state.lastBackupAt ? 'Czas na kopię zapasową' : 'Zrób pierwszą kopię zapasową'),
-      h('span', 'Treningi są tylko na tym telefonie. Kopia chroni je na wypadek jego utraty.')));
+      : h('p.first-hint', 'Po pierwszym treningu zobaczysz tu podsumowanie i pierwszy krążek na sztandze.'));
 }
 
 // --- Dziennik ---
@@ -607,24 +607,41 @@ export function libraryView() {
 
 const REST_CHOICES = [30, 45, 60, 90, 120, 150, 180, 240, 300];
 
-async function exportBackup() {
-  const name = `forma-kopia-${dayKey(new Date())}.json`;
-  const file = new File([backupText()], name, { type: 'application/json' });
+/** Otwiera arkusz udostępniania, a bez niego pobiera plik. Zwraca false po anulowaniu albo błędzie. */
+async function shareFile(name, text, type, title) {
+  const file = new File([text], name, { type });
   try {
     if (navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ files: [file], title: 'Kopia zapasowa Formy' });
+      await navigator.share({ files: [file], title });
     } else {
       const url = URL.createObjectURL(file);
       h('a', { href: url, download: name }).click();
       setTimeout(() => URL.revokeObjectURL(url), 10000);
     }
+    return true;
   } catch (error) {
-    if (error.name === 'AbortError') return; // anulowanie w arkuszu udostępniania
-    toast('Nie udało się zapisać kopii. Spróbuj ponownie.');
+    if (error.name !== 'AbortError') toast('Nie udało się zapisać pliku. Spróbuj ponownie.');
+    return false;
+  }
+}
+
+// Stała nazwa, żeby nowa kopia mogła zastąpić poprzednią zamiast tworzyć kolejny plik.
+async function exportBackup() {
+  if (!(await shareFile('forma-kopia.json', backupText(), 'application/json', 'Kopia zapasowa Formy'))) return;
+  await markBackedUp();
+  // Ekran pod spodem pokazuje stan kopii, więc musi się przeliczyć.
+  document.dispatchEvent(new CustomEvent('workout-collapsed'));
+  toast('Kopia gotowa. Trzymaj ją poza telefonem, np. w iCloud Drive.');
+}
+
+async function exportCsv() {
+  if (!state.workouts.length) {
+    toast('Nie masz jeszcze zapisanych treningów.');
     return;
   }
-  await markBackedUp();
-  toast('Kopia gotowa. Trzymaj ją poza telefonem, np. w iCloud Drive.');
+  if (await shareFile('forma-treningi.csv', workoutsCsv(state.workouts, exerciseById), 'text/csv', 'Treningi z Formy')) {
+    toast('Plik z treningami gotowy.');
+  }
 }
 
 function importBackup() {
@@ -781,11 +798,14 @@ export function settingsView() {
     h('section.block',
       h('h2.block-title', 'Kopia zapasowa'),
       h('p.settings-text', 'Treningi, rutyny, profil i dziennik wagi są zapisane tylko na tym telefonie. Bez kopii utrata telefonu albo usunięcie aplikacji z ekranu początkowego oznacza utratę danych.'),
-      h('p.settings-text', state.lastBackupAt ? `Ostatnia kopia: ${fmtDayMedium(state.lastBackupAt)}.` : 'Nie masz jeszcze kopii.'),
+      h('p.settings-text', 'Plik ma zawsze tę samą nazwę. Zapisuj go w tym samym folderze i zgódź się na zastąpienie, a zostanie jedna, najnowsza kopia.'),
+      h('p.settings-text', state.lastBackupAt ? `Ostatnia kopia: ${fmtDayMedium(state.lastBackupAt)}. Poza kopią: ${countOf(backupStatus(state.workouts, state.lastBackupAt).unsaved, 'trening', 'treningi', 'treningów')}.` : 'Nie masz jeszcze kopii.'),
       h('button.btn.btn-primary.btn-block', { type: 'button', onclick: exportBackup }, 'Zapisz kopię'),
       h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: importBackup }, 'Wczytaj kopię')),
     h('section.block',
       h('h2.block-title', 'Dane'),
+      h('p.settings-text', 'Plik CSV otworzysz w Excelu albo Numbers. Służy do przeglądania, kopii zapasowej z niego nie wczytasz.'),
+      h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: exportCsv }, 'Eksportuj treningi do CSV'),
       h('button.btn.btn-text-danger.btn-block', { type: 'button', onclick: wipeData }, 'Usuń wszystkie dane')));
 }
 
