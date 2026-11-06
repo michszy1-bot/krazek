@@ -279,13 +279,17 @@ export function plateTier(sets) {
   return 'green';
 }
 
-/** Sztanga tygodnia: każdy trening to krążek, od największego przy kołnierzu, a brakujące do celu są puste. */
+/** Sztanga tygodnia: każdy trening to krążek, pierwszy przy kołnierzu, nowszy dalej, a brakujące do celu są puste. */
 export function loadBar(workouts, goal) {
-  const plates = workouts.map(workingSetCount).sort((a, b) => b - a);
+  const plates = [...workouts].sort(byDateAsc).map(workingSetCount);
   return { plates, empty: goal == null ? 0 : Math.max(0, goal - plates.length) };
 }
 
-// Koniec gryfu ma 104 px, a reszta to odstęp od kołnierza i zacisk po wykonaniu celu.
+/** Odległość od końca gryfu, którą krążek przejeżdża, żeby zająć swoje miejsce. */
+export const plateTravel = (index, width) => BAR_END - PLATE_GAP - index * (width + PLATE_GAP);
+
+// Koniec gryfu ma 104 px, a poza krążkami mieści odstęp od kołnierza i zacisk po wykonaniu celu.
+const BAR_END = 104;
 const BAR_SIDE = 94;
 const PLATE_GAP = 2;
 const MAX_PLATE_WIDTH = 22;

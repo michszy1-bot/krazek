@@ -3,7 +3,7 @@
 import { actionSheet, ask, h, icon, iconButton, openSheet, recordChip, toast } from './ui.js';
 import { countOf, fmtClock, fmtDuration, fmtNum, fmtSet, fmtUnit, fmtVolume, inputValue, parseNum, pastWorkoutStart, toLocalInput } from './format.js';
 import { emptySet, exerciseSessions, flagRecords, isComplete, isWorking, recordsFor, restAfterSet, SET_KINDS, setLabels, stepBaseWeight, steppedWeight, suggestNextWeight, swapExercise, warmupSets, weightStep, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
-import { exerciseById, flushActive, newId, saveActiveSoon, saveExercise, saveRoutines, saveWorkout, setActive, state } from './store.js';
+import { exerciseById, flushActive, holdPlate, newId, releasePlate, saveActiveSoon, saveExercise, saveRoutines, saveWorkout, setActive, state } from './store.js';
 import { pickExercises, stickyNoteSheet } from './picker.js';
 import { hasOwnName, putRoutine, routineDiffers, routineFromWorkout } from './routines.js';
 import { demoUrl, exerciseDemo, hasDemo } from './demo.js';
@@ -838,6 +838,7 @@ async function finishLive() {
     return;
   }
   workout.endedAt = Date.now();
+  holdPlate(workout.id);
   await saveWorkout(workout);
   const records = workoutRecords(workout, state.workouts, exerciseById);
   const gain = workoutGain(state.workouts, workout, exerciseById, levelOptions());
@@ -936,7 +937,7 @@ function showSummary(workout, records, gain, routine, updatedRoutine) {
     }, 'Zaktualizuj rutynę'),
     h(`button.btn.btn-block.${updatedRoutine ? 'btn-ghost' : 'btn-primary'}`, { type: 'button', onclick: close }, updatedRoutine ? 'Zostaw rutynę bez zmian' : 'Gotowe'),
     !routine && h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => { close(); saveWorkoutAsRoutine(workout); } }, 'Zapisz jako rutynę')),
-  { label: 'Trening zapisany' });
+  { label: 'Trening zapisany', onClose: releasePlate });
 }
 
 export const stat = (label, value) => h('div.stat', h('span.stat-value', value), h('span.stat-label', label));

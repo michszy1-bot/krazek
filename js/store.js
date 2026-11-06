@@ -15,6 +15,7 @@ export const state = {
   bodyWeights: [], // od najnowszego: { day: 'RRRR-MM-DD', kg }
   routines: [], // { id, name, exercises: [{ exerciseId, sets: [rodzaj serii z SET_KINDS] }] }
   active: null, // trening w toku
+  arriving: null, // krążek świeżo zakończonego treningu czekający na wjazd: { id, ready }, tylko w pamięci
   lastBackupAt: null,
 };
 
@@ -68,6 +69,18 @@ export async function setActive(draft) {
 }
 
 // --- Treningi ---
+
+/** Krążek tego treningu czeka pod podsumowaniem, żeby animacja nie zagrała zasłonięta. */
+export function holdPlate(id) {
+  state.arriving = { id, ready: false };
+}
+
+/** Podsumowanie zamknięte, więc ekran startowy może wpuścić krążek na sztangę. */
+export function releasePlate() {
+  if (!state.arriving) return;
+  state.arriving.ready = true;
+  emit();
+}
 
 export async function saveWorkout(workout) {
   await put(STORES.workouts, structuredClone(workout));

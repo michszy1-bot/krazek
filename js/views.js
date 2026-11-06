@@ -3,7 +3,7 @@
 import { actionSheet, ask, emptyState, h, icon, iconButton, openSheet, pageHeader, recordChip, segmented, toast } from './ui.js';
 import { addDays, countOf, dayKey, fmtClock, fmtDayLong, fmtDayMedium, fmtDayShort, fmtDuration, fmtMonth, fmtNum, fmtSet, fmtTime, fmtUnit, fmtVolume, plural, startOfWeek } from './format.js';
 import { columnChart, lineChart, rankedBars } from './chart.js';
-import { backupStatus, exerciseSessions, flagRecords, goalProgress, isWorking, loadBar, METRICS, muscleSets, neglectedMuscles, PLATE_TIERS, plateHeight, plateTier, plateWidth, RECORD_TYPES, recordsFor, recordTimeline, SET_KINDS, setLabels, summarizeSets, weekDays, weeklyTotals, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
+import { backupStatus, exerciseSessions, flagRecords, goalProgress, isWorking, loadBar, METRICS, muscleSets, neglectedMuscles, PLATE_TIERS, plateHeight, plateTier, plateTravel, plateWidth, RECORD_TYPES, recordsFor, recordTimeline, SET_KINDS, setLabels, summarizeSets, weekDays, weeklyTotals, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
 import { bodyWeightChart, weightsFrom } from './profile.js';
 import { dayTime, weightOn } from './body.js';
 import { clearMedia, downloadMedia, isDownloadingMedia, mediaStatus } from './media.js';
@@ -28,51 +28,89 @@ const PLATE_EMPTY_HEIGHT = 92;
 /** Numer na krążku maleje razem z nim, a na bardzo wąskim się nie mieści. */
 const plateFont = (width) => (width >= 18 ? 17 : width >= 14 ? 14 : width >= 11 ? 12 : 0);
 
-function barSide(side, { plates, empty }, met) {
+function barSide(side, { plates, empty }, { met, arrival, hadSlot }) {
   const width = plateWidth(plates.length + empty);
   const font = plateFont(width);
+  const plate = (sets, extra = '', style = '') => h(`span.bar-plate.tier-${plateTier(sets)}${extra}`,
+    { style: `width:${width}px;height:${plateHeight(sets)}px;font-size:${font}px;${style}` },
+    font > 0 && String(sets));
   return h(`span.bar-side.bar-side-${side}`,
-    plates.map((sets) => h(`span.bar-plate.tier-${plateTier(sets)}`,
-      { style: `width:${width}px;height:${plateHeight(sets)}px;font-size:${font}px` },
-      font > 0 && String(sets))),
+    plates.map((sets, i) => {
+      if (!arrival) return plate(sets);
+      if (i < plates.length - 1) return plate(sets, '.arrive.bar-plate-hit');
+      return h('span.bar-slot', { style: `width:${width}px;height:${plateHeight(sets)}px` },
+        hadSlot && h('span.bar-plate.bar-plate-empty.arrive.bar-plate-leaving', { style: `width:${width}px;height:${PLATE_EMPTY_HEIGHT}px` }),
+        plate(sets, '.arrive.bar-plate-new', `--from:${plateTravel(i, width)}px`));
+    }),
     Array.from({ length: empty }, () => h('span.bar-plate.bar-plate-empty', { style: `width:${width}px;height:${PLATE_EMPTY_HEIGHT}px` })),
-    met && h('span.bar-clamp'));
+    met && (arrival
+      ? h('span.bar-clamp.arrive', { style: `--from:${plateTravel(plates.length + empty, width)}px` })
+      : h('span.bar-clamp')));
+}
+
+/** Tekst podmieniany w chwili uderzenia krążka. */
+function swapText(tag, before, after, arrival) {
+  if (!arrival || before === after) return h(tag, after);
+  return h('span.bar-swap', h(`${tag}.arrive.bar-was`, before), h(`${tag}.arrive.bar-now`, after));
 }
 
 /** Tydzień narysowany jak ładowana sztanga: każdy trening to para krążków, a cel to pełny gryf. */
-function loadedBar(weekWorkouts) {
+function loadedBar(weekWorkouts, arrival) {
   const goal = state.settings.weeklyGoal;
   const done = weekWorkouts.length;
+  const before = arrival ? done - 1 : done;
   const load = loadBar(weekWorkouts, goal);
   const met = goal != null && done >= goal;
-  const unit = goal == null
-    ? plural(done, 'trening', 'treningi', 'treningów')
-    : goal === 1 ? 'treningu' : 'treningów';
+  const unitFor = (n) => (goal == null ? plural(n, 'trening', 'treningi', 'treningów') : goal === 1 ? 'treningu' : 'treningów');
+  const countFor = (n) => (goal == null ? String(n) : `${n} z ${goal}`);
+  const sides = { met, arrival, hadSlot: goal != null && done <= goal };
   return h(`button.loaded-bar${met ? '.goal-met' : ''}`,
-    { type: 'button', onclick: goalSheet, 'aria-label': goal == null ? `${countOf(done, 'trening', 'treningi', 'treningów')}. Ustaw cel tygodniowy` : `Cel tygodniowy: ${done} z ${goal} ${unit}. Zmień` },
-    barSide('left', load, met),
+    { type: 'button', onclick: goalSheet, 'aria-label': goal == null ? `${countOf(done, 'trening', 'treningi', 'treningów')}. Ustaw cel tygodniowy` : `Cel tygodniowy: ${done} z ${goal} ${unitFor(done)}. Zmień` },
+    barSide('left', load, sides),
     h('span.bar-collar'),
     h('span.bar-middle',
-      h('span.bar-count', goal == null ? String(done) : `${done} z ${goal}`),
-      h('span.bar-unit', unit)),
+      swapText('span.bar-count', countFor(before), countFor(done), arrival),
+      swapText('span.bar-unit', unitFor(before), unitFor(done), arrival)),
     h('span.bar-collar'),
-    barSide('right', load, met));
+    barSide('right', load, sides));
+}
+
+/** Kreska dnia: kolor jak krążek, a w dniu nowego treningu nowy kolor rozlewa się po starym. */
+function weekMark(day, arrival) {
+  const tier = (sets, count) => (count ? `.tier-${plateTier(sets)}` : '');
+  if (!arrival || !day.workouts.includes(arrival.workout)) return h(`span.week-mark${tier(day.sets, day.workouts.length)}`);
+  const setsBefore = day.sets - workingSetCount(arrival.workout);
+  return h(`span.week-mark${tier(setsBefore, day.workouts.length - 1)}`,
+    h(`span.week-mark-fill.arrive${tier(day.sets, 1)}`));
 }
 
 /** Pasek dni pod sztangą: kolor jak krążek tego dnia, gwiazdka za rekord. */
-function weekTrack(days) {
+function weekTrack(days, arrival) {
   return h('div.week-track', days.map((day, i) => {
     const hasRecord = day.workouts.some((w) => workoutRecordsOf(w).length > 0);
     const name = `${fmtDayLong(day.date)}: ${day.workouts.length ? countOf(day.sets, 'seria', 'serie', 'serii') : 'bez treningu'}${hasRecord ? ', nowy rekord' : ''}`;
     const content = [
       h('span.week-star', hasRecord && icon('star', 14)),
-      h(`span.week-mark${day.workouts.length ? `.tier-${plateTier(day.sets)}` : ''}`),
+      weekMark(day, arrival),
       h(`span.day-letter${day.isToday ? '.today' : ''}`, DAY_LETTERS[i]),
     ];
     return day.workouts.length
       ? h('a.week-day', { href: `#/dziennik/${day.workouts[0].id}`, 'aria-label': name }, content)
       : h('div.week-day', { 'aria-label': name, role: 'img' }, content);
   }));
+}
+
+/**
+ * Krążek świeżo zakończonego treningu. Pod podsumowaniem czeka w miejscu startu,
+ * a po jego zamknięciu wjeżdża raz, dlatego wpis znika przy tym samym rysowaniu.
+ */
+function takeArrival(weekWorkouts) {
+  const { arriving } = state;
+  if (!arriving) return null;
+  if (arriving.ready) state.arriving = null;
+  const workout = weekWorkouts.find((w) => w.id === arriving.id);
+  const isNewest = workout && weekWorkouts.every((w) => w.startedAt <= workout.startedAt);
+  return isNewest ? { workout, waiting: !arriving.ready } : null;
 }
 
 function plateKey(anyRecord) {
@@ -123,6 +161,7 @@ export function homeView() {
   const weekVolume = weekWorkouts.reduce((sum, w) => sum + workoutVolume(w), 0);
   const last = state.workouts[0];
   const anyRecord = weekWorkouts.some((w) => workoutRecordsOf(w).length > 0);
+  const arrival = takeArrival(weekWorkouts);
 
   const backup = backupStatus(state.workouts, state.lastBackupAt);
 
@@ -132,12 +171,12 @@ export function homeView() {
       h('div.page-actions',
         h('a.icon-btn', { href: '#/profil', 'aria-label': 'Profil', title: 'Profil' }, icon('person')),
         h('a.icon-btn', { href: '#/ustawienia', 'aria-label': 'Ustawienia', title: 'Ustawienia' }, icon('gear')))),
-    h('section.week',
+    h(`section.week${arrival?.waiting ? '.week-waiting' : ''}`,
       h('h1.page-title', 'Ten tydzień'),
       h('p.week-line', weekLine(weekWorkouts, weekSets, weekVolume)),
       state.settings.weeklyGoal == null && h('button.goal-line.goal-empty', { type: 'button', onclick: goalSheet }, 'Ustaw cel tygodniowy'),
-      loadedBar(weekWorkouts),
-      weekTrack(days),
+      loadedBar(weekWorkouts, arrival),
+      weekTrack(days, arrival),
       weekWorkouts.length > 0 && plateKey(anyRecord)),
     state.active
       ? h('button.btn.btn-primary.btn-hero', { type: 'button', onclick: resumeWorkout }, 'Wróć do treningu', h('span.hero-time', { dataset: { elapsedFrom: state.active.startedAt } }, fmtClock((Date.now() - state.active.startedAt) / 1000)))

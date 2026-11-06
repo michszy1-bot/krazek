@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { addDays, dayKey, fmtClock, fmtDuration, fmtSet, fmtVolume, inputValue, parseNum, pastWorkoutStart, plural, startOfWeek } from '../js/format.js';
-import { backupStatus, estimate1RM, flagRecords, goalProgress, isComplete, loadBar, MUSCLE_SCALES, muscleLevel, muscleSets, neglectedMuscles, niceTicks, plateHeight, plateTier, plateWidth, recordsFor, recordTimeline, restAfterSet, setLabels, stepBaseWeight, steppedWeight, suggestNextWeight, summarizeSets, swapExercise, warmupSets, weekDays, weeklyTotals, weightStep, workoutRecords, workoutVolume } from '../js/stats.js';
+import { backupStatus, estimate1RM, flagRecords, goalProgress, isComplete, loadBar, MUSCLE_SCALES, muscleLevel, muscleSets, neglectedMuscles, niceTicks, plateHeight, plateTier, plateTravel, plateWidth, recordsFor, recordTimeline, restAfterSet, setLabels, stepBaseWeight, steppedWeight, suggestNextWeight, summarizeSets, swapExercise, warmupSets, weekDays, weeklyTotals, weightStep, workoutRecords, workoutVolume } from '../js/stats.js';
 import { workoutsCsv } from '../js/csv.js';
 import { levelProgress, strengthCategory, strengthColour, strengthRatio, workoutGain } from '../js/level.js';
 import { LIFTS_BODY, ONE_DUMBBELL, STRENGTH_ALSO, STRENGTH_TOPS } from '../js/strength-norms.js';
@@ -171,13 +171,24 @@ test('kolor krążka zależy od liczby serii', () => {
   assert.deepEqual([0, 9, 10, 14, 15, 19, 20, 40].map(plateTier), ['green', 'green', 'yellow', 'yellow', 'blue', 'blue', 'red', 'red']);
 });
 
-test('sztanga ma krążki od największego i puste miejsca do celu', () => {
-  const workout = (sets) => ({ exercises: [{ sets: Array.from({ length: sets }, () => ({ done: true, kind: 'normal', weight: 50, reps: 8 })) }] });
-  const week = [workout(14), workout(20), workout(16)];
-  assert.deepEqual(loadBar(week, 4), { plates: [20, 16, 14], empty: 1 });
-  assert.deepEqual(loadBar(week, 2), { plates: [20, 16, 14], empty: 0 });
-  assert.deepEqual(loadBar(week, null), { plates: [20, 16, 14], empty: 0 });
+test('sztanga ma krążki po kolei treningów i puste miejsca do celu', () => {
+  const workout = (startedAt, sets) => ({ startedAt, exercises: [{ sets: Array.from({ length: sets }, () => ({ done: true, kind: 'normal', weight: 50, reps: 8 })) }] });
+  const week = [workout(3, 14), workout(1, 20), workout(2, 8), workout(4, 18)];
+  assert.deepEqual(loadBar(week, 5), { plates: [20, 8, 14, 18], empty: 1 });
+  assert.deepEqual(loadBar(week, 2), { plates: [20, 8, 14, 18], empty: 0 });
+  assert.deepEqual(loadBar(week, null), { plates: [20, 8, 14, 18], empty: 0 });
   assert.deepEqual(loadBar([], 3), { plates: [], empty: 3 });
+  assert.equal(week[0].startedAt, 3, 'kolejność listy zostaje bez zmian');
+});
+
+test('nowy krążek zawsze startuje poza ekranem', () => {
+  for (let count = 1; count <= 7; count += 1) {
+    const width = plateWidth(count);
+    for (let index = 0; index < count; index += 1) {
+      const innerEdge = 2 + index * (width + 2);
+      assert.equal(innerEdge + plateTravel(index, width), 104, `krążek ${index + 1} z ${count}`);
+    }
+  }
 });
 
 test('krążki mieszczą się na końcu gryfu przy każdym celu', () => {

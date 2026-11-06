@@ -170,6 +170,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
   width: calc(100% + 32px);
   height: 144px;
   margin: 8px -16px 4px;
+  overflow: hidden;
   color: var(--ink);
 }
 .bar-side { position: relative; flex: none; display: flex; align-items: center; gap: 2px; width: 104px; }
@@ -208,6 +209,75 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .bar-count { align-self: end; padding-bottom: 12px; font: 700 46px/1 var(--font-data); font-variant-numeric: tabular-nums; }
 .bar-unit { align-self: start; padding-top: 14px; font-size: 14px; font-weight: 500; line-height: 1; color: var(--ink-2); }
 .goal-met .bar-count { color: var(--green); }
+
+/*
+  Nowy krążek po zakończonym treningu. Pod podsumowaniem animacja stoi na pierwszej klatce.
+  Procenty liczą się od 1200 ms: uderzenie w 33%, zaciski w 87,5%.
+*/
+.bar-side-left { --dir: 1; }
+.bar-side-right { --dir: -1; }
+.goal-met { --settle: 1.5px; }
+.arrive {
+  animation-duration: 1200ms;
+  animation-delay: 250ms;
+  animation-fill-mode: both;
+  animation-timing-function: linear;
+}
+.week-waiting .arrive { animation-play-state: paused; }
+.bar-slot { position: relative; flex: none; display: block; }
+.bar-slot .bar-plate { position: absolute; left: 0; top: 50%; transform: translateY(-50%); }
+.bar-slot .bar-plate-new { top: 0; transform: none; animation-name: plate-in; }
+.bar-plate-leaving { animation-name: plate-slot-out; }
+.bar-plate-hit { animation-name: plate-hit; }
+.bar-clamp.arrive { animation-name: clamp-in; }
+.bar-swap { align-self: end; display: grid; justify-items: center; }
+.bar-swap:has(.bar-unit) { align-self: start; }
+.bar-swap > * { grid-area: 1 / 1; align-self: auto; }
+.bar-was { animation-name: bar-text-out; }
+.bar-now { animation-name: bar-text-in; }
+.goal-met .bar-count.bar-was { color: var(--ink); }
+.week-mark:has(.week-mark-fill) { position: relative; overflow: hidden; }
+.week-mark-fill { position: absolute; inset: 0; background: var(--tier); transform-origin: left; animation-name: mark-in; }
+
+@keyframes plate-in {
+  0% { transform: translateX(calc(var(--dir) * -1 * (var(--from) + 4px))); animation-timing-function: cubic-bezier(.35, 0, .85, .7); }
+  33.3% { transform: translateX(0); animation-timing-function: cubic-bezier(.2, .8, .3, 1); }
+  38.3% { transform: translateX(calc(var(--dir) * 3px)); animation-timing-function: cubic-bezier(.2, .8, .3, 1); }
+  48.3%, 87.5% { transform: translateX(0); animation-timing-function: cubic-bezier(.2, .8, .3, 1); }
+  91.7% { transform: translateX(calc(var(--dir) * var(--settle, 0px))); animation-timing-function: cubic-bezier(.2, .8, .3, 1); }
+  100% { transform: translateX(0); }
+}
+@keyframes plate-hit {
+  0%, 33.3% { transform: translateX(0); animation-timing-function: cubic-bezier(.2, .8, .3, 1); }
+  38.3% { transform: translateX(calc(var(--dir) * 3px)); animation-timing-function: cubic-bezier(.2, .8, .3, 1); }
+  48.3%, 87.5% { transform: translateX(0); animation-timing-function: cubic-bezier(.2, .8, .3, 1); }
+  91.7% { transform: translateX(calc(var(--dir) * var(--settle, 0px))); animation-timing-function: cubic-bezier(.2, .8, .3, 1); }
+  100% { transform: translateX(0); }
+}
+@keyframes clamp-in {
+  0%, 62.5% { transform: translateX(calc(var(--dir) * -1 * (var(--from) + 4px))); animation-timing-function: cubic-bezier(.55, 0, .9, .5); }
+  87.5% { transform: translateX(0) scaleY(1.25); animation-timing-function: cubic-bezier(.2, .8, .3, 1); }
+  91.7% { transform: translateX(calc(var(--dir) * 2px)) scaleY(1); animation-timing-function: cubic-bezier(.2, .8, .3, 1); }
+  100% { transform: translateX(0); }
+}
+@keyframes plate-slot-out { 0%, 30% { opacity: 1; } 33.3%, 100% { opacity: 0; } }
+@keyframes bar-text-out {
+  0%, 33.3% { opacity: 1; transform: scale(1); }
+  40%, 100% { opacity: 0; transform: scale(.9); }
+}
+@keyframes bar-text-in {
+  0%, 33.3% { opacity: 0; transform: scale(.9); animation-timing-function: cubic-bezier(.2, .8, .3, 1); }
+  44% { opacity: 1; transform: scale(1.16); animation-timing-function: cubic-bezier(.2, .8, .3, 1); }
+  60%, 100% { opacity: 1; transform: scale(1); }
+}
+@keyframes mark-in {
+  0%, 33.3% { transform: scaleX(0); animation-timing-function: cubic-bezier(.2, .8, .3, 1); }
+  60%, 100% { transform: scaleX(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .arrive { animation: none; }
+  .bar-was, .bar-plate-leaving { display: none; }
+}
 
 .week-track { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
 .week-day { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; }
