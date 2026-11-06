@@ -26,17 +26,20 @@ export const SEED_EXERCISES = [
   row('machine-press', 'Wyciskanie na maszynie', 'Klatka', 'Maszyna'),
   row('pec-deck', 'Rozpiętki na maszynie', 'Klatka', 'Maszyna'),
   row('cable-fly', 'Krzyżowanie linek wyciągu', 'Klatka', 'Wyciąg'),
-  row('push-up', 'Pompki', 'Klatka', 'Masa ciała', 'bodyweight'),
-  row('chest-dip', 'Pompki na poręczach', 'Klatka', 'Masa ciała', 'bodyweight'),
   row('smith-bench', 'Wyciskanie na suwnicy Smitha', 'Klatka', 'Maszyna'),
   row('smith-incline', 'Wyciskanie na skosie na suwnicy Smitha', 'Klatka', 'Maszyna'),
   row('db-pullover', 'Przenoszenie hantla za głowę', 'Klatka', 'Hantle'),
   row('cable-incline-fly', 'Rozpiętki na wyciągu na ławce skośnej', 'Klatka', 'Wyciąg'),
   row('cable-low-fly', 'Krzyżowanie linek od dołu', 'Klatka', 'Wyciąg'),
   row('cable-chest-press', 'Wyciskanie na wyciągu siedząc', 'Klatka', 'Wyciąg'),
-  row('incline-push-up', 'Pompki z rękami na podwyższeniu', 'Klatka', 'Masa ciała', 'bodyweight'),
-  row('decline-push-up', 'Pompki z nogami na podwyższeniu', 'Klatka', 'Masa ciała', 'bodyweight'),
-  row('wide-push-up', 'Pompki szerokie', 'Klatka', 'Masa ciała', 'bodyweight'),
+  row('db-decline', 'Wyciskanie hantli na ławce ujemnej', 'Klatka', 'Hantle'),
+  row('db-incline-fly', 'Rozpiętki z hantlami na ławce skośnej', 'Klatka', 'Hantle'),
+  row('db-hammer-press', 'Wyciskanie hantli chwytem neutralnym', 'Klatka', 'Hantle'),
+  row('db-one-arm-bench', 'Wyciskanie hantla jednorącz na ławce', 'Klatka', 'Hantle'),
+  row('wide-bench', 'Wyciskanie sztangi szerokim chwytem', 'Klatka', 'Sztanga'),
+  row('guillotine-bench', 'Wyciskanie sztangi do szyi', 'Klatka', 'Sztanga'),
+  row('machine-incline-press', 'Wyciskanie na skosie na maszynie', 'Klatka', 'Maszyna'),
+  row('machine-decline-press', 'Wyciskanie w dół na maszynie', 'Klatka', 'Maszyna'),
 
   // Plecy
   row('deadlift', 'Martwy ciąg', 'Plecy', 'Sztanga'),
@@ -65,7 +68,18 @@ export const SEED_EXERCISES = [
   row('machine-pullover', 'Przenoszenie za głowę na maszynie', 'Plecy', 'Maszyna'),
   row('smith-row', 'Wiosłowanie na suwnicy Smitha', 'Plecy', 'Maszyna'),
   row('smith-shrug', 'Szrugsy na suwnicy Smitha', 'Plecy', 'Maszyna'),
-  row('kb-row', 'Wiosłowanie kettlebell jednorącz', 'Plecy', 'Kettlebell'),
+  row('db-bent-row', 'Wiosłowanie dwoma hantlami w opadzie', 'Plecy', 'Hantle'),
+  row('db-incline-row', 'Wiosłowanie hantlami na ławce skośnej', 'Plecy', 'Hantle'),
+  row('db-deadlift', 'Martwy ciąg klasyczny z hantlami', 'Plecy', 'Hantle'),
+  row('barbell-incline-row', 'Wiosłowanie sztangą na ławce skośnej', 'Plecy', 'Sztanga'),
+  row('reverse-barbell-row', 'Wiosłowanie sztangą podchwytem', 'Plecy', 'Sztanga'),
+  row('machine-high-row', 'Wiosłowanie górne iso-lateral na maszynie', 'Plecy', 'Maszyna'),
+  row('machine-high-row-single', 'Wiosłowanie górne jednorącz na maszynie', 'Plecy', 'Maszyna'),
+  row('machine-narrow-row', 'Wiosłowanie wąskim uchwytem na maszynie', 'Plecy', 'Maszyna'),
+  row('machine-one-arm-row', 'Wiosłowanie jednorącz na maszynie', 'Plecy', 'Maszyna'),
+  row('machine-shrug', 'Szrugsy na maszynie', 'Plecy', 'Maszyna'),
+  row('machine-back-extension', 'Wyprosty tułowia na maszynie', 'Plecy', 'Maszyna'),
+  row('machine-assisted-pull-up', 'Podciąganie z odciążeniem na maszynie', 'Plecy', 'Maszyna'),
 
   // Barki
   row('ohp', 'Wyciskanie żołnierskie', 'Barki', 'Sztanga'),
@@ -94,8 +108,13 @@ export const SEED_EXERCISES = [
   row('cable-front-raise', 'Unoszenie linki przodem', 'Barki', 'Wyciąg'),
   row('cable-rear-fly', 'Odwrotne rozpiętki na wyciągu', 'Barki', 'Wyciąg'),
   row('smith-shoulder', 'Wyciskanie nad głowę na suwnicy Smitha', 'Barki', 'Maszyna'),
-  row('kb-press', 'Wyciskanie kettlebell jednorącz', 'Barki', 'Kettlebell'),
   row('plate-front-raise', 'Unoszenie talerza przodem', 'Barki', 'Inne'),
+  row('seated-ohp', 'Wyciskanie sztangi siedząc', 'Barki', 'Sztanga'),
+  row('barbell-rear-delt-row', 'Wiosłowanie sztangą na tył barków', 'Barki', 'Sztanga'),
+  row('db-seated-front', 'Unoszenie hantli przodem siedząc', 'Barki', 'Hantle'),
+  row('lateral-to-front', 'Unoszenie hantli bokiem i przodem', 'Barki', 'Hantle'),
+  row('db-lying-rear', 'Odwrotne rozpiętki leżąc przodem', 'Barki', 'Hantle'),
+  row('machine-one-arm-shoulder', 'Wyciskanie jednorącz nad głowę na maszynie', 'Barki', 'Maszyna'),
 
   // Biceps
   row('barbell-curl', 'Uginanie ramion ze sztangą', 'Biceps', 'Sztanga'),
@@ -111,6 +130,14 @@ export const SEED_EXERCISES = [
   row('drag-curl', 'Uginanie ze sztangą przy tułowiu', 'Biceps', 'Sztanga'),
   row('wide-curl', 'Uginanie ze sztangą szerokim chwytem', 'Biceps', 'Sztanga'),
   row('cable-hammer-curl', 'Uginanie młotkowe z liną', 'Biceps', 'Wyciąg'),
+  row('db-alternate-curl', 'Uginanie naprzemienne z hantlami', 'Biceps', 'Hantle'),
+  row('db-seated-curl', 'Uginanie z hantlami siedząc', 'Biceps', 'Hantle'),
+  row('db-preacher', 'Uginanie z hantlami na modlitewniku', 'Biceps', 'Hantle'),
+  row('cross-body-hammer', 'Uginanie młotkowe w poprzek tułowia', 'Biceps', 'Hantle'),
+  row('incline-hammer', 'Uginanie młotkowe na ławce skośnej', 'Biceps', 'Hantle'),
+  row('ez-preacher', 'Uginanie sztangą łamaną na modlitewniku', 'Biceps', 'Sztanga'),
+  row('machine-curl', 'Uginanie ramion na maszynie', 'Biceps', 'Maszyna'),
+  row('machine-preacher', 'Uginanie na modlitewniku na maszynie', 'Biceps', 'Maszyna'),
 
   // Triceps
   row('close-bench', 'Wyciskanie wąsko na ławce płaskiej', 'Triceps', 'Sztanga'),
@@ -119,9 +146,6 @@ export const SEED_EXERCISES = [
   row('pushdown', 'Prostowanie ramion na wyciągu', 'Triceps', 'Wyciąg'),
   row('rope-pushdown', 'Prostowanie ramion z liną', 'Triceps', 'Wyciąg'),
   row('overhead-cable-ext', 'Prostowanie ramion nad głową na wyciągu', 'Triceps', 'Wyciąg'),
-  row('triceps-dip', 'Pompki na poręczach na triceps', 'Triceps', 'Masa ciała', 'bodyweight'),
-  row('bench-dip', 'Pompki w podporze tyłem', 'Triceps', 'Masa ciała', 'bodyweight'),
-  row('diamond-push-up', 'Pompki diamentowe', 'Triceps', 'Masa ciała', 'bodyweight'),
   row('barbell-overhead-ext', 'Wyciskanie francuskie sztangą stojąc', 'Triceps', 'Sztanga'),
   row('ez-overhead-ext', 'Wyciskanie francuskie sztangą łamaną siedząc', 'Triceps', 'Sztanga'),
   row('db-lying-ext', 'Wyciskanie francuskie hantlami leżąc', 'Triceps', 'Hantle'),
@@ -133,9 +157,17 @@ export const SEED_EXERCISES = [
   row('rope-overhead-ext', 'Prostowanie ramion z liną nad głową', 'Triceps', 'Wyciąg'),
   row('cable-kickback-triceps', 'Prostowanie ramienia w opadzie na wyciągu', 'Triceps', 'Wyciąg'),
   row('machine-triceps', 'Prostowanie ramion na maszynie', 'Triceps', 'Maszyna'),
-  row('machine-dip', 'Pompki na poręczach na maszynie', 'Triceps', 'Maszyna'),
-  row('assisted-dip', 'Pompki na poręczach z odciążeniem', 'Triceps', 'Maszyna'),
+  row('machine-dip', 'Dipy na maszynie', 'Triceps', 'Maszyna'),
+  row('assisted-dip', 'Dipy z odciążeniem', 'Triceps', 'Maszyna'),
   row('smith-close-bench', 'Wyciskanie wąsko na suwnicy Smitha', 'Triceps', 'Maszyna'),
+  row('incline-close-bench', 'Wyciskanie wąsko na ławce skośnej', 'Triceps', 'Sztanga'),
+  row('jm-press', 'Wyciskanie JM', 'Triceps', 'Sztanga'),
+  row('barbell-seated-ext', 'Wyciskanie francuskie sztangą siedząc', 'Triceps', 'Sztanga'),
+  row('ez-lying-ext', 'Wyciskanie francuskie sztangą łamaną leżąc', 'Triceps', 'Sztanga'),
+  row('ez-close-bench', 'Wyciskanie wąsko sztangą łamaną', 'Triceps', 'Sztanga'),
+  row('db-incline-ext', 'Wyciskanie francuskie hantlami na ławce skośnej', 'Triceps', 'Hantle'),
+  row('db-two-arm-kickback', 'Prostowanie obu ramion z hantlami w opadzie', 'Triceps', 'Hantle'),
+  row('machine-overhand-dip', 'Dipy nachwytem na maszynie', 'Triceps', 'Maszyna'),
 
   // Przedramiona
   row('wrist-curl', 'Uginanie nadgarstków', 'Przedramiona', 'Hantle'),
@@ -145,11 +177,12 @@ export const SEED_EXERCISES = [
   row('barbell-reverse-wrist', 'Prostowanie nadgarstków ze sztangą', 'Przedramiona', 'Sztanga'),
   row('db-reverse-wrist', 'Prostowanie nadgarstków z hantlami', 'Przedramiona', 'Hantle'),
   row('wrist-roller', 'Nawijanie linki z ciężarkiem', 'Przedramiona', 'Inne'),
+  row('ez-reverse-curl', 'Uginanie sztangą łamaną nachwytem', 'Przedramiona', 'Sztanga'),
 
   // Czworogłowe
   row('squat', 'Przysiad ze sztangą', 'Czworogłowe', 'Sztanga'),
   row('front-squat', 'Przysiad przedni', 'Czworogłowe', 'Sztanga'),
-  row('goblet-squat', 'Przysiad goblet', 'Czworogłowe', 'Kettlebell'),
+  row('goblet-squat', 'Przysiad goblet', 'Czworogłowe', 'Hantle'),
   row('hack-squat', 'Przysiad na maszynie hack', 'Czworogłowe', 'Maszyna'),
   row('leg-press', 'Wypychanie nogami na suwnicy', 'Czworogłowe', 'Maszyna'),
   row('leg-extension', 'Prostowanie nóg na maszynie', 'Czworogłowe', 'Maszyna'),
@@ -162,7 +195,17 @@ export const SEED_EXERCISES = [
   row('sissy-squat', 'Przysiad sissy', 'Czworogłowe', 'Masa ciała', 'bodyweight'),
   row('pistol-squat', 'Przysiad na jednej nodze', 'Czworogłowe', 'Masa ciała', 'bodyweight'),
   row('smith-squat', 'Przysiad na suwnicy Smitha', 'Czworogłowe', 'Maszyna'),
-  row('kb-front-squat', 'Przysiad z kettlebell', 'Czworogłowe', 'Kettlebell'),
+  row('db-squat', 'Przysiad z hantlami', 'Czworogłowe', 'Hantle'),
+  row('barbell-hack', 'Przysiad hack ze sztangą', 'Czworogłowe', 'Sztanga'),
+  row('barbell-box-squat', 'Przysiad ze sztangą na ławkę', 'Czworogłowe', 'Sztanga'),
+  row('barbell-wide-squat', 'Przysiad ze sztangą szeroko', 'Czworogłowe', 'Sztanga'),
+  row('zercher-squat', 'Przysiad Zerchera', 'Czworogłowe', 'Sztanga'),
+  row('barbell-bulgarian', 'Przysiad bułgarski ze sztangą', 'Czworogłowe', 'Sztanga'),
+  row('barbell-step-up', 'Wejścia na skrzynię ze sztangą', 'Czworogłowe', 'Sztanga'),
+  row('barbell-forward-lunge', 'Wykroki w przód ze sztangą', 'Czworogłowe', 'Sztanga'),
+  row('leg-press-wide', 'Wypychanie nogami szeroko na suwnicy', 'Czworogłowe', 'Maszyna'),
+  row('leg-press-single', 'Wypychanie jedną nogą na suwnicy', 'Czworogłowe', 'Maszyna'),
+  row('hack-close', 'Przysiad hack wąsko na maszynie', 'Czworogłowe', 'Maszyna'),
 
   // Dwugłowe uda
   row('romanian-deadlift', 'Martwy ciąg na prostych nogach', 'Dwugłowe uda', 'Sztanga'),
@@ -174,6 +217,9 @@ export const SEED_EXERCISES = [
   row('db-leg-curl', 'Uginanie nóg z hantlem leżąc', 'Dwugłowe uda', 'Hantle'),
   row('single-leg-deadlift', 'Martwy ciąg na jednej nodze', 'Dwugłowe uda', 'Hantle'),
   row('glute-ham-raise', 'Unoszenie tułowia na dwugłowe', 'Dwugłowe uda', 'Masa ciała', 'bodyweight'),
+  row('barbell-stiff-deadlift', 'Martwy ciąg sztywny ze sztangą', 'Dwugłowe uda', 'Sztanga'),
+  row('db-stiff-deadlift', 'Martwy ciąg sztywny z hantlami', 'Dwugłowe uda', 'Hantle'),
+  row('leg-curl-alternate', 'Uginanie nóg naprzemiennie na maszynie', 'Dwugłowe uda', 'Maszyna'),
 
   // Pośladki
   row('hip-thrust', 'Wypychanie bioder ze sztangą', 'Pośladki', 'Sztanga'),
@@ -186,6 +232,8 @@ export const SEED_EXERCISES = [
   row('hip-adduction', 'Przywodzenie nóg na maszynie', 'Pośladki', 'Maszyna'),
   row('reverse-hyper', 'Unoszenie nóg na maszynie do wyprostów', 'Pośladki', 'Maszyna'),
   row('cable-adduction', 'Przywodzenie nogi na wyciągu', 'Pośladki', 'Wyciąg'),
+  row('barbell-lateral-lunge', 'Wykroki w bok ze sztangą', 'Pośladki', 'Sztanga'),
+  row('machine-hip-extension', 'Prostowanie biodra na maszynie', 'Pośladki', 'Maszyna'),
 
   // Łydki
   row('calf-standing', 'Wspięcia na palce stojąc', 'Łydki', 'Maszyna'),
@@ -197,6 +245,9 @@ export const SEED_EXERCISES = [
   row('calf-db', 'Wspięcia na palce z hantlami', 'Łydki', 'Hantle'),
   row('calf-db-seated', 'Wspięcia na palce z hantlami siedząc', 'Łydki', 'Hantle'),
   row('calf-bodyweight', 'Wspięcia na palce bez obciążenia', 'Łydki', 'Masa ciała', 'bodyweight'),
+  row('calf-machine-press', 'Wspięcia na palce na maszynie do wypychania', 'Łydki', 'Maszyna'),
+  row('calf-barbell-seated', 'Wspięcia na palce ze sztangą siedząc', 'Łydki', 'Sztanga'),
+  row('calf-db-single', 'Wspięcia na jednej nodze z hantlem', 'Łydki', 'Hantle'),
 
   // Brzuch
   row('crunch', 'Spięcia brzucha', 'Brzuch', 'Masa ciała', 'bodyweight'),
@@ -217,15 +268,55 @@ export const SEED_EXERCISES = [
   row('db-side-bend', 'Skłony boczne z hantlem', 'Brzuch', 'Hantle'),
   row('cable-side-bend', 'Skłony boczne na wyciągu', 'Brzuch', 'Wyciąg'),
   row('cable-reverse-crunch', 'Spięcia odwrotne na wyciągu', 'Brzuch', 'Wyciąg'),
+  row('machine-crunch', 'Spięcia brzucha na maszynie', 'Brzuch', 'Maszyna'),
+  row('machine-twist', 'Skręty tułowia na maszynie', 'Brzuch', 'Maszyna'),
 
   // Całe ciało
-  row('kb-swing', 'Swing z kettlebell', 'Całe ciało', 'Kettlebell'),
   row('clean-press', 'Zarzut i wyciskanie', 'Całe ciało', 'Sztanga'),
   row('burpee', 'Burpee', 'Całe ciało', 'Masa ciała', 'bodyweight'),
   row('barbell-thruster', 'Przysiad z wyciskaniem ze sztangą', 'Całe ciało', 'Sztanga'),
   row('power-clean', 'Zarzut siłowy', 'Całe ciało', 'Sztanga'),
-  row('kb-clean', 'Zarzut dwoma kettlebell', 'Całe ciało', 'Kettlebell'),
-  row('kb-snatch', 'Rwanie kettlebell', 'Całe ciało', 'Kettlebell'),
-  row('kb-thruster', 'Przysiad z wyciskaniem z kettlebell', 'Całe ciało', 'Kettlebell'),
-  row('turkish-get-up', 'Wstawanie tureckie', 'Całe ciało', 'Kettlebell'),
+  row('db-clean', 'Zarzut hantlami', 'Całe ciało', 'Hantle'),
+  row('db-snatch', 'Rwanie hantlem jednorącz', 'Całe ciało', 'Hantle'),
 ];
+
+/** Ćwiczenia usunięte z bazy. Telefon ma je już zapisane, więc trzeba je z niego zdjąć przy starcie. */
+export const RETIRED_EXERCISES = [
+  'push-up', 'chest-dip', 'incline-push-up', 'decline-push-up', 'wide-push-up', 'triceps-dip', 'bench-dip', 'diamond-push-up',
+  'kb-swing', 'kb-row', 'kb-press', 'kb-front-squat', 'kb-clean', 'kb-snatch', 'kb-thruster', 'turkish-get-up',
+];
+
+/**
+ * Uzgadnia zapisane ćwiczenia z bazą i zwraca, co trzeba zapisać oraz usunąć.
+ * Nazwy i kategorie wbudowanych ćwiczeń idą za bazą, a ustawienia użytkownika zostają.
+ * Wycofane ćwiczenie użyte w historii lub rutynie jest tylko ukrywane, żeby zachować jego nazwę.
+ */
+export function syncExercises(stored, isUsed) {
+  const exercises = new Map(stored.map((e) => [e.id, e]));
+  const toSave = [];
+  const toRemove = [];
+  const save = (exercise) => {
+    exercises.set(exercise.id, exercise);
+    toSave.push(exercise);
+  };
+
+  for (const seed of SEED_EXERCISES) {
+    const current = exercises.get(seed.id);
+    if (!current) save(seed);
+    else if (current.name !== seed.name || current.muscle !== seed.muscle || current.equipment !== seed.equipment) {
+      save({ ...current, name: seed.name, muscle: seed.muscle, equipment: seed.equipment });
+    }
+  }
+
+  for (const id of RETIRED_EXERCISES) {
+    const current = exercises.get(id);
+    if (!current) continue;
+    if (!isUsed(id)) {
+      exercises.delete(id);
+      toRemove.push(id);
+    } else if (!current.archived) {
+      save({ ...current, archived: true });
+    }
+  }
+  return { exercises, toSave, toRemove };
+}

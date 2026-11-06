@@ -1,7 +1,7 @@
 // Stan aplikacji w pamięci, zapisywany na bieżąco do IndexedDB.
 
 import { getAll, getValue, put, remove, removeValue, replaceAll, setValue, STORES } from './db.js';
-import { SEED_EXERCISES } from './exercises.js';
+import { syncExercises } from './exercises.js';
 import { buildBackup, parseBackup } from './backup.js';
 import { EMPTY_PROFILE } from './body.js';
 
@@ -29,14 +29,6 @@ const sortWorkouts = () => state.workouts.sort((a, b) => b.startedAt - a.started
 
 export async function load() {
   const stored = await getAll(STORES.exercises);
-  state.exercises = new Map(stored.map((e) => [e.id, e]));
-  // Nowe ćwiczenia z kolejnych wersji aplikacji dochodzą bez nadpisywania zmian użytkownika.
-  for (const seed of SEED_EXERCISES) {
-    if (!state.exercises.has(seed.id)) {
-      state.exercises.set(seed.id, seed);
-      await put(STORES.exercises, seed);
-    }
-  }
   state.workouts = await getAll(STORES.workouts);
   sortWorkouts();
   state.settings = { ...DEFAULT_SETTINGS, ...(await getValue('settings')) };
@@ -45,6 +37,12 @@ export async function load() {
   state.routines = (await getValue('routines')) ?? [];
   state.active = (await getValue('active')) ?? null;
   state.lastBackupAt = (await getValue('lastBackupAt')) ?? null;
+
+  // Uzgodnienie z bazą na końcu, bo wycofanie ćwiczenia zależy od treningów i rutyn wczytanych wyżej.
+  const { exercises, toSave, toRemove } = syncExercises(stored, isExerciseUsed);
+  state.exercises = exercises;
+  for (const exercise of toSave) await put(STORES.exercises, exercise);
+  for (const id of toRemove) await remove(STORES.exercises, id);
 }
 
 // --- Trening w toku: każda zmiana trafia do bazy, więc zamknięcie aplikacji niczego nie gubi ---

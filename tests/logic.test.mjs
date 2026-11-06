@@ -6,7 +6,7 @@ import { estimate1RM, flagRecords, isComplete, muscleSets, niceTicks, recordsFor
 import { buildBackup, parseBackup } from '../js/backup.js';
 import { ageOn, cleanProfile, cleanWeights, dayTime, isDay, putWeight, removeWeight, weightChange } from '../js/body.js';
 import { cleanRoutines, hasOwnName, isNameTaken, putRoutine, routineFromWorkout, routineSetCount } from '../js/routines.js';
-import { SEED_EXERCISES, MUSCLES, EQUIPMENT } from '../js/exercises.js';
+import { SEED_EXERCISES, MUSCLES, EQUIPMENT, RETIRED_EXERCISES, syncExercises } from '../js/exercises.js';
 import { ANIMATIONS } from '../js/animations.js';
 
 const nbsp = (s) => s.replace(/ /g, ' ');
@@ -202,6 +202,49 @@ test('każde ćwiczenie z bazy ma animację i każda animacja ma ćwiczenie', ()
   assert.deepEqual(Object.keys(ANIMATIONS).sort(), seedIds);
   const files = Object.values(ANIMATIONS);
   assert.equal(new Set(files).size, files.length, 'dwa ćwiczenia nie powinny mieć tej samej animacji');
+});
+
+test('baza nie ma pompek z masą ciała ani kettlebell, a wycofane ćwiczenia nie wracają', () => {
+  assert.equal(SEED_EXERCISES.some((e) => /^Pompki/.test(e.name)), false);
+  assert.equal(SEED_EXERCISES.some((e) => e.equipment === 'Kettlebell'), false);
+  const seedIds = new Set(SEED_EXERCISES.map((e) => e.id));
+  assert.deepEqual(RETIRED_EXERCISES.filter((id) => seedIds.has(id)), []);
+});
+
+test('uzgadnianie: wycofane nieużyte znika, a użyte zostaje ukryte w historii', () => {
+  const stored = [
+    { id: 'push-up', name: 'Pompki', muscle: 'Klatka', equipment: 'Masa ciała', type: 'bodyweight' },
+    { id: 'kb-swing', name: 'Swing', muscle: 'Całe ciało', equipment: 'Kettlebell', type: 'weight' },
+  ];
+  const { exercises, toSave, toRemove } = syncExercises(stored, (id) => id === 'kb-swing');
+  assert.deepEqual(toRemove, ['push-up']);
+  assert.equal(exercises.has('push-up'), false);
+  assert.equal(exercises.get('kb-swing').archived, true);
+  assert.equal(exercises.get('kb-swing').name, 'Swing');
+  assert.ok(toSave.some((e) => e.id === 'kb-swing'));
+});
+
+test('uzgadnianie: nazwa idzie za bazą, a ustawienia użytkownika i własne ćwiczenia zostają', () => {
+  const stored = [
+    { id: 'machine-dip', name: 'Pompki na poręczach na maszynie', muscle: 'Triceps', equipment: 'Maszyna', type: 'weight', restSec: 90, archived: true },
+    { id: 'goblet-squat', name: 'Przysiad goblet', muscle: 'Czworogłowe', equipment: 'Kettlebell', type: 'weight' },
+    { id: 'custom-1', name: 'Moje', muscle: 'Klatka', equipment: 'Kettlebell', type: 'weight', custom: true },
+  ];
+  const { exercises } = syncExercises(stored, () => false);
+  const dip = exercises.get('machine-dip');
+  assert.equal(dip.name, 'Dipy na maszynie');
+  assert.equal(dip.restSec, 90);
+  assert.equal(dip.archived, true);
+  assert.equal(exercises.get('goblet-squat').equipment, 'Hantle');
+  assert.deepEqual(exercises.get('custom-1'), stored[2]);
+  assert.equal(exercises.size, SEED_EXERCISES.length + 1);
+});
+
+test('uzgadnianie: drugi przebieg nie ma już nic do zrobienia', () => {
+  const first = syncExercises([], () => false);
+  const second = syncExercises([...first.exercises.values()], () => false);
+  assert.deepEqual(second.toSave, []);
+  assert.deepEqual(second.toRemove, []);
 });
 
 test('wiek rośnie dopiero w dniu urodzin', () => {
