@@ -8,7 +8,7 @@ import { backupText, deleteExercise, deleteWorkout, exerciseById, isExerciseUsed
 import { applyFilter, exerciseFilter, exerciseForm } from './picker.js';
 import { addPastWorkout, editWorkout, resumeWorkout, startRoutine, startWorkout, stat } from './workout.js';
 import { routinesSection, saveWorkoutAsRoutine } from './routine-views.js';
-import { exerciseDemo } from './demo.js';
+import { exerciseDemo, exerciseThumb } from './demo.js';
 import * as sound from './sound.js';
 
 const BACKUP_REMINDER_DAYS = 30;
@@ -456,6 +456,7 @@ export function libraryView() {
       return;
     }
     list.replaceChildren(...found.map((exercise) => h('a.link-row', { href: `#/cwiczenie/${exercise.id}` },
+      exerciseThumb(exercise),
       h('span.link-text',
         h('span.link-name', exercise.name),
         h('span.link-meta', `${exercise.muscle} · ${exercise.equipment}${exercise.custom ? ' · własne' : ''}`)),

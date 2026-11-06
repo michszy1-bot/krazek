@@ -3,6 +3,7 @@
 import { h, icon, iconButton, openSheet, toast } from './ui.js';
 import { EQUIPMENT, MUSCLES, TYPES } from './exercises.js';
 import { newId, saveExercise, state, visibleExercises } from './store.js';
+import { exerciseThumb } from './demo.js';
 
 const norm = (text) => text.toLocaleLowerCase('pl').normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/ł/g, 'l');
 
@@ -78,6 +79,7 @@ export function pickExercises(onPick, { actionLabel = 'Dodaj do treningu' } = {}
         updateButton();
       },
     },
+    exerciseThumb(exercise),
     h('span.picker-text', h('span.picker-name', exercise.name), h('span.picker-meta', `${exercise.muscle} · ${exercise.equipment}`)),
     h('span.picker-mark', icon('check', 18)));
 

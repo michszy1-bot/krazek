@@ -6,6 +6,47 @@ import { ANIMATION_BASE, ANIMATIONS } from './animations.js';
 export const hasDemo = (exerciseId) => Boolean(ANIMATIONS[exerciseId]);
 export const demoUrl = (exerciseId) => `${ANIMATION_BASE}${ANIMATIONS[exerciseId]}.gif`;
 
+const THUMB_PIXELS = 156; // 52 punkty na ekranie iPhone'a, który ma 3 piksele na punkt
+
+/**
+ * Nieruchoma miniatura na listy. GIF ładuje się dopiero przy wjeździe na ekran, a po wczytaniu
+ * zastępuje go jedna klatka, bo setki grających animacji obciążałyby telefon przy przewijaniu.
+ * Własne ćwiczenia i brak internetu dają zastępczą ikonę hantla.
+ */
+export function exerciseThumb(exercise) {
+  const box = h('span.thumb', { 'aria-hidden': 'true' });
+  const showPlaceholder = () => {
+    box.classList.add('thumb-empty');
+    box.replaceChildren(icon('home', 24));
+  };
+  if (!hasDemo(exercise.id)) {
+    showPlaceholder();
+    return box;
+  }
+  // loading musi być ustawione przed src, inaczej Safari pobierze od razu całą listę.
+  const image = h('img', {
+    loading: 'lazy',
+    decoding: 'async',
+    referrerPolicy: 'no-referrer',
+    alt: '',
+    width: 52,
+    height: 52,
+    src: demoUrl(exercise.id),
+    onerror: showPlaceholder,
+    onload: () => {
+      const frame = h('canvas', { width: THUMB_PIXELS, height: THUMB_PIXELS });
+      try {
+        frame.getContext('2d').drawImage(image, 0, 0, THUMB_PIXELS, THUMB_PIXELS);
+        image.replaceWith(frame);
+      } catch {
+        // Bez klatki zostaje grający GIF, co też pozwala rozpoznać ćwiczenie.
+      }
+    },
+  });
+  box.append(image);
+  return box;
+}
+
 /** Duży podgląd z pauzą. Zwraca null, gdy ćwiczenie nie ma animacji, np. własne. */
 export function exerciseDemo(exercise) {
   if (!hasDemo(exercise.id)) return null;

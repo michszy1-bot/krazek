@@ -190,6 +190,11 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .link-meta { font-size: 14px; color: var(--ink-2); }
 .setting-value { font: 700 24px/1 var(--font-data); }
 .library { gap: 6px; }
+/* Miniatura ćwiczenia. Białe tło, bo takie mają animacje. */
+.thumb { flex: none; width: 52px; height: 52px; border-radius: 8px; overflow: hidden; background: #fff; display: flex; align-items: center; justify-content: center; }
+.thumb img, .thumb canvas { display: block; width: 100%; height: 100%; }
+.thumb-empty { background: var(--panel-raised); color: var(--ink-3); }
+.library .link-row { padding: 10px 12px; }
 
 .history-row { display: flex; flex-direction: column; gap: 2px; }
 .history-date { font-size: 14px; color: var(--ink-2); }
@@ -651,7 +656,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
   text-align: left;
   border-top: 1px solid var(--line);
 }
-.picker-text { display: flex; flex-direction: column; min-width: 0; }
+.picker-text { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .picker-name { font-weight: 500; }
 .picker-meta { font-size: 13px; color: var(--ink-2); }
 .picker-mark {
