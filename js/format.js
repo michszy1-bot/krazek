@@ -50,9 +50,7 @@ export function fmtDuration(ms) {
   return rest ? `${Math.floor(minutes / 60)} h ${rest} min` : `${Math.floor(minutes / 60)} h`;
 }
 
-/** Skrócony zapis serii. `compact` pomija jednostki, np. do kolumny "Poprzednio". */
-export function fmtSet(set, type, { compact = false } = {}) {
-  if (!set) return '';
+function setResult(set, type, compact) {
   if (type === 'time') return set.seconds ? fmtClock(set.seconds) : '';
   if (type === 'bodyweight') {
     if (!set.reps) return '';
@@ -61,6 +59,25 @@ export function fmtSet(set, type, { compact = false } = {}) {
   }
   if (set.weight == null || !set.reps) return '';
   return compact ? `${fmtNum(set.weight)} × ${set.reps}` : `${fmtNum(set.weight)} kg × ${set.reps}`;
+}
+
+/** Skrócony zapis serii. `compact` pomija jednostki i dopisuje ocenę wysiłku, np. do kolumny "Poprzednio". */
+export function fmtSet(set, type, { compact = false } = {}) {
+  if (!set) return '';
+  const result = setResult(set, type, compact);
+  return compact && result && set.rpe ? `${result} @${set.rpe}` : result;
+}
+
+const signed = (value, unit) => `${value > 0 ? '+' : '−'}${fmtNum(Math.abs(value))} ${unit}`;
+
+/** Zmiana względem poprzedniego razu słownie, np. +2,5 kg, −1 powt. albo RPE 9 → 8. */
+export function fmtSetChange({ weight, reps, seconds, rpe }) {
+  const parts = [];
+  if (weight) parts.push(signed(weight, 'kg'));
+  if (reps) parts.push(signed(reps, 'powt.'));
+  if (seconds) parts.push(signed(seconds, 's'));
+  if (rpe) parts.push(`RPE ${rpe.from} → ${rpe.to}`);
+  return parts.join(', ') || 'Bez zmian';
 }
 
 /** Wartość wskaźnika lub rekordu z jednostką. */

@@ -5,7 +5,7 @@ import { SET_KINDS, setLabels } from './stats.js';
 
 const HEADER = [
   'Data', 'Godzina', 'Trening', 'Ćwiczenie', 'Partia', 'Sprzęt', 'Seria', 'Rodzaj',
-  'Ciężar (kg)', 'Powtórzenia', 'Czas (s)', 'Notatka do ćwiczenia', 'Notatka do treningu',
+  'Ciężar (kg)', 'Powtórzenia', 'Czas (s)', 'RPE', 'Notatka do ćwiczenia', 'Notatka do treningu',
 ];
 
 function cell(value) {
@@ -27,7 +27,7 @@ export function workoutsCsv(workouts, exerciseById) {
       item.sets.forEach((set, i) => rows.push([
         day, time, workout.name, exercise?.name, exercise?.muscle, exercise?.equipment,
         labels[i], SET_KINDS[set.kind]?.label ?? SET_KINDS.normal.label,
-        set.weight, set.reps, set.seconds, item.note || null, workout.note || null,
+        set.weight, set.reps, set.seconds, set.rpe, item.note || null, workout.note || null,
       ]));
     }
   }

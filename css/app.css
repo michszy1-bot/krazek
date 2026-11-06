@@ -412,6 +412,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .detail-sets th { width: 36px; font: 700 18px/1 var(--font-data); text-align: left; color: var(--ink-3); padding: 5px 0; }
 .detail-sets td { font: 600 19px/1.15 var(--font-data); letter-spacing: 0.01em; padding: 5px 0; }
 .detail-sets .right { text-align: right; width: 44px; }
+.detail-rpe { margin-left: 10px; font: 600 15px/1 var(--font-data); color: var(--ink-3); }
 .detail-actions { display: flex; flex-direction: column; gap: 8px; }
 
 /* Kalendarz */
@@ -517,6 +518,11 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .record-name { font-weight: 500; }
 .record-meta { font-size: 14px; color: var(--ink-2); }
 .summary-records { display: flex; flex-direction: column; gap: 8px; }
+.change-list { display: flex; flex-direction: column; gap: 10px; }
+.change-list li { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.change-text { display: flex; flex-direction: column; min-width: 0; }
+.change-value { flex: none; max-width: 45%; text-align: right; font: 700 18px/1.2 var(--font-data); color: var(--ink-2); }
+.change-value.up { color: var(--green); }
 
 /* Demonstracja ćwiczenia. Animacje mają białe tło, więc dostają własną białą planszę. */
 
@@ -699,6 +705,15 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .set-row.swiping { transition: none; }
 .set-row.done { background: linear-gradient(var(--green-wash), var(--green-wash)), var(--panel); }
 .set-num { height: 44px; font: 700 20px/1 var(--font-data); color: var(--ink-2); border-radius: 6px; }
+.set-rpe { display: block; font: 600 15px/1.1 var(--font-data); color: var(--ink-2); }
+.rpe-strip { padding: 2px 0 6px; }
+.rpe-title { margin-bottom: 4px; font-size: 12px; color: var(--ink-2); }
+.rpe-choices { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.rpe-choice { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; min-height: 48px; border-radius: 8px; background: var(--panel-raised); color: var(--ink); }
+.rpe-choice strong { font: 700 20px/1 var(--font-data); }
+.rpe-choice span { font-size: 11px; line-height: 1.1; color: var(--ink-2); }
+.rpe-choice.selected { background: var(--blue); color: #fff; }
+.rpe-choice.selected span { color: #fff; }
 .set-row.warmup .set-num { color: var(--yellow); }
 .set-row.failure .set-num { color: var(--red); }
 .set-row.drop .set-num { color: var(--blue-line); }

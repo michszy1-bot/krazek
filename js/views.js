@@ -306,7 +306,7 @@ export function workoutDetailView(id) {
           const kind = SET_KINDS[set.kind];
           return h('tr',
             h('th', { scope: 'row', 'aria-label': kind?.mark ? kind.name : `Seria ${labels[i]}` }, labels[i]),
-            h('td', fmtSet(set, exercise.type)),
+            h('td', fmtSet(set, exercise.type), set.rpe && h('span.detail-rpe', `RPE ${set.rpe}`)),
             h('td.right', flags[i].length > 0 && recordChip()));
         }))));
     }),
@@ -862,6 +862,19 @@ export function settingsView() {
           h('span.link-name', 'Treningi w tygodniu'),
           h('span.link-meta', 'Liczy tygodnie z rzędu z wykonanym celem')),
         h('span.setting-value', goal == null ? '–' : String(goal)))),
+    h('section.block',
+      h('h2.block-title', 'Ocena wysiłku (RPE)'),
+      h('p.settings-text', 'Po odhaczeniu serii możesz jednym dotknięciem zaznaczyć, ile powtórzeń zostało w zapasie: 10 to nic w zapasie, 9 to jedno, 8 to dwa, 7 to trzy, a 6 to cztery i więcej. Ocena nie jest obowiązkowa i nie zmienia rekordów ani poziomów.'),
+      h('button.link-row.wide', {
+        type: 'button',
+        role: 'switch',
+        'aria-checked': String(state.settings.askRpe),
+        onclick: () => saveSettings({ askRpe: !state.settings.askRpe }),
+      },
+      h('span.link-text',
+        h('span.link-name', 'Pytaj po każdej serii'),
+        h('span.link-meta', 'Bez rozgrzewek')),
+      h('span.setting-value', state.settings.askRpe ? 'Wł.' : 'Wył.'))),
     h('section.block',
       h('h2.block-title', 'Dźwięk końca przerwy'),
       h('p.settings-text', 'Muzyka gra dalej, a sygnał nakłada się na nią. Zostaw aplikację otwartą i ekran włączony, bo po zablokowaniu telefonu lub przejściu do innej aplikacji sygnał nie zagra.'),

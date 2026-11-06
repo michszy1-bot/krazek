@@ -2,7 +2,7 @@
 
 import { cleanProfile, cleanWeights } from './body.js';
 import { cleanRoutines } from './routines.js';
-import { isSetKind } from './stats.js';
+import { isRpe, isSetKind } from './stats.js';
 
 const APP_ID = 'krazek'; // Dawna nazwa aplikacji. Zmiana unieważniłaby istniejące kopie.
 const VERSION = 1;
@@ -39,6 +39,7 @@ function cleanSet(raw) {
     reps: numOrNull(raw?.reps),
     seconds: numOrNull(raw?.seconds),
     kind: isSetKind(raw?.kind) ? raw.kind : 'normal',
+    ...(isRpe(raw?.rpe) ? { rpe: raw.rpe } : {}),
   };
 }
 
@@ -92,6 +93,7 @@ export function parseBackup(text) {
   if (rest != null) settings.restSec = rest;
   const goal = data.settings?.weeklyGoal;
   if (Number.isInteger(goal) && goal >= 1 && goal <= 7) settings.weeklyGoal = goal;
+  if (typeof data.settings?.askRpe === 'boolean') settings.askRpe = data.settings.askRpe;
   // Starsze kopie nie mają tych pól. Wczytują się wtedy z pustym profilem, dziennikiem wagi i rutynami.
   const bodyWeights = cleanWeights(data.bodyWeights);
   if (!bodyWeights) {

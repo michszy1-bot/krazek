@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { addDays, dayKey, fmtClock, fmtDuration, fmtSet, fmtVolume, inputValue, parseNum, pastWorkoutStart, plural, startOfWeek } from '../js/format.js';
-import { backupStatus, estimate1RM, flagRecords, goalProgress, isComplete, loadBar, MUSCLE_SCALES, muscleLevel, muscleSets, neglectedMuscles, niceTicks, plateHeight, plateTier, plateTravel, plateWidth, recordsFor, recordTimeline, restAfterSet, setLabels, stepBaseWeight, steppedWeight, suggestNextWeight, summarizeSets, swapExercise, warmupSets, weekDays, weeklyTotals, weightStep, workoutRecords, workoutVolume } from '../js/stats.js';
+import { addDays, dayKey, fmtClock, fmtDuration, fmtSet, fmtSetChange, fmtVolume, inputValue, parseNum, pastWorkoutStart, plural, startOfWeek } from '../js/format.js';
+import { backupStatus, bestSet, compareSets, estimate1RM, flagRecords, goalProgress, isComplete, loadBar, MUSCLE_SCALES, muscleLevel, muscleSets, neglectedMuscles, niceTicks, plateHeight, plateTier, plateTravel, plateWidth, recordsFor, recordTimeline, restAfterSet, setLabels, stepBaseWeight, steppedWeight, suggestNextWeight, summarizeSets, swapExercise, warmupSets, weekDays, weeklyTotals, weightStep, workoutComparison, workoutRecords, workoutVolume } from '../js/stats.js';
 import { workoutsCsv } from '../js/csv.js';
 import { levelProgress, strengthCategory, strengthColour, strengthRatio, workoutGain } from '../js/level.js';
 import { LIFTS_BODY, ONE_DUMBBELL, STRENGTH_ALSO, STRENGTH_TOPS } from '../js/strength-norms.js';
@@ -68,6 +68,29 @@ test('formatowanie czasu, objętości i serii', () => {
   assert.equal(fmtSet(set(null, 12), 'bodyweight'), '12 powtórzeń');
   assert.equal(fmtSet(set(10, 8), 'bodyweight', { compact: true }), '+10 × 8');
   assert.equal(fmtSet({ seconds: 75 }, 'time'), '1:15');
+});
+
+test('ocena wysiłku jest tylko w krótkim zapisie serii i nie zmienia wyniku', () => {
+  assert.equal(fmtSet(set(30, 6, { rpe: 8 }), 'weight', { compact: true }), '30 × 6 @8');
+  assert.equal(fmtSet(set(30, 6, { rpe: 8 }), 'weight'), '30 kg × 6');
+  assert.equal(fmtSet(set(null, 12, { rpe: 10 }), 'bodyweight', { compact: true }), '× 12 @10');
+  assert.equal(fmtSet({ seconds: 75, rpe: 7 }, 'time', { compact: true }), '1:15 @7');
+  assert.equal(fmtSet(set(null, null, { rpe: 8 }), 'weight', { compact: true }), '');
+  assert.equal(workoutVolume(workout('a', '2026-10-01', { squat: [set(100, 5, { rpe: 9 })] })), workoutVolume(workout('b', '2026-10-01', { squat: [set(100, 5)] })));
+});
+
+test('kopia zachowuje ocenę wysiłku i ustawienie, a zła ocena przepada bez szkody', () => {
+  const data = {
+    exercises: SEED_EXERCISES,
+    workouts: [workout('a', '2026-10-01', { squat: [set(100, 5, { rpe: 8 }), set(100, 5), set(100, 5, { rpe: 5 }), set(100, 5, { rpe: 'mocno' })] })],
+    settings: { restSec: 150, askRpe: false },
+  };
+  const parsed = parseBackup(JSON.stringify(buildBackup(data)));
+  assert.deepEqual(parsed.workouts[0].exercises[0].sets.map((s) => s.rpe), [8, undefined, undefined, undefined]);
+  assert.equal('rpe' in parsed.workouts[0].exercises[0].sets[1], false);
+  assert.equal(parsed.settings.askRpe, false);
+  const older = parseBackup(JSON.stringify(buildBackup({ ...data, settings: { restSec: 150 } })));
+  assert.equal('askRpe' in older.settings, false);
 });
 
 test('tydzień zaczyna się w poniedziałek, także gdy dziś jest niedziela', () => {
@@ -445,14 +468,62 @@ test('rutyna z treningu: pomija ćwiczenia bez serii, a różnice wykrywa po tre
 
 test('propozycja ciężaru: tylko gdy wszystkie liczone serie sięgnęły górnej granicy', () => {
   const range = { min: 8, max: 12 };
-  assert.equal(suggestNextWeight([set(60, 12), set(60, 12)], range, 'Sztanga'), 62.5);
-  assert.equal(suggestNextWeight([set(20, 12)], range, 'Hantle'), 22);
+  assert.deepEqual(suggestNextWeight([set(60, 12), set(60, 12)], range, 'Sztanga'), { weight: 62.5, reason: 'range' });
+  assert.equal(suggestNextWeight([set(20, 12)], range, 'Hantle').weight, 22);
   assert.equal(suggestNextWeight([set(60, 12), set(60, 11)], range, 'Sztanga'), null);
   assert.equal(suggestNextWeight([set(60, 12)], null, 'Sztanga'), null);
   assert.equal(suggestNextWeight([], range, 'Sztanga'), null);
   assert.equal(suggestNextWeight([set(0, 12)], range, 'Sztanga'), null);
   const mixed = [set(20, 5, { kind: 'warmup' }), set(60, 12), set(60, 13, { kind: 'failure' }), set(40, 6, { kind: 'drop' })];
-  assert.equal(suggestNextWeight(mixed, range, 'Sztanga'), 62.5);
+  assert.equal(suggestNextWeight(mixed, range, 'Sztanga').weight, 62.5);
+});
+
+test('propozycja ciężaru z RPE: lekkie serie podnoszą ciężar, a RPE 10 go wstrzymuje', () => {
+  const range = { min: 8, max: 12 };
+  const rated = (rpe) => set(30, 8, { rpe });
+  assert.deepEqual(suggestNextWeight([rated(7), rated(6)], null, 'Sztanga'), { weight: 32.5, reason: 'rpe' });
+  assert.deepEqual(suggestNextWeight([rated(7)], range, 'Hantle'), { weight: 32, reason: 'rpe' });
+  assert.equal(suggestNextWeight([rated(8), rated(7)], null, 'Sztanga'), null);
+  assert.equal(suggestNextWeight([rated(7), set(30, 8)], null, 'Sztanga'), null, 'nieoceniona seria nie może być uznana za lekką');
+  assert.equal(suggestNextWeight([set(60, 12, { rpe: 9 }), set(60, 12, { rpe: 10 })], range, 'Sztanga'), null);
+  assert.equal(suggestNextWeight([set(60, 12, { rpe: 9 }), set(60, 12, { rpe: 9 })], range, 'Sztanga').reason, 'range');
+  assert.equal(suggestNextWeight([set(20, 5, { kind: 'warmup', rpe: 10 }), rated(7)], null, 'Sztanga').reason, 'rpe', 'rozgrzewka się nie liczy');
+});
+
+test('najlepsza seria: szacowany maks, a przy remisie lżejsza ocena', () => {
+  assert.deepEqual(bestSet([set(30, 10), set(32.5, 4), set(20, 5, { kind: 'warmup' })], 'weight'), set(30, 10));
+  assert.deepEqual(bestSet([set(30, 8, { rpe: 9 }), set(30, 8, { rpe: 8 }), set(30, 8)], 'weight'), set(30, 8, { rpe: 8 }));
+  assert.deepEqual(bestSet([set(10, 5), set(0, 20)], 'bodyweight'), set(10, 5));
+  assert.equal(bestSet([{ seconds: 40, kind: 'normal' }, { seconds: 60, kind: 'normal' }], 'time').seconds, 60);
+  assert.equal(bestSet([set(20, 5, { kind: 'warmup' })], 'weight'), null);
+});
+
+test('zmiana względem poprzedniego razu: ciężar, powtórzenia, czas i sam spadek RPE', () => {
+  const text = (now, before, type = 'weight') => {
+    const change = compareSets(now, before, type);
+    return [nbsp(fmtSetChange(change)), change.direction];
+  };
+  assert.deepEqual(text(set(32.5, 8), set(30, 8)), ['+2,5 kg', 1]);
+  assert.deepEqual(text(set(30, 9), set(30, 8)), ['+1 powt.', 1]);
+  assert.deepEqual(text(set(32.5, 6), set(30, 8)), ['+2,5 kg, −2 powt.', 1]);
+  assert.deepEqual(text(set(32.5, 4), set(30, 8)), ['+2,5 kg, −4 powt.', -1]);
+  assert.deepEqual(text(set(30, 8), set(30, 8)), ['Bez zmian', 0]);
+  assert.deepEqual(text(set(30, 8, { rpe: 8 }), set(30, 8, { rpe: 9 })), ['RPE 9 → 8', 1]);
+  assert.deepEqual(text(set(30, 8, { rpe: 9 }), set(30, 8, { rpe: 8 })), ['RPE 8 → 9', -1]);
+  assert.deepEqual(text(set(30, 8, { rpe: 8 }), set(30, 8)), ['Bez zmian', 0]);
+  assert.deepEqual(text({ seconds: 70, kind: 'normal' }, { seconds: 60, kind: 'normal' }, 'time'), ['+10 s', 1]);
+  assert.deepEqual(text(set(0, 12), set(0, 10), 'bodyweight'), ['+2 powt.', 1]);
+});
+
+test('porównanie treningu pomija nowe ćwiczenia i szuka ostatniej sesji z serią roboczą', () => {
+  const byId = (id) => SEED_EXERCISES.find((e) => e.id === id);
+  const older = workout('a', '2026-10-01', { squat: [set(100, 5)], 'bench-press': [set(60, 8)] });
+  const onlyWarmup = workout('b', '2026-10-03', { squat: [set(40, 5, { kind: 'warmup' })] });
+  const current = workout('c', '2026-10-05', { squat: [set(105, 5)], deadlift: [set(120, 5)] });
+  const later = workout('d', '2026-10-07', { squat: [set(200, 5)] });
+  const rows = workoutComparison(current, [later, current, onlyWarmup, older], byId);
+  assert.deepEqual(rows.map((row) => [row.exerciseId, row.weight, row.direction]), [['squat', 5, 1]]);
+  assert.deepEqual(workoutComparison(older, [older], byId), []);
 });
 
 test('zaniedbane partie: od najdłużej odkładanej, a rozgrzewka się nie liczy', () => {
@@ -807,14 +878,15 @@ test('CSV: jeden wiersz na serię, od najstarszego, w formacie polskiego Excela'
     { name: 'Nowszy', startedAt: at(18), note: '', exercises: [{ exerciseId: 'b', note: '', sets: [{ weight: null, reps: null, seconds: 60, kind: 'normal' }] }] },
     { name: '=Starszy', startedAt: at(9), note: 'Mówił "dobrze"', exercises: [{ exerciseId: 'a', note: '', sets: [
       { weight: 20, reps: 10, seconds: null, kind: 'warmup' },
-      { weight: 62.5, reps: 8, seconds: null, kind: 'normal' },
+      { weight: 62.5, reps: 8, seconds: null, kind: 'normal', rpe: 8 },
     ] }] },
   ];
   const lines = workoutsCsv(workouts, (id) => exercises.get(id)).split('\r\n');
   assert.ok(lines[0].startsWith('﻿Data;Godzina;Trening;'));
-  assert.equal(lines[1], `2026-11-05;09:05;'=Starszy;"Wyciskanie; leżąc";Klatka;Sztanga;R;Rozgrzewkowa;20;10;;;"Mówił ""dobrze"""`);
-  assert.equal(lines[2], `2026-11-05;09:05;'=Starszy;"Wyciskanie; leżąc";Klatka;Sztanga;1;Robocza;62,5;8;;;"Mówił ""dobrze"""`);
-  assert.equal(lines[3], '2026-11-05;18:05;Nowszy;Plank;Brzuch;Masa ciała;1;Robocza;;;60;;');
+  assert.ok(lines[0].includes(';Czas (s);RPE;Notatka do ćwiczenia;'));
+  assert.equal(lines[1], `2026-11-05;09:05;'=Starszy;"Wyciskanie; leżąc";Klatka;Sztanga;R;Rozgrzewkowa;20;10;;;;"Mówił ""dobrze"""`);
+  assert.equal(lines[2], `2026-11-05;09:05;'=Starszy;"Wyciskanie; leżąc";Klatka;Sztanga;1;Robocza;62,5;8;;8;;"Mówił ""dobrze"""`);
+  assert.equal(lines[3], '2026-11-05;18:05;Nowszy;Plank;Brzuch;Masa ciała;1;Robocza;;;60;;;');
   assert.equal(lines[4], '');
 });
 

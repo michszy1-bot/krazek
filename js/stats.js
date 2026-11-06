@@ -15,6 +15,20 @@ export const SET_KINDS = {
 
 export const isSetKind = (kind) => Object.hasOwn(SET_KINDS, kind);
 
+/** Ocena wysiłku serii: ile powtórzeń zostało w zapasie. */
+export const RPE_SCALE = [
+  { value: 6, left: '4+' },
+  { value: 7, left: '3' },
+  { value: 8, left: '2' },
+  { value: 9, left: '1' },
+  { value: 10, left: '0' },
+];
+
+export const isRpe = (value) => RPE_SCALE.some((step) => step.value === value);
+
+// Od tej oceny w dół zostają co najmniej 3 powtórzenia w zapasie, więc ciężar można podnieść.
+const LIGHT_RPE = 7;
+
 /** Oznaczenia serii: zwykłe numerowane po kolei, pozostałe literą, np. R, 1, 2, U, D. */
 export function setLabels(sets) {
   let number = 0;
@@ -465,16 +479,76 @@ export function swapExercise(item, exerciseId) {
 }
 
 /**
- * Proponowany ciężar po sesji, w której wszystkie serie sięgnęły górnej granicy zakresu.
+ * Proponowany ciężar po ostatniej sesji: gdy wszystkie serie sięgnęły górnej granicy zakresu
+ * albo każda oceniona seria była lekka. Seria na RPE 10 wstrzymuje propozycję.
  * Dropset i rozgrzewka się nie liczą, bo z założenia mają inny ciężar.
  */
 export function suggestNextWeight(sets, repRange, equipment) {
-  if (!repRange) return null;
   const counted = sets.filter((set) => set.kind !== 'warmup' && set.kind !== 'drop');
-  if (!counted.length || !counted.every((set) => set.reps >= repRange.max)) return null;
+  if (!counted.length || counted.some((set) => set.rpe === 10)) return null;
   const top = Math.max(...counted.map((set) => set.weight || 0));
   if (!(top > 0)) return null;
-  return top + weightStep(equipment);
+  const weight = top + weightStep(equipment);
+  if (counted.every((set) => set.rpe && set.rpe <= LIGHT_RPE)) return { weight, reason: 'rpe' };
+  if (repRange && counted.every((set) => set.reps >= repRange.max)) return { weight, reason: 'range' };
+  return null;
+}
+
+const compareNumbers = (a, b) => Math.sign((a || 0) - (b || 0));
+
+/** Wynik serii do porównań: dodatni, gdy pierwsza jest lepsza. Ocena wysiłku rozstrzyga dopiero remis. */
+function compareResult(a, b, type) {
+  if (type === 'time') return compareNumbers(a.seconds, b.seconds);
+  if (type === 'bodyweight') return compareNumbers(a.weight, b.weight) || compareNumbers(a.reps, b.reps);
+  return compareNumbers(estimate1RM(a.weight, a.reps), estimate1RM(b.weight, b.reps)) || compareNumbers(a.reps, b.reps);
+}
+
+/** Najlepsza seria robocza. Przy równym wyniku wygrywa ta oceniona jako lżejsza. */
+export function bestSet(sets, type) {
+  let best = null;
+  for (const set of sets.filter(isWorking)) {
+    const order = best ? compareResult(set, best, type) : 1;
+    const lighter = order === 0 && set.rpe && (!best.rpe || set.rpe < best.rpe);
+    if (order > 0 || lighter) best = set;
+  }
+  return best;
+}
+
+/** Porównanie najlepszych serii dwóch sesji. Sam spadek wysiłku przy tym samym wyniku też jest postępem. */
+export function compareSets(now, before, type) {
+  const change = {
+    now,
+    before,
+    weight: (now.weight || 0) - (before.weight || 0),
+    reps: (now.reps || 0) - (before.reps || 0),
+    seconds: (now.seconds || 0) - (before.seconds || 0),
+    rpe: null,
+  };
+  let direction = compareResult(now, before, type);
+  const sameResult = (type === 'time' ? change.seconds === 0 : change.weight === 0 && change.reps === 0);
+  if (sameResult && now.rpe && before.rpe && now.rpe !== before.rpe) {
+    change.rpe = { from: before.rpe, to: now.rpe };
+    direction = Math.sign(before.rpe - now.rpe);
+  }
+  return { ...change, direction };
+}
+
+/** Każde ćwiczenie treningu względem jego poprzedniej sesji. Ćwiczenia robione pierwszy raz są pomijane. */
+export function workoutComparison(workout, workouts, exerciseById) {
+  const rows = [];
+  for (const exerciseId of new Set(workout.exercises.map((item) => item.exerciseId))) {
+    const exercise = exerciseById(exerciseId);
+    if (!exercise) continue;
+    const sessions = exerciseSessions(workouts, exerciseId);
+    const current = sessions.find((session) => session.workoutId === workout.id);
+    const earlier = sessions
+      .filter((session) => session.workoutId !== workout.id && session.date < workout.startedAt && session.sets.some(isWorking))
+      .at(-1);
+    const now = current && bestSet(current.sets, exercise.type);
+    if (!now || !earlier) continue;
+    rows.push({ exerciseId, name: exercise.name, type: exercise.type, ...compareSets(now, bestSet(earlier.sets, exercise.type), exercise.type) });
+  }
+  return rows;
 }
 
 /** Równe podziałki osi Y: 1, 2, 2,5 lub 5 razy potęga dziesięciu. */

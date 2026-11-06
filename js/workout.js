@@ -1,8 +1,8 @@
 // Ekran treningu: trwającego (zapis na bieżąco, minutnik) oraz edycji zapisanego.
 
 import { actionSheet, ask, h, icon, iconButton, openSheet, recordChip, toast } from './ui.js';
-import { countOf, fmtClock, fmtDuration, fmtNum, fmtSet, fmtUnit, fmtVolume, inputValue, parseNum, pastWorkoutStart, toLocalInput } from './format.js';
-import { emptySet, exerciseSessions, flagRecords, isComplete, isWorking, recordsFor, restAfterSet, SET_KINDS, setLabels, stepBaseWeight, steppedWeight, suggestNextWeight, swapExercise, warmupSets, weightStep, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
+import { countOf, fmtClock, fmtDuration, fmtNum, fmtSet, fmtSetChange, fmtUnit, fmtVolume, inputValue, parseNum, pastWorkoutStart, toLocalInput } from './format.js';
+import { emptySet, exerciseSessions, flagRecords, isComplete, isWorking, recordsFor, restAfterSet, RPE_SCALE, SET_KINDS, setLabels, stepBaseWeight, steppedWeight, suggestNextWeight, swapExercise, warmupSets, weightStep, workingSetCount, workoutComparison, workoutRecords, workoutVolume } from './stats.js';
 import { exerciseById, flushActive, holdPlate, newId, releasePlate, saveActiveSoon, saveExercise, saveRoutines, saveWorkout, setActive, state } from './store.js';
 import { pickExercises, stickyNoteSheet } from './picker.js';
 import { hasOwnName, putRoutine, routineDiffers, routineFromWorkout } from './routines.js';
@@ -285,6 +285,11 @@ function buildCard(item) {
         selected: (set.kind ?? 'normal') === kind,
         onClick: () => { set.kind = kind; rebuild(); },
       })),
+      set.done && isWorking(set) && {
+        label: 'Oceń wysiłek (RPE)',
+        hint: set.rpe ? `Teraz: ${set.rpe}` : 'Ile powtórzeń zostało w zapasie',
+        onClick: () => rows[index].openRpe(),
+      },
       {
         label: 'Usuń serię',
         danger: true,
@@ -382,7 +387,7 @@ function buildCard(item) {
     : null;
   const useNextWeight = () => {
     item.sets.forEach((set) => {
-      if (set.kind !== 'warmup' && set.kind !== 'drop' && !set.done) set.weight = nextWeight;
+      if (set.kind !== 'warmup' && set.kind !== 'drop' && !set.done) set.weight = nextWeight.weight;
     });
     item.suggestionUsed = true;
     rebuild();
@@ -475,7 +480,7 @@ function buildCard(item) {
       icon('pin', 16), h('span', exercise.stickyNote)),
     item.repRange && h('p.rep-range', `Zakres: ${item.repRange.min === item.repRange.max ? item.repRange.min : `${item.repRange.min}–${item.repRange.max}`} powt.`),
     nextWeight && h('div.next-weight',
-      h('span', `Ostatnio wszystkie serie w górze zakresu. Spróbuj ${fmtUnit(nextWeight, 'kg')}.`),
+      h('span', `${nextWeight.reason === 'rpe' ? 'Ostatnio było lekko: co najmniej 3 powtórzenia w zapasie.' : 'Ostatnio wszystkie serie w górze zakresu.'} Spróbuj ${fmtUnit(nextWeight.weight, 'kg')}.`),
       h('button.btn.btn-chip', { type: 'button', onclick: useNextWeight }, 'Użyj')),
     noteField,
     ctx.mode === 'live' && h('button.rest-chip', { type: 'button', onclick: chooseRest, 'aria-label': `Przerwa ${restLabel(restFor(exercise))}. Zmień` },
@@ -569,6 +574,8 @@ function scrollToNextSet(row) {
   next.scrollIntoView({ block: 'center', behavior: calm ? 'auto' : 'smooth' });
 }
 
+let closeRpeStrip = null;
+
 function buildSetRow({ set, type, hint, label, onMenu, onChange, onDelete, exercise }) {
   const fieldFor = (key, { max, integer, inputMode, name }) => {
     const input = h('input.set-input', {
@@ -599,6 +606,15 @@ function buildSetRow({ set, type, hint, label, onMenu, onChange, onDelete, exerc
 
   const prevText = hint?.fromHistory ? fmtSet(hint, type, { compact: true }) : '';
   const prevCell = h('span.set-prev', prevText || '–');
+  let showRecord = false;
+
+  // Odhaczona seria z oceną pokazuje swoją ocenę zamiast wyniku z poprzedniego treningu.
+  const renderPrev = () => {
+    const parts = [];
+    if (showRecord) parts.push(recordChip());
+    if (set.rpe) parts.push(h('span.set-rpe', `RPE ${set.rpe}`));
+    prevCell.replaceChildren(...(parts.length ? parts : [prevText || '–']));
+  };
 
   const disc = h('button.disc', {
     type: 'button',
@@ -616,9 +632,33 @@ function buildSetRow({ set, type, hint, label, onMenu, onChange, onDelete, exerc
   const wrapper = h('div.set-swipe', h('div.set-swipe-bg', { 'aria-hidden': 'true' }, 'Usuń'), node);
   attachSwipeToDelete(node, wrapper, onDelete);
 
+  /** Skala pod odhaczoną serią. Jedno dotknięcie zapisuje ocenę, a następna seria chowa skalę bez oceny. */
+  function openRpe() {
+    closeRpeStrip?.();
+    const strip = h('div.rpe-strip',
+      h('p.rpe-title', 'RPE: ile powtórzeń zostało w zapasie?'),
+      h('div.rpe-choices', RPE_SCALE.map(({ value, left }) => h(`button.rpe-choice${set.rpe === value ? '.selected' : ''}`, {
+        type: 'button',
+        'aria-pressed': String(set.rpe === value),
+        'aria-label': `RPE ${value}, w zapasie ${left}`,
+        onclick: () => {
+          if (set.rpe === value) delete set.rpe;
+          else set.rpe = value;
+          renderPrev();
+          touch();
+          closeRpeStrip?.();
+        },
+      }, h('strong', String(value)), h('span', `zapas ${left}`)))));
+    wrapper.after(strip);
+    closeRpeStrip = () => { strip.remove(); closeRpeStrip = null; };
+  }
+
   function toggleDone() {
+    closeRpeStrip?.();
     if (set.done) {
       set.done = false;
+      delete set.rpe;
+      renderPrev();
     } else {
       // Puste pole przejmuje podpowiedź, więc powtórzenie zeszłej serii to jedno dotknięcie.
       for (const { key, input } of fields) {
@@ -636,6 +676,7 @@ function buildSetRow({ set, type, hint, label, onMenu, onChange, onDelete, exerc
       }
       set.done = true;
       if (ctx.mode === 'live') startRest(restAfterSet(set, restFor(exercise)));
+      if (state.settings.askRpe && isWorking(set)) openRpe();
     }
     node.classList.toggle('done', set.done);
     disc.setAttribute('aria-pressed', String(set.done));
@@ -652,8 +693,10 @@ function buildSetRow({ set, type, hint, label, onMenu, onChange, onDelete, exerc
       field.input.classList.remove('invalid');
     },
     setRecord(isRecord) {
-      prevCell.replaceChildren(isRecord ? recordChip() : (prevText || '–'));
+      showRecord = isRecord;
+      renderPrev();
     },
+    openRpe,
   };
 }
 
@@ -912,6 +955,7 @@ async function saveEdit() {
 }
 
 function showSummary(workout, records, gain, routine, updatedRoutine) {
+  const changes = workoutComparison(workout, state.workouts, exerciseById);
   openSheet((close) => h('div.sheet-body',
     h('h2.sheet-title', 'Trening zapisany'),
     h('div.stats',
@@ -919,6 +963,13 @@ function showSummary(workout, records, gain, routine, updatedRoutine) {
       stat('Objętość', fmtVolume(workoutVolume(workout))),
       stat('Serie', String(workingSetCount(workout)))),
     levelGainBlock(gain),
+    changes.length > 0 && h('div.summary-records',
+      h('h3.list-label', 'Względem poprzedniego razu'),
+      h('ul.change-list', changes.map((change) => h('li',
+        h('span.change-text',
+          h('span.record-name', change.name),
+          h('span.record-meta', `${fmtSet(change.now, change.type, { compact: true })} · było ${fmtSet(change.before, change.type, { compact: true })}`)),
+        h(`span.change-value${change.direction > 0 ? '.up' : ''}`, fmtSetChange(change)))))),
     records.length > 0 && h('div.summary-records',
       h('h3.list-label', 'Nowe rekordy'),
       h('ul.record-list', records.map((record) => h('li',

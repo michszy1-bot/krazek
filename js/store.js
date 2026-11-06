@@ -5,7 +5,7 @@ import { syncExercises } from './exercises.js';
 import { buildBackup, parseBackup } from './backup.js';
 import { EMPTY_PROFILE } from './body.js';
 
-const DEFAULT_SETTINGS = { restSec: 120, weeklyGoal: null };
+const DEFAULT_SETTINGS = { restSec: 120, weeklyGoal: null, askRpe: true };
 
 export const state = {
   exercises: new Map(),
