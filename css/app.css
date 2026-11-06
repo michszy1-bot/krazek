@@ -485,8 +485,27 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .set-head span:nth-child(2) { text-align: left; padding-left: 2px; }
 .set-rows { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
 
-.set-row { min-height: 50px; border-radius: 8px; padding: 2px 0; transition: background-color 120ms ease; }
-.set-row.done { background: var(--green-wash); }
+/* Przesunięcie serii w lewo. pan-y zostawia przeglądarce przewijanie w pionie. */
+.set-swipe { position: relative; border-radius: 8px; overflow: hidden; touch-action: pan-y; }
+.set-swipe-bg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 16px;
+  background: #7d2a2a;
+  color: #fff;
+  font-weight: 600;
+  visibility: hidden;
+  transition: background-color 100ms ease;
+}
+.set-swipe.active .set-swipe-bg { visibility: visible; }
+.set-swipe.armed .set-swipe-bg { background: #d63c3c; }
+
+.set-row { position: relative; min-height: 50px; border-radius: 8px; padding: 2px 0; background: var(--panel); transition: background-color 120ms ease, transform 140ms ease; }
+.set-row.swiping { transition: none; }
+.set-row.done { background: linear-gradient(var(--green-wash), var(--green-wash)), var(--panel); }
 .set-num { height: 44px; font: 700 20px/1 var(--font-data); color: var(--ink-2); border-radius: 6px; }
 .set-row.warmup .set-num { color: var(--yellow); }
 .set-prev { font: 600 16px/1.1 var(--font-data); color: var(--ink-3); padding-left: 2px; overflow-wrap: anywhere; }
@@ -673,7 +692,9 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
   pointer-events: none;
   transition: opacity 160ms ease, transform 160ms ease;
 }
-#toast.show { opacity: 1; transform: none; }
+#toast.show { opacity: 1; transform: none; pointer-events: auto; }
+#toast { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.toast-action { flex: none; min-height: 44px; margin: -10px -6px -10px 0; padding: 0 10px; color: #1e55c8; font-weight: 700; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; }

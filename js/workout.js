@@ -236,6 +236,23 @@ function buildCard(item) {
     return String(item.sets.slice(0, index + 1).filter(isWorking).length);
   };
 
+  const deleteSet = (set) => {
+    const index = item.sets.indexOf(set);
+    if (index < 0) return;
+    const { draft } = ctx;
+    item.sets.splice(index, 1);
+    rebuild();
+    toast('Usunięto serię.', {
+      actionLabel: 'Cofnij',
+      onAction: () => {
+        if (ctx?.draft !== draft || !draft.exercises.includes(item)) return;
+        item.sets.splice(Math.min(index, item.sets.length), 0, set);
+        renderCards();
+        touch();
+      },
+    });
+  };
+
   const setMenu = (index) => {
     const set = item.sets[index];
     actionSheet(`Seria ${numberLabel(index)}`, [
@@ -247,14 +264,14 @@ function buildCard(item) {
       {
         label: 'Usuń serię',
         danger: true,
-        onClick: () => { item.sets.splice(index, 1); rebuild(); },
+        onClick: () => deleteSet(set),
       },
     ]);
   };
 
   const rowsHost = h('div.set-rows');
   item.sets.forEach((set, index) => {
-    const row = buildSetRow({ set, type, hint: hintFor(index), label: numberLabel(index), onMenu: () => setMenu(index), onChange: refreshFlags, exercise });
+    const row = buildSetRow({ set, type, hint: hintFor(index), label: numberLabel(index), onMenu: () => setMenu(index), onChange: refreshFlags, onDelete: () => deleteSet(set), exercise });
     rows.push(row);
     rowsHost.append(row.node);
   });
@@ -344,7 +361,80 @@ function buildCard(item) {
   return card;
 }
 
-function buildSetRow({ set, type, hint, label, onMenu, onChange, exercise }) {
+/**
+ * Przesunięcie wiersza z prawej do lewej usuwa serię. Ruch pionowy zostaje przewijaniem,
+ * a kierunek rozstrzyga się po pierwszych pikselach, żeby przewijanie niczego nie skasowało.
+ */
+function attachSwipeToDelete(row, wrapper, onDelete) {
+  const LOCK_PX = 10;
+  const threshold = () => Math.min(120, row.offsetWidth * 0.35);
+  let start = null;
+  let swiping = false;
+
+  const finish = () => {
+    start = null;
+    swiping = false;
+    row.classList.remove('swiping');
+    wrapper.classList.remove('armed');
+  };
+  const reset = () => {
+    finish();
+    row.style.transform = '';
+    wrapper.classList.remove('active');
+  };
+
+  row.addEventListener('pointerdown', (event) => {
+    if (!event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    start = { x: event.clientX, y: event.clientY, id: event.pointerId };
+    swiping = false;
+  });
+
+  row.addEventListener('pointermove', (event) => {
+    if (!start || event.pointerId !== start.id) return;
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+    if (!swiping) {
+      if (Math.abs(dy) > LOCK_PX && Math.abs(dy) >= Math.abs(dx)) {
+        start = null;
+        return;
+      }
+      if (dx > -LOCK_PX || Math.abs(dx) <= Math.abs(dy)) return;
+      swiping = true;
+      row.setPointerCapture(event.pointerId);
+      row.classList.add('swiping');
+      wrapper.classList.add('active');
+    }
+    const x = Math.min(0, dx);
+    row.style.transform = `translateX(${x}px)`;
+    wrapper.classList.toggle('armed', -x >= threshold());
+  });
+
+  row.addEventListener('pointerup', (event) => {
+    if (!start || event.pointerId !== start.id) return;
+    if (!swiping) {
+      start = null;
+      return;
+    }
+    // Stuknięcie kończące gest nie może jeszcze odhaczyć serii ani otworzyć pola.
+    const swallow = (click) => { click.stopPropagation(); click.preventDefault(); };
+    row.addEventListener('click', swallow, { capture: true, once: true });
+    setTimeout(() => row.removeEventListener('click', swallow, { capture: true }), 300);
+
+    const passed = start.x - event.clientX >= threshold();
+    if (!passed) {
+      reset();
+      return;
+    }
+    finish();
+    wrapper.classList.add('active');
+    row.style.transform = 'translateX(-100%)';
+    setTimeout(onDelete, 150);
+  });
+
+  row.addEventListener('pointercancel', reset);
+}
+
+function buildSetRow({ set, type, hint, label, onMenu, onChange, onDelete, exercise }) {
   const fieldFor = (key, { max, integer, inputMode, name }) => {
     const input = h('input.set-input', {
       type: 'text',
@@ -388,6 +478,9 @@ function buildSetRow({ set, type, hint, label, onMenu, onChange, exercise }) {
     fields.map((f) => f.input),
     disc);
 
+  const wrapper = h('div.set-swipe', h('div.set-swipe-bg', { 'aria-hidden': 'true' }, 'Usuń'), node);
+  attachSwipeToDelete(node, wrapper, onDelete);
+
   function toggleDone() {
     if (set.done) {
       set.done = false;
@@ -416,7 +509,7 @@ function buildSetRow({ set, type, hint, label, onMenu, onChange, exercise }) {
   }
 
   return {
-    node,
+    node: wrapper,
     setRecord(isRecord) {
       prevCell.replaceChildren(isRecord ? recordChip() : (prevText || '–'));
     },

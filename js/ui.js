@@ -120,7 +120,7 @@ export function ask({ title, text, confirm, danger = false, cancel = 'Anuluj' })
 
 let toastTimer = null;
 
-export function toast(message) {
+export function toast(message, { actionLabel, onAction } = {}) {
   let el = document.getElementById('toast');
   if (!el) {
     el = h('div', { id: 'toast', role: 'status' });
@@ -129,10 +129,14 @@ export function toast(message) {
   // Komunikat ma być widoczny także nad otwartym arkuszem, który leży w warstwie górnej.
   const dialog = [...document.querySelectorAll('dialog[open]')].at(-1);
   (dialog ?? document.body).append(el);
-  el.textContent = message;
+  const hide = () => el.classList.remove('show');
+  el.replaceChildren(h('span', message), actionLabel && h('button.toast-action', {
+    type: 'button',
+    onclick: () => { hide(); onAction?.(); },
+  }, actionLabel));
   el.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+  toastTimer = setTimeout(hide, actionLabel ? 6000 : 3200);
 }
 
 /** Pasek przełączników, gdzie zawsze wybrana jest jedna opcja. */
