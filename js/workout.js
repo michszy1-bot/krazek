@@ -558,6 +558,15 @@ function attachSwipeToDelete(row, wrapper, onDelete) {
   row.addEventListener('pointercancel', reset);
 }
 
+/** Pokazuje na środku ekranu następną nieodhaczoną serię, także w kolejnym ćwiczeniu. */
+function scrollToNextSet(row) {
+  const next = [...ctx.cardsHost.querySelectorAll('.set-row:not(.done)')]
+    .find((other) => row.compareDocumentPosition(other) & Node.DOCUMENT_POSITION_FOLLOWING);
+  if (!next) return;
+  const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  next.scrollIntoView({ block: 'center', behavior: calm ? 'auto' : 'smooth' });
+}
+
 function buildSetRow({ set, type, hint, label, onMenu, onChange, onDelete, exercise }) {
   const fieldFor = (key, { max, integer, inputMode, name }) => {
     const input = h('input.set-input', {
@@ -630,6 +639,7 @@ function buildSetRow({ set, type, hint, label, onMenu, onChange, onDelete, exerc
     disc.setAttribute('aria-pressed', String(set.done));
     onChange();
     touch();
+    if (set.done && ctx.mode === 'live') scrollToNextSet(node);
   }
 
   return {
