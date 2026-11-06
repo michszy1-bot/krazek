@@ -1,10 +1,11 @@
-// Ekran profilu: wiek, wzrost i dziennik wagi.
+// Ekran profilu: poziomy, mapa mięśni, wiek, wzrost i dziennik wagi.
 
 import { emptyState, h, openSheet, pageHeader, segmented, toast } from './ui.js';
 import { countOf, dayKey, fmtDayMedium, fmtDayShort, fmtNum, fmtUnit, inputValue, parseNum } from './format.js';
 import { lineChart } from './chart.js';
 import { saveBodyWeights, saveProfile, state } from './store.js';
 import { ageOn, dayTime, HEIGHT_MAX, HEIGHT_MIN, isDay, putWeight, removeWeight, roundWeight, WEIGHT_MAX, WEIGHT_MIN, weightChange } from './body.js';
+import { levelSections, pointsSection } from './level-views.js';
 
 const RANGES = [
   { value: 30, label: '30 dni' },
@@ -165,6 +166,7 @@ export function profileView() {
 
   return h('div.page',
     pageHeader('Profil', { back: '#/' }),
+    levelSections(() => weightForm()),
     h('section.block',
       h('div.rows',
         detailRow('Wiek', birthDate ? `Urodziny: ${fmtDay(birthDate)}` : 'Dodaj datę urodzenia',
@@ -183,5 +185,6 @@ export function profileView() {
       h('div.rows', weights.map((item, index) => {
         const itemChange = weightChange(weights, index);
         return detailRow(fmtDay(item.day), itemChange == null ? 'Pierwszy wpis' : fmtChange(itemChange), fmtKg(item.kg), () => weightForm(item));
-      }))));
+      }))),
+    pointsSection());
 }

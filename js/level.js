@@ -18,6 +18,17 @@ export const MAX_MUSCLE_LEVEL = 20;
 // Przy większej liczbie powtórzeń wzór na ciężar maksymalny za bardzo zawyża wynik.
 const MAX_COUNTED_REPS = 15;
 
+/** Kolory poziomów siły, te same co na mapie serii: od czerwonego do zielonego. */
+export const STRENGTH_BANDS = [
+  { colour: 1, label: '1–5' },
+  { colour: 2, label: '6–10' },
+  { colour: 3, label: '11–15' },
+  { colour: 4, label: '16–20' },
+];
+
+/** Numer koloru poziomu siły. Partia bez wyniku, czyli 0, zostaje szara. */
+export const strengthColour = (level) => (level ? Math.ceil(level / 5) : 0);
+
 export const xpPerSet = (muscle) => XP_MUSCLE_WEEK / muscleTopSets(muscle);
 
 /** Kolejne poziomy główne są coraz droższe: próg rośnie z kwadratem poziomu. */

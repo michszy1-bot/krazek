@@ -253,6 +253,8 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .muscle-legend-row { display: grid; grid-template-columns: 38px repeat(4, 1fr); gap: 4px; list-style: none; padding: 0; margin: 0; }
 .muscle-legend-row li { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
 .muscle-legend-name { font-weight: 500; color: var(--ink); }
+.muscle-legend-plain { grid-template-columns: repeat(4, 1fr); }
+.muscle-legend-plain li { justify-content: center; }
 .muscle-swatch { width: 14px; height: 14px; border-radius: 4px; }
 .neglected { display: flex; flex-direction: column; gap: 4px; list-style: none; padding: 0; margin: 0; color: var(--ink-2); }
 

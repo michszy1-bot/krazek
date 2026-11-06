@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { addDays, dayKey, fmtClock, fmtDuration, fmtSet, fmtVolume, inputValue, parseNum, pastWorkoutStart, plural, startOfWeek } from '../js/format.js';
 import { backupStatus, estimate1RM, flagRecords, goalProgress, isComplete, MUSCLE_SCALES, muscleLevel, muscleSets, neglectedMuscles, niceTicks, recordsFor, recordTimeline, restAfterSet, setLabels, stepBaseWeight, steppedWeight, suggestNextWeight, summarizeSets, swapExercise, warmupSets, weekDays, weeklyTotals, weightStep, workoutRecords, workoutVolume } from '../js/stats.js';
 import { workoutsCsv } from '../js/csv.js';
-import { levelProgress, strengthRatio, workoutGain } from '../js/level.js';
+import { levelProgress, strengthColour, strengthRatio, workoutGain } from '../js/level.js';
 import { LIFTS_BODY, ONE_DUMBBELL, STRENGTH_ALSO, STRENGTH_TOPS } from '../js/strength-norms.js';
 import { applyFilter } from '../js/picker.js';
 import { SHAPE_TO_MUSCLE } from '../js/muscle-map.js';
@@ -563,6 +563,10 @@ test('siła partii: przysiad i martwy ciąg liczą się też do innych partii n�
   const deadlift = levelWorkout('b', new Date(2026, 10, 3, 9), 'deadlift', [lift(100, 1)]);
   assert.equal(strengthOf([deadlift], at75, 'Plecy').exercise, 'Martwy ciąg');
   assert.equal(strengthOf([deadlift], at75, 'Dwugłowe uda').exercise, 'Martwy ciąg');
+});
+
+test('kolor poziomu siły: co pięć poziomów, a bez wyniku szary', () => {
+  assert.deepEqual([null, 0, 1, 5, 6, 10, 11, 15, 16, 20].map(strengthColour), [0, 0, 1, 1, 2, 2, 3, 3, 4, 4]);
 });
 
 test('normy siły obejmują wszystkie ćwiczenia z ciężarem poza świadomymi wyjątkami', () => {
