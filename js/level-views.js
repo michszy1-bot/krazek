@@ -1,7 +1,8 @@
 // Poziomy na ekranie: sekcje profilu i wynik w podsumowaniu treningu.
 
-import { h } from './ui.js';
+import { h, icon } from './ui.js';
 import { fmtNum } from './format.js';
+import { shownTitle, spendable } from './shop.js';
 import { levelProgress, MAX_MUSCLE_LEVEL, strengthCategory, strengthColour, XP_GOAL, XP_RECORD, XP_WORKOUT } from './level.js';
 import { strengthMap } from './muscle-map.js';
 import { exerciseById, state } from './store.js';
@@ -41,9 +42,15 @@ export function levelSections(onAddWeight) {
   const progress = levelProgress(state.workouts, exerciseById, levelOptions());
   return [
     h('section.level-line',
+      shownTitle(state.shop) && h('p.level-title', shownTitle(state.shop)),
       h('p.level-line-top', h('strong', `Poziom ${progress.level}`), h('span', nextText(progress))),
       xpBar(`Postęp poziomu ${progress.level}`, progress.share),
       h('p.level-meta', `${fmtNum(progress.xp)} XP`)),
+    h('a.link-row', { href: '#/sklep' },
+      h('span.link-text',
+        h('span.link-name', 'Sklep'),
+        h('span.link-meta', `${fmtNum(spendable(progress.xp, state.shop))} XP do wydania`)),
+      h('span.flip', icon('back', 20))),
     h('section.block',
       h('h2.block-title', 'Siła partii'),
       state.bodyWeights.length

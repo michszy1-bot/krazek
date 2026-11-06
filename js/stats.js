@@ -244,19 +244,44 @@ export function recordTimeline(workouts, exerciseById) {
  * Stan celu tygodniowego. Seria to kolejne tygodnie z wykonanym celem:
  * trwający tydzień dolicza się dopiero po wykonaniu, ale wcześniej jej nie przerywa.
  */
-export function goalProgress(workouts, goal, now = new Date()) {
+export function goalProgress(workouts, goal, now = new Date(), shieldedWeeks = []) {
+  const countIn = weekCounter(workouts);
+  const thisWeek = startOfWeek(now);
+  const done = countIn(thisWeek);
+  const met = done >= goal;
+  let streak = met ? 1 : 0;
+  // Tydzień z tarczą nie dolicza się do serii, ale też jej nie przerywa.
+  for (let week = addDays(thisWeek, -7); ; week = addDays(week, -7)) {
+    if (countIn(week) >= goal) streak += 1;
+    else if (!shieldedWeeks.includes(dayKey(week))) break;
+  }
+  return { done, goal, met, streak };
+}
+
+function weekCounter(workouts) {
   const counts = new Map();
   for (const workout of workouts) {
     const key = dayKey(startOfWeek(workout.startedAt));
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
-  const countIn = (date) => counts.get(dayKey(date)) ?? 0;
-  const thisWeek = startOfWeek(now);
-  const done = countIn(thisWeek);
-  const met = done >= goal;
-  let streak = met ? 1 : 0;
-  for (let week = addDays(thisWeek, -7); countIn(week) >= goal; week = addDays(week, -7)) streak += 1;
-  return { done, goal, met, streak };
+  return (date) => counts.get(dayKey(date)) ?? 0;
+}
+
+/**
+ * Tygodnie do osłonięcia tarczą: nieudane tuż przed bieżącym, jeśli wcześniej trwała seria.
+ * Gdy tarcz nie starczy na całą przerwę, serii i tak nie da się uratować, więc żadna nie przepada.
+ */
+export function weeksToShield(workouts, goal, shieldedWeeks, shields, now = new Date()) {
+  if (goal == null || shields <= 0) return [];
+  const countIn = weekCounter(workouts);
+  const missed = [];
+  let week = addDays(startOfWeek(now), -7);
+  while (countIn(week) < goal && !shieldedWeeks.includes(dayKey(week))) {
+    missed.push(dayKey(week));
+    if (missed.length > shields) return [];
+    week = addDays(week, -7);
+  }
+  return missed;
 }
 
 /** Dane do paska tygodnia na ekranie głównym: siedem dni od poniedziałku. */

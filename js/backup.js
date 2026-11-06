@@ -2,13 +2,14 @@
 
 import { cleanProfile, cleanWeights } from './body.js';
 import { cleanRoutines } from './routines.js';
+import { cleanShop } from './shop.js';
 import { isRpe, isSetKind } from './stats.js';
 
 const APP_ID = 'krazek'; // Dawna nazwa aplikacji. Zmiana unieważniłaby istniejące kopie.
 const VERSION = 1;
 
-export function buildBackup({ exercises, workouts, settings, profile, bodyWeights, routines }, now = Date.now()) {
-  return { app: APP_ID, version: VERSION, exportedAt: now, settings, exercises, workouts, profile, bodyWeights, routines };
+export function buildBackup({ exercises, workouts, settings, profile, bodyWeights, routines, shop }, now = Date.now()) {
+  return { app: APP_ID, version: VERSION, exportedAt: now, settings, exercises, workouts, profile, bodyWeights, routines, shop };
 }
 
 const isText = (v) => typeof v === 'string' && v.length > 0;
@@ -103,5 +104,5 @@ export function parseBackup(text) {
   if (!routines) {
     throw new Error('Kopia jest uszkodzona: rutyny mają niepoprawne wpisy. Nic nie zostało zmienione.');
   }
-  return { exercises, workouts, settings, profile: cleanProfile(data.profile), bodyWeights, routines };
+  return { exercises, workouts, settings, profile: cleanProfile(data.profile), bodyWeights, routines, shop: cleanShop(data.shop) };
 }

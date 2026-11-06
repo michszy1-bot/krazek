@@ -7,10 +7,11 @@ import { backupStatus, exerciseSessions, flagRecords, goalProgress, isWorking, l
 import { bodyWeightChart, weightsFrom } from './profile.js';
 import { dayTime, weightOn } from './body.js';
 import { clearMedia, downloadMedia, isDownloadingMedia, mediaStatus } from './media.js';
-import { backupText, deleteExercise, deleteWorkout, exerciseById, isExerciseUsed, markBackedUp, previewBackup, restoreBackup, saveSettings, state, visibleExercises, wipeAll } from './store.js';
+import { backupText, deleteExercise, deleteWorkout, dismissShieldNote, exerciseById, isExerciseUsed, markBackedUp, previewBackup, restoreBackup, saveSettings, state, visibleExercises, wipeAll } from './store.js';
 import { workoutsCsv } from './csv.js';
 import { MUSCLES } from './exercises.js';
 import { muscleMap } from './muscle-map.js';
+import { shownInscription } from './shop.js';
 import { applyFilter, exerciseFilter, exerciseForm, favoriteButton, stickyNoteSheet } from './picker.js';
 import { addPastWorkout, editWorkout, repeatWorkout, resumeWorkout, startRoutine, startWorkout, stat } from './workout.js';
 import { routinesSection, saveWorkoutAsRoutine } from './routine-views.js';
@@ -70,7 +71,8 @@ function loadedBar(weekWorkouts, arrival) {
     h('span.bar-collar'),
     h('span.bar-middle',
       swapText('span.bar-count', countFor(before), countFor(done), arrival),
-      swapText('span.bar-unit', unitFor(before), unitFor(done), arrival)),
+      swapText('span.bar-unit', unitFor(before), unitFor(done), arrival),
+      shownInscription(state.shop) && h('span.bar-inscription', shownInscription(state.shop))),
     h('span.bar-collar'),
     barSide('right', load, sides));
 }
@@ -135,7 +137,7 @@ function goalSheet() {
 /** Wynik tygodnia nad sztangą, razem z serią tygodni, w których cel się udał. */
 function weekLine(weekWorkouts, weekSets, weekVolume) {
   const goal = state.settings.weeklyGoal;
-  const streak = goal == null ? 0 : goalProgress(state.workouts, goal).streak;
+  const streak = goal == null ? 0 : goalProgress(state.workouts, goal, new Date(), state.shop.shieldedWeeks).streak;
   return [
     weekWorkouts.length ? `${countOf(weekSets, 'seria', 'serie', 'serii')} · ${fmtVolume(weekVolume)}` : 'Jeszcze bez treningu',
     streak > 0 && `${countOf(streak, 'tydzień', 'tygodnie', 'tygodni')} z rzędu`,
@@ -178,6 +180,11 @@ export function homeView() {
       loadedBar(weekWorkouts, arrival),
       weekTrack(days, arrival),
       weekWorkouts.length > 0 && plateKey(anyRecord)),
+    state.shieldNote && h('button.shield-note', { type: 'button', onclick: dismissShieldNote, 'aria-label': 'Tarcza uratowała serię. Ukryj' },
+      icon('shield', 26),
+      h('span',
+        h('strong', 'Tarcza uratowała serię'),
+        `${state.shieldNote.used > 1 ? `Tygodnie bez celu: ${state.shieldNote.used}` : 'Zeszły tydzień był bez celu'}, a licznik dalej biegnie. Zostało: ${countOf(state.shop.shields, 'tarcza', 'tarcze', 'tarcz')}.`)),
     state.active
       ? h('button.btn.btn-primary.btn-hero', { type: 'button', onclick: resumeWorkout }, 'Wróć do treningu', h('span.hero-time', { dataset: { elapsedFrom: state.active.startedAt } }, fmtClock((Date.now() - state.active.startedAt) / 1000)))
       : h('button.btn.btn-primary.btn-hero', { type: 'button', onclick: startWorkout }, 'Rozpocznij trening'),

@@ -2,10 +2,12 @@
 
 import { h, icon } from './ui.js';
 import { fmtClock } from './format.js';
-import { load, state, subscribe } from './store.js';
+import { applyDueShields, load, state, subscribe } from './store.js';
 import { isWorkoutOpen, resumeWorkout } from './workout.js';
 import { exerciseView, homeView, journalView, libraryView, progressView, settingsView, workoutDetailView } from './views.js';
 import { profileView } from './profile.js';
+import { isBlackTheme, wornLooks } from './shop.js';
+import { shopView } from './shop-views.js';
 
 const main = document.getElementById('view');
 const nav = document.getElementById('tabs');
@@ -34,11 +36,19 @@ function route() {
       return { tab: lastTab, view: () => exerciseView(decodeURIComponent(id), lastTab) };
     case 'ustawienia': return { tab: '#/', view: settingsView };
     case 'profil': return { tab: '#/', view: profileView };
+    case 'sklep': return { tab: '#/', view: shopView };
     default: return { tab: '#/', view: homeView };
   }
 }
 
+/** Kupiony wygląd obowiązuje w całej aplikacji. */
+function applyLooks() {
+  document.documentElement.className = wornLooks(state.shop).join(' ');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', isBlackTheme(state.shop) ? '#000000' : '#181C21');
+}
+
 function render({ keepScroll = false } = {}) {
+  applyLooks();
   const { tab, view } = route();
   if (['#/postepy', '#/cwiczenia', '#/dziennik', '#/'].includes(tab) && !location.hash.includes('cwiczenie/')) lastTab = tab;
   const scrollY = window.scrollY;
@@ -86,6 +96,10 @@ async function start() {
 
   // Prośba, żeby system nie kasował danych przy braku miejsca.
   navigator.storage?.persist?.().catch(() => {});
+
+  // Nowy tydzień może zacząć się przy otwartej aplikacji, więc tarcze sprawdzam też po powrocie do niej.
+  await applyDueShields();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) applyDueShields(); });
 
   window.addEventListener('hashchange', () => render());
   subscribe(() => { if (!isWorkoutOpen()) render({ keepScroll: true }); });

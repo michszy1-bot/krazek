@@ -22,6 +22,8 @@
   --yellow: #f6c62e;
   --red: #ff6b6b;
   --steel: #7f8995;
+  --steel-bar: linear-gradient(#b4bdc7, #737c87 55%, #4d555e);
+  --chrome: #1e2329;
 
   --font-data: "Avenir Next Condensed", "Bahnschrift Condensed", "Bahnschrift", "Roboto Condensed", "Arial Narrow", sans-serif;
   --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -165,7 +167,6 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 
 /* Gryf biegnie przez całą szerokość ekranu, a krążki siedzą na jego końcach. */
 .loaded-bar {
-  --steel-bar: linear-gradient(#b4bdc7, #737c87 55%, #4d555e);
   display: flex;
   width: calc(100% + 32px);
   height: 144px;
@@ -184,16 +185,18 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
   align-items: center;
   justify-content: center;
   border-radius: 5px;
-  background: var(--tier-plate);
-  color: #fff;
+  background: var(--skin, var(--tier-plate));
+  box-shadow: var(--skin-glow, none);
+  color: var(--skin-ink, #fff);
   font-family: var(--font-data);
   font-weight: 700;
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
-.bar-plate.tier-yellow { color: #2a2206; }
-.bar-plate-empty { border: 1.5px dashed #6a7480; background: none; }
-.bar-clamp { position: relative; flex: none; width: 6px; height: 30px; border-radius: 2px; background: var(--steel-bar); }
+.bar-plate.tier-yellow { color: var(--skin-ink, #2a2206); }
+.bar-plate-empty { border: 1.5px dashed #6a7480; background: none; box-shadow: none; }
+.bar-clamp { position: relative; flex: none; width: 6px; height: 30px; border-radius: 2px; background: var(--clamp, var(--steel-bar)); }
+.bar-inscription { position: absolute; left: 4px; right: 4px; bottom: 8px; overflow: hidden; text-align: center; white-space: nowrap; text-overflow: ellipsis; font-size: 11px; font-weight: 600; line-height: 1.2; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
 .bar-collar { flex: none; align-self: center; width: 8px; height: 40px; border-radius: 2px; background: var(--steel-bar); }
 .bar-middle { position: relative; flex: 1; min-width: 0; display: grid; grid-template-rows: 1fr 1fr; justify-items: center; }
 .bar-middle::before {
@@ -209,6 +212,50 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .bar-count { align-self: end; padding-bottom: 12px; font: 700 46px/1 var(--font-data); font-variant-numeric: tabular-nums; }
 .bar-unit { align-self: start; padding-top: 14px; font-size: 14px; font-weight: 500; line-height: 1; color: var(--ink-2); }
 .goal-met .bar-count { color: var(--green); }
+
+/* Wygląd kupiony w sklepie. Te same klasy działają na całą aplikację i na podgląd w sklepie. */
+.look-bar-steel { --steel-bar: linear-gradient(#b4bdc7, #737c87 55%, #4d555e); }
+.look-bar-copper { --steel-bar: linear-gradient(#f0bd94, #b5723f 55%, #6f4325); }
+.look-bar-black { --steel-bar: linear-gradient(#6b7077, #2c2f34 55%, #101215); }
+.look-plates-colour { --skin: initial; --skin-ink: initial; --skin-glow: initial; }
+.look-plates-gold { --skin: linear-gradient(90deg, #c9960f, #f6c62e 40%, #fff0a8 55%, #e0ae1c 75%, #b98a0c); --skin-ink: #2a2206; --skin-glow: 0 0 14px rgb(246 198 46 / 28%); }
+.look-plates-iron { --skin: linear-gradient(90deg, #26282c, #44474c 40%, #5c5f65 55%, #3a3d42 75%, #232528); --skin-ink: #e6e8ea; --skin-glow: inset 0 0 0 1px rgb(255 255 255 / 14%); }
+.look-clamp-steel { --clamp: initial; }
+.look-clamp-red { --clamp: linear-gradient(#f26d71, #c7353a 55%, #8d2226); }
+.look-clamp-gold { --clamp: linear-gradient(#fff0a8, #f6c62e 55%, #b98a0c); }
+.look-theme-black { --floor: #000; --panel: #15181c; --panel-raised: #23272d; --line: #2f353c; --chrome: #0e1013; }
+
+/* Sklep */
+.level-title { margin: 0; font: 700 18px/1.1 var(--font-data); letter-spacing: 0.01em; color: var(--yellow); }
+.shop-balance { display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: var(--radius); background: var(--panel); }
+.shop-balance strong { font: 700 44px/1 var(--font-data); font-variant-numeric: tabular-nums; }
+.shop-balance span { font-size: 14px; color: var(--ink-2); }
+.shop-list { display: flex; flex-direction: column; gap: 8px; }
+.shop-item { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 68px; padding: 10px 12px 10px 10px; border-radius: var(--radius); background: var(--panel); }
+.shop-preview { position: relative; display: flex; align-items: center; justify-content: center; height: 48px; border-radius: 8px; background: var(--floor); overflow: hidden; color: var(--ink-2); }
+.mini-bar { position: absolute; left: 0; right: 0; top: 50%; height: 4px; margin-top: -2px; background: var(--steel-bar); }
+.mini-load { position: relative; display: flex; align-items: center; gap: 2px; }
+.mini-load i { width: 7px; height: 30px; border-radius: 2px; background: var(--skin, var(--tier-plate)); box-shadow: var(--skin-glow, none); }
+.mini-load i:nth-child(2) { height: 26px; }
+.mini-load i:nth-child(3) { height: 22px; }
+.mini-load b { width: 4px; height: 14px; border-radius: 1px; background: var(--clamp, var(--steel-bar)); }
+.shop-preview-shield { color: var(--blue-line); }
+.shield-note { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border-radius: var(--radius); background: var(--panel); text-align: left; font-size: 14px; line-height: 1.3; color: var(--ink-2); }
+.shield-note svg { flex: none; color: var(--blue-line); }
+.shield-note strong { display: block; color: var(--ink); font-weight: 600; }
+.shop-preview-text { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+.shop-swatch-theme-graphite { background: #181c21; box-shadow: inset 0 0 0 1px #3a424c; }
+.shop-swatch-theme-black { background: #000; box-shadow: inset 0 0 0 1px #3a424c; }
+.shop-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.shop-name { font-weight: 600; }
+.shop-meta { font-size: 13px; line-height: 1.3; color: var(--ink-2); }
+.shop-progress { display: block; height: 4px; margin-top: 4px; border-radius: 2px; background: var(--panel-raised); overflow: hidden; }
+.shop-progress i { display: block; height: 100%; background: var(--yellow); }
+.shop-action { display: inline-flex; align-items: center; justify-content: center; min-width: 76px; min-height: 44px; padding: 0 10px; border-radius: 8px; background: var(--blue); color: #fff; font: 700 17px/1 var(--font-data); white-space: nowrap; }
+.shop-action.wear { background: var(--panel-raised); color: var(--ink); font: 600 14px/1 var(--font-body); }
+.shop-action.on { background: none; color: var(--green); font: 600 14px/1 var(--font-body); padding: 0; }
+.shop-action.far { background: var(--panel-raised); color: var(--ink-3); cursor: default; }
+.shop-input { width: 100%; min-height: 48px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--panel-raised); font-size: 16px; }
 
 /*
   Nowy krążek po zakończonym treningu. Pod podsumowaniem animacja stoi na pierwszej klatce.
@@ -568,7 +615,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   padding-bottom: var(--safe-bottom);
-  background: #1e2329;
+  background: var(--chrome);
   border-top: 1px solid var(--line);
 }
 .tab {
@@ -772,7 +819,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
   right: 0;
   bottom: 0;
   z-index: 3;
-  background: #1e2329;
+  background: var(--chrome);
   border-top: 1px solid var(--line);
   padding-bottom: var(--safe-bottom);
 }

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { addDays, dayKey, fmtClock, fmtDuration, fmtSet, fmtSetChange, fmtVolume, inputValue, parseNum, pastWorkoutStart, plural, startOfWeek } from '../js/format.js';
-import { backupStatus, bestSet, compareSets, estimate1RM, flagRecords, goalProgress, isComplete, loadBar, MUSCLE_SCALES, muscleLevel, muscleSets, neglectedMuscles, niceTicks, plateHeight, plateTier, plateTravel, plateWidth, recordsFor, recordTimeline, restAfterSet, setLabels, stepBaseWeight, steppedWeight, suggestNextWeight, summarizeSets, swapExercise, warmupSets, weekDays, weeklyTotals, weightStep, workoutComparison, workoutRecords, workoutVolume } from '../js/stats.js';
+import { backupStatus, bestSet, compareSets, estimate1RM, flagRecords, goalProgress, isComplete, loadBar, MUSCLE_SCALES, muscleLevel, muscleSets, neglectedMuscles, niceTicks, plateHeight, plateTier, plateTravel, plateWidth, recordsFor, recordTimeline, restAfterSet, setLabels, stepBaseWeight, steppedWeight, suggestNextWeight, summarizeSets, swapExercise, warmupSets, weekDays, weeklyTotals, weeksToShield, weightStep, workoutComparison, workoutRecords, workoutVolume } from '../js/stats.js';
 import { workoutsCsv } from '../js/csv.js';
 import { levelProgress, strengthCategory, strengthColour, strengthRatio, workoutGain } from '../js/level.js';
 import { LIFTS_BODY, ONE_DUMBBELL, STRENGTH_ALSO, STRENGTH_TOPS } from '../js/strength-norms.js';
@@ -10,6 +10,7 @@ import { applyFilter } from '../js/picker.js';
 import { SHAPE_TO_MUSCLE } from '../js/muscle-map.js';
 import { BODY_BACK, BODY_FRONT } from '../js/muscle-shapes.js';
 import { buildBackup, parseBackup } from '../js/backup.js';
+import { buyItem, cleanInscription, cleanShop, INSCRIPTION_MAX, SHOP_ITEMS, SHOP_SECTIONS, shownInscription, shownTitle, spendable, useShields, wearItem, wornItem, wornLooks } from '../js/shop.js';
 import { ageOn, cleanProfile, cleanWeights, dayTime, isDay, putWeight, removeWeight, weightChange, weightOn } from '../js/body.js';
 import { cleanRoutines, hasOwnName, isNameTaken, moveItem, parseRepRange, putRoutine, routineDiffers, routineFromWorkout, routineSetCount } from '../js/routines.js';
 import { SEED_EXERCISES, MUSCLES, EQUIPMENT, HELPER_MUSCLES, musclesOf, RETIRED_EXERCISES, syncExercises } from '../js/exercises.js';
@@ -991,6 +992,103 @@ test('starsza kopia z usuniętym trybem dźwięku nadal się wczytuje', () => {
   const base = { app: 'krazek', version: 1, exercises: [], workouts: [] };
   const { settings } = parseBackup(JSON.stringify({ ...base, settings: { restSec: 90, lockedAudio: true } }));
   assert.deepEqual(settings, { restSec: 90 });
+});
+
+test('sklep: saldo, zakup, założenie, a poziom liczy się dalej z całego XP', () => {
+  const start = cleanShop(undefined);
+  assert.deepEqual(start, { owned: [], worn: {}, spent: 0, inscription: '', shields: 0, shieldedWeeks: [] });
+  assert.equal(spendable(2000, start), 2000);
+  assert.equal(buyItem(start, 'bar-copper', 1499), null, 'za mało XP');
+  assert.equal(buyItem(start, 'nieznany', 99999), null);
+  assert.equal(buyItem(start, 'bar-steel', 99999), null, 'podstawowy jest już Twój');
+
+  const copper = buyItem(start, 'bar-copper', 2000);
+  assert.equal(copper.spent, 1500);
+  assert.equal(spendable(2000, copper), 500);
+  assert.equal(wornItem(copper, 'bar').id, 'bar-copper');
+  assert.equal(buyItem(copper, 'bar-copper', 99999), null, 'drugi raz nie kupisz');
+  assert.equal(buyItem(copper, 'bar-black', 2000), null, 'wydane XP się nie liczy');
+
+  const steel = wearItem(copper, 'bar-steel');
+  assert.equal(wornItem(steel, 'bar').id, 'bar-steel');
+  assert.equal(steel.spent, 1500, 'zmiana nie kosztuje');
+  assert.equal(wornItem(wearItem(steel, 'bar-copper'), 'bar').id, 'bar-copper');
+  assert.equal(wearItem(steel, 'bar-black'), null, 'nie założysz niekupionego');
+  assert.deepEqual(wornLooks(copper), ['look-bar-copper', 'look-plates-colour', 'look-clamp-steel', 'look-theme-graphite']);
+});
+
+test('sklep: usunięty trening nie daje salda poniżej zera, a zakupy zostają', () => {
+  const shop = buyItem(cleanShop(undefined), 'title-iron', 500);
+  assert.equal(spendable(100, shop), 0);
+  assert.equal(shownTitle(shop), 'Żelazny');
+  assert.equal(shownTitle(cleanShop(undefined)), '');
+});
+
+test('sklep: napis widać dopiero po kupieniu i ma limit znaków', () => {
+  const free = { ...cleanShop(undefined), inscription: 'Bez kupna' };
+  assert.equal(shownInscription(free), '');
+  const bought = buyItem(free, 'inscription', 1000);
+  assert.equal(bought.worn.inscription, undefined);
+  assert.equal(shownInscription(bought), 'Bez kupna');
+  assert.equal(cleanInscription(`  ${'a'.repeat(30)}  `).length, INSCRIPTION_MAX);
+  assert.equal(cleanInscription(7), '');
+});
+
+test('kopia zachowuje zakupy, a obce dane ze sklepu przepadają', () => {
+  const shop = buyItem(buyItem(cleanShop(undefined), 'bar-copper', 5000), 'theme-black', 5000);
+  const data = { exercises: SEED_EXERCISES, workouts: [], settings: {}, shop: { ...shop, inscription: 'Forma' } };
+  assert.deepEqual(parseBackup(JSON.stringify(buildBackup(data))).shop, { ...shop, inscription: 'Forma' });
+  assert.deepEqual(parseBackup(JSON.stringify(buildBackup({ ...data, shop: undefined }))).shop, cleanShop(undefined));
+  assert.deepEqual(cleanShop({ owned: ['bar-copper', 'bar-copper', 'bar-steel', 'zmyslony'], worn: { bar: 'bar-black', plates: 'plates-gold', theme: 'theme-graphite', clamp: 'bar-copper' }, spent: -5 }), {
+    owned: ['bar-copper'],
+    worn: { theme: 'theme-graphite', bar: 'bar-copper' },
+    spent: 0,
+    inscription: '',
+    shields: 0,
+    shieldedWeeks: [],
+  });
+  assert.deepEqual(cleanShop({ shields: 2.5, shieldedWeeks: ['2026-11-02', 7, 'wczoraj'] }).shieldedWeeks, ['2026-11-02']);
+  assert.equal(cleanShop({ shields: 2.5 }).shields, 0);
+  assert.equal(cleanShop({ shields: 3 }).shields, 3);
+});
+
+test('tarcza: można kupić kilka, a każda zużywa się na jeden tydzień', () => {
+  const one = buyItem(cleanShop(undefined), 'shield', 5000);
+  const two = buyItem(one, 'shield', 5000);
+  assert.deepEqual([two.shields, two.spent, two.owned], [2, 4000, []]);
+  assert.equal(buyItem(two, 'shield', 5000), null, 'na trzecią brakuje XP');
+  const used = useShields(two, ['2026-10-26']);
+  assert.deepEqual([used.shields, used.shieldedWeeks], [1, ['2026-10-26']]);
+});
+
+test('tarcza: ratuje serię tylko wtedy, gdy jest co ratować i tarcz starczy', () => {
+  const now = new Date(2026, 10, 6, 12);
+  const inWeek = (monthDay, count) => Array.from({ length: count }, (_, i) => workout(`${monthDay}-${i}`, `2026-${monthDay}T10:0${i}:00`, { squat: [set(100, 5)] }));
+  const earlier = [...inWeek('10-05', 2), ...inWeek('10-12', 2), ...inWeek('10-19', 2)];
+  // Zeszły tydzień (26.10) bez celu, a wcześniej trzy tygodnie z rzędu.
+  assert.deepEqual(weeksToShield(earlier, 2, [], 1, now), ['2026-10-26']);
+  assert.deepEqual(weeksToShield(earlier, 2, [], 0, now), []);
+  assert.deepEqual(weeksToShield(earlier, null, [], 3, now), [], 'bez celu tarcze nie działają');
+  assert.equal(goalProgress(earlier, 2, now).streak, 0);
+  assert.equal(goalProgress(earlier, 2, now, ['2026-10-26']).streak, 3, 'tydzień z tarczą nie dolicza się');
+  assert.deepEqual(weeksToShield(earlier, 2, ['2026-10-26'], 1, now), [], 'druga tarcza nie schodzi na ten sam tydzień');
+  // Bieżący tydzień z wykonanym celem dolicza się do serii.
+  assert.equal(goalProgress([...earlier, ...inWeek('11-03', 2)], 2, now, ['2026-10-26']).streak, 4);
+  // Zeszły tydzień udany: nie ma czego ratować.
+  assert.deepEqual(weeksToShield(inWeek('10-27', 2), 2, [], 3, now), []);
+  // Dwa tygodnie przerwy: jedna tarcza nie uratuje serii, więc nie przepada.
+  const gap = [...inWeek('10-05', 2), ...inWeek('10-12', 2)];
+  assert.deepEqual(weeksToShield(gap, 2, [], 1, now), []);
+  assert.deepEqual(weeksToShield(gap, 2, [], 2, now), ['2026-10-26', '2026-10-19']);
+  // Brak treningów w ogóle: tarcze zostają.
+  assert.deepEqual(weeksToShield([], 2, [], 5, now), []);
+});
+
+test('katalog sklepu: każde miejsce ma darmowy start, a identyfikatory się nie powtarzają', () => {
+  assert.equal(new Set(SHOP_ITEMS.map((item) => item.id)).size, SHOP_ITEMS.length);
+  for (const { slot } of SHOP_SECTIONS.filter((section) => section.slot !== 'inscription' && section.slot !== 'shield')) {
+    assert.equal(SHOP_ITEMS.filter((item) => item.slot === slot && item.price === 0).length, 1, slot);
+  }
 });
 
 test('kopia zapasowa przechodzi w obie strony', () => {

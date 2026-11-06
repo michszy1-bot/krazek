@@ -4,6 +4,8 @@ import { getAll, getValue, put, remove, removeValue, replaceAll, setValue, STORE
 import { syncExercises } from './exercises.js';
 import { buildBackup, parseBackup } from './backup.js';
 import { EMPTY_PROFILE } from './body.js';
+import { cleanShop, EMPTY_SHOP, useShields } from './shop.js';
+import { weeksToShield } from './stats.js';
 
 const DEFAULT_SETTINGS = { restSec: 120, weeklyGoal: null, askRpe: true };
 
@@ -14,6 +16,8 @@ export const state = {
   profile: { ...EMPTY_PROFILE },
   bodyWeights: [], // od najnowszego: { day: 'RRRR-MM-DD', kg }
   routines: [], // { id, name, exercises: [{ exerciseId, sets: [rodzaj serii z SET_KINDS] }] }
+  shop: { ...EMPTY_SHOP }, // zakupy za XP
+  shieldNote: null, // informacja o zużytej tarczy, tylko w pamięci
   active: null, // trening w toku
   arriving: null, // krążek świeżo zakończonego treningu czekający na wjazd: { id, ready }, tylko w pamięci
   lastBackupAt: null,
@@ -36,6 +40,7 @@ export async function load() {
   state.profile = { ...EMPTY_PROFILE, ...(await getValue('profile')) };
   state.bodyWeights = (await getValue('bodyWeights')) ?? [];
   state.routines = (await getValue('routines')) ?? [];
+  state.shop = cleanShop(await getValue('shop'));
   state.active = (await getValue('active')) ?? null;
   state.lastBackupAt = (await getValue('lastBackupAt')) ?? null;
 
@@ -159,6 +164,28 @@ export async function saveRoutines(list) {
   emit();
 }
 
+// --- Sklep za XP ---
+
+export async function saveShop(shop) {
+  state.shop = shop;
+  await setValue('shop', shop);
+  emit();
+}
+
+/** Zużywa tarcze na nieudane tygodnie. Kupiona tarcza działa też na tydzień, który właśnie się skończył. */
+export async function applyDueShields() {
+  const { workouts, settings, shop } = state;
+  const weeks = weeksToShield(workouts, settings.weeklyGoal, shop.shieldedWeeks, shop.shields);
+  if (!weeks.length) return;
+  state.shieldNote = { used: weeks.length };
+  await saveShop(useShields(shop, weeks));
+}
+
+export function dismissShieldNote() {
+  state.shieldNote = null;
+  emit();
+}
+
 // --- Profil i dziennik wagi ---
 
 export async function saveProfile(patch) {
@@ -183,6 +210,7 @@ export function backupText() {
     profile: state.profile,
     bodyWeights: state.bodyWeights,
     routines: state.routines,
+    shop: state.shop,
   }));
 }
 
@@ -201,7 +229,7 @@ export async function restoreBackup(parsed) {
   await replaceAll({
     exercises: parsed.exercises,
     workouts: parsed.workouts,
-    kv: { settings, lastBackupAt: backedUpAt, profile: parsed.profile, bodyWeights: parsed.bodyWeights, routines: parsed.routines },
+    kv: { settings, lastBackupAt: backedUpAt, profile: parsed.profile, bodyWeights: parsed.bodyWeights, routines: parsed.routines, shop: parsed.shop },
   });
   await load();
   emit();
