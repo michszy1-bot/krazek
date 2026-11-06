@@ -1,6 +1,6 @@
 // Format pliku kopii zapasowej. Plik pochodzi z zewnątrz, więc każde pole jest sprawdzane przed zapisem.
 
-const APP_ID = 'krazek';
+const APP_ID = 'krazek'; // Dawna nazwa aplikacji. Zmiana unieważniłaby istniejące kopie.
 const VERSION = 1;
 
 export function buildBackup({ exercises, workouts, settings }, now = Date.now()) {
@@ -84,6 +84,5 @@ export function parseBackup(text) {
   const settings = {};
   const rest = numOrNull(data.settings?.restSec);
   if (rest != null) settings.restSec = rest;
-  if (typeof data.settings?.lockedAudio === 'boolean') settings.lockedAudio = data.settings.lockedAudio;
   return { exercises, workouts, settings };
 }

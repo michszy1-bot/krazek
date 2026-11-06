@@ -526,7 +526,7 @@ function buildRestBar() {
     if (!draft.restEndAt) return;
     draft.restEndAt += delta * 1000;
     draft.restTotal = Math.max(1, draft.restTotal + delta);
-    sound.syncRest((draft.restEndAt - Date.now()) / 1000, soundOptions());
+    sound.syncRest((draft.restEndAt - Date.now()) / 1000);
     touch();
     tick();
   };
@@ -542,8 +542,6 @@ function buildRestBar() {
   return bar;
 }
 
-const soundOptions = () => ({ takeOver: state.settings.lockedAudio });
-
 function startRest(seconds) {
   clearTimeout(restEndedTimer);
   if (!seconds) {
@@ -553,7 +551,7 @@ function startRest(seconds) {
   ctx.draft.restEndAt = Date.now() + seconds * 1000;
   ctx.draft.restTotal = seconds;
   ctx.restBar.classList.remove('ended');
-  sound.startRest(seconds, soundOptions());
+  sound.startRest();
   tick();
 }
 
@@ -591,8 +589,7 @@ function tick() {
   restBar.time.textContent = 'Koniec przerwy';
   restBar.progress.style.transform = 'scaleX(0)';
   restBar.classList.add('ended');
-  // Sygnał jest zwykle już w nagraniu. Zapasowy gra tylko wtedy, gdy nagranie nie ruszyło.
-  if (!sound.isTrackPlaying()) sound.beepNow();
+  sound.beepNow();
   navigator.vibrate?.([200, 100, 200]);
   restEndedTimer = setTimeout(stopRest, 5000);
 }

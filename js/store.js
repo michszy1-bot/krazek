@@ -4,7 +4,7 @@ import { getAll, getValue, put, remove, removeValue, replaceAll, setValue, STORE
 import { SEED_EXERCISES } from './exercises.js';
 import { buildBackup, parseBackup } from './backup.js';
 
-const DEFAULT_SETTINGS = { restSec: 120, lockedAudio: false };
+const DEFAULT_SETTINGS = { restSec: 120 };
 
 export const state = {
   exercises: new Map(),

@@ -1,6 +1,6 @@
 // Cienka warstwa nad IndexedDB. Trzy magazyny: ćwiczenia, treningi i ustawienia (klucz-wartość).
 
-const DB_NAME = 'krazek';
+const DB_NAME = 'krazek'; // Dawna nazwa aplikacji. Zmiana odcięłaby zapisane treningi.
 const DB_VERSION = 1;
 export const STORES = { exercises: 'exercises', workouts: 'workouts', kv: 'kv' };
 

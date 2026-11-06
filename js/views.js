@@ -468,11 +468,9 @@ export function libraryView() {
 // --- Ustawienia ---
 
 const REST_CHOICES = [30, 45, 60, 90, 120, 150, 180, 240, 300];
-const SOUND_TEST_SECONDS = 15;
-const oneDecimalSeconds = (seconds) => `${seconds.toFixed(1).replace('.', ',')} s`;
 
 async function exportBackup() {
-  const name = `krazek-kopia-${dayKey(new Date())}.json`;
+  const name = `forma-kopia-${dayKey(new Date())}.json`;
   const file = new File([backupText()], name, { type: 'application/json' });
   try {
     if (navigator.canShare?.({ files: [file] })) {
@@ -540,7 +538,7 @@ export function settingsView() {
   const showSound = () => {
     const s = sound.status();
     soundLine.hidden = false;
-    soundLine.textContent = `Stan: ${s.state}, ${oneDecimalSeconds(s.time)} z ${oneDecimalSeconds(s.duration)}, tryb ${s.session}, zapas ${s.backup}${s.error ? `, błąd ${s.error}` : ''}`;
+    soundLine.textContent = `Stan: silnik ${s.engine}, tryb ${s.session}${s.error ? `, błąd ${s.error}` : ''}`;
   };
   const watchSound = () => {
     clearInterval(soundTimer);
@@ -570,30 +568,14 @@ export function settingsView() {
       h('span.setting-value', fmtClock(rest)))),
     h('section.block',
       h('h2.block-title', 'Dźwięk końca przerwy'),
-      segmented(
-        [{ value: false, label: 'Przy muzyce' }, { value: true, label: 'Na blokadzie' }],
-        state.settings.lockedAudio,
-        (value) => saveSettings({ lockedAudio: value }),
-        'Tryb dźwięku końca przerwy',
-      ),
-      h('p.settings-text', state.settings.lockedAudio
-        ? 'Sygnał zagra też na zablokowanym ekranie, ale muzyka zatrzymuje się na czas przerwy.'
-        : 'Muzyka gra dalej, a sygnał nakłada się na nią. Zostaw aplikację otwartą i ekran włączony, bo po zablokowaniu telefonu sygnał nie zagra.'),
+      h('p.settings-text', 'Muzyka gra dalej, a sygnał nakłada się na nią. Zostaw aplikację otwartą i ekran włączony, bo po zablokowaniu telefonu lub przejściu do innej aplikacji sygnał nie zagra.'),
       h('button.btn.btn-ghost.btn-block', {
         type: 'button',
         onclick: () => {
-          sound.playNow({ takeOver: state.settings.lockedAudio });
+          sound.playNow();
           watchSound();
         },
       }, 'Zagraj sygnał teraz'),
-      state.settings.lockedAudio && h('button.btn.btn-ghost.btn-block', {
-        type: 'button',
-        onclick: () => {
-          sound.startRest(SOUND_TEST_SECONDS, { takeOver: state.settings.lockedAudio });
-          watchSound();
-          toast(`Zablokuj telefon. Sygnał zagra za ${SOUND_TEST_SECONDS} sekund.`);
-        },
-      }, 'Sprawdź przy zablokowanym ekranie'),
       soundLine),
     h('section.block',
       h('h2.block-title', 'Kopia zapasowa'),

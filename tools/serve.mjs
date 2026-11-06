@@ -33,5 +33,5 @@ createServer(async (req, res) => {
     res.writeHead(404).end('Nie znaleziono');
   }
 }).listen(PORT, '127.0.0.1', () => {
-  console.log(`Krążek: http://localhost:${PORT}`);
+  console.log(`Forma: http://localhost:${PORT}`);
 });

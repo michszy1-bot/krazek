@@ -4,7 +4,6 @@ import assert from 'node:assert/strict';
 import { addDays, dayKey, fmtClock, fmtDuration, fmtSet, fmtVolume, inputValue, parseNum, pastWorkoutStart, plural, startOfWeek } from '../js/format.js';
 import { estimate1RM, flagRecords, isComplete, muscleSets, niceTicks, recordsFor, summarizeSets, weekDays, weeklyTotals, workoutRecords, workoutVolume } from '../js/stats.js';
 import { buildBackup, parseBackup } from '../js/backup.js';
-import { buildTrack } from '../js/sound.js';
 import { SEED_EXERCISES, MUSCLES, EQUIPMENT } from '../js/exercises.js';
 
 const nbsp = (s) => s.replace(/ /g, ' ');
@@ -195,43 +194,10 @@ test('niceTicks daje równe, okrągłe podziałki obejmujące zakres', () => {
   assert.ok(niceTicks(100, 100).length >= 2);
 });
 
-test('nagranie przerwy: poprawny WAV, cisza do końca odliczania, potem sygnał', () => {
-  const rate = 16000;
-  const track = buildTrack(3, rate);
-  const view = new DataView(track.buffer);
-  const text = (from, to) => String.fromCharCode(...track.slice(from, to));
-  assert.equal(text(0, 4), 'RIFF');
-  assert.equal(text(8, 12), 'WAVE');
-  assert.equal(view.getUint16(20, true), 1);
-  assert.equal(view.getUint16(34, true), 16);
-  assert.equal(view.getUint32(24, true), rate);
-  assert.equal(view.getUint32(28, true), rate * 2);
-  assert.equal(view.getUint32(40, true), track.length - 44);
-  assert.equal(view.getUint32(4, true), track.length - 8);
-  assert.equal((track.length - 44) % 2, 0);
-  const silence = track.slice(44, 44 + 3 * rate * 2);
-  assert.ok(silence.every((v) => v === 0), 'przed sygnałem ma być sama cisza');
-  let peak = 0;
-  for (let i = 44 + 3 * rate * 2; i < track.length; i += 2) peak = Math.max(peak, Math.abs(view.getInt16(i, true)));
-  assert.ok(peak > 25000, 'sygnał ma być głośny');
-});
-
-test('nagranie bez ciszy zaczyna się od razu sygnałem', () => {
-  const rate = 16000;
-  const track = buildTrack(0, rate);
-  const view = new DataView(track.buffer);
-  let firstLoud = -1;
-  for (let i = 44; i < track.length; i += 2) {
-    if (Math.abs(view.getInt16(i, true)) > 10000) { firstLoud = (i - 44) / 2 / rate; break; }
-  }
-  assert.ok(firstLoud >= 0 && firstLoud < 0.02, `sygnał zaczął się po ${firstLoud} s`);
-  assert.ok((track.length - 44) / 2 / rate < 2, 'nagranie testowe ma być krótkie');
-});
-
-test('kopia zapasowa zachowuje tryb dźwięku i odrzuca złą wartość', () => {
+test('starsza kopia z usuniętym trybem dźwięku nadal się wczytuje', () => {
   const base = { app: 'krazek', version: 1, exercises: [], workouts: [] };
-  assert.equal(parseBackup(JSON.stringify({ ...base, settings: { lockedAudio: true } })).settings.lockedAudio, true);
-  assert.equal('lockedAudio' in parseBackup(JSON.stringify({ ...base, settings: { lockedAudio: 'tak' } })).settings, false);
+  const { settings } = parseBackup(JSON.stringify({ ...base, settings: { restSec: 90, lockedAudio: true } }));
+  assert.deepEqual(settings, { restSec: 90 });
 });
 
 test('kopia zapasowa przechodzi w obie strony', () => {

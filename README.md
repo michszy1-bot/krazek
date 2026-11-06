@@ -1,4 +1,4 @@
-# Krążek
+# Forma
 
 Osobisty dziennik treningowy na iPhone'a: serie, minutnik przerwy, rekordy, wykresy i animacje ćwiczeń.
 Bez konta i bez serwera. Treningi są zapisane tylko na telefonie.
