@@ -571,22 +571,22 @@ export function settingsView() {
     h('section.block',
       h('h2.block-title', 'Dźwięk końca przerwy'),
       segmented(
-        [{ value: false, label: 'Nie przerywaj muzyki' }, { value: true, label: 'Pewniej na blokadzie' }],
+        [{ value: false, label: 'Przy muzyce' }, { value: true, label: 'Na blokadzie' }],
         state.settings.lockedAudio,
         (value) => saveSettings({ lockedAudio: value }),
         'Tryb dźwięku końca przerwy',
       ),
       h('p.settings-text', state.settings.lockedAudio
-        ? 'Sygnał ma pierwszeństwo. iPhone może zatrzymać muzykę na czas przerwy i nie wznowić jej sam. Działanie zależy od telefonu, więc sprawdź go poniżej.'
-        : 'Sygnał gra razem z muzyką. iPhone może go nie odtworzyć na zablokowanym ekranie albo przy wyciszonym telefonie.'),
+        ? 'Sygnał zagra też na zablokowanym ekranie, ale muzyka zatrzymuje się na czas przerwy.'
+        : 'Muzyka gra dalej, a sygnał nakłada się na nią. Zostaw aplikację otwartą i ekran włączony, bo po zablokowaniu telefonu sygnał nie zagra.'),
       h('button.btn.btn-ghost.btn-block', {
         type: 'button',
         onclick: () => {
-          sound.startRest(0, { takeOver: state.settings.lockedAudio });
+          sound.playNow({ takeOver: state.settings.lockedAudio });
           watchSound();
         },
       }, 'Zagraj sygnał teraz'),
-      h('button.btn.btn-ghost.btn-block', {
+      state.settings.lockedAudio && h('button.btn.btn-ghost.btn-block', {
         type: 'button',
         onclick: () => {
           sound.startRest(SOUND_TEST_SECONDS, { takeOver: state.settings.lockedAudio });

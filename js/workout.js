@@ -625,7 +625,6 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 window.addEventListener('pagehide', () => { if (state.active) flushActive(); });
-window.addEventListener('pointerdown', sound.unlock, { capture: true, passive: true });
 
 // --- Zakończenie i zapis ---
 

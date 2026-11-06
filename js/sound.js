@@ -1,9 +1,13 @@
-// Sygnał końca przerwy.
+// Sygnał końca przerwy, w dwóch trybach, bo na iPhonie nie da się mieć obu rzeczy naraz.
 //
-// iPhone zatrzymuje skrypty strony na zablokowanym ekranie, więc samo odliczanie nie włączy dźwięku.
-// Dlatego przy odhaczeniu serii rusza nagranie o długości przerwy: cisza, a na końcu sygnał.
-// Nagranie powstaje na każdą przerwę osobno i gra od początku. Bez przewijania, bo iPhone
-// może je zignorować i wtedy grałaby sama cisza.
+// Przy muzyce: sygnał gra aplikacja dopiero na końcu przerwy, przez Web Audio, które nakłada się
+// na muzykę. Działa tylko przy otwartej aplikacji i włączonym ekranie.
+//
+// Na blokadzie (takeOver): iPhone zatrzymuje skrypty strony na zablokowanym ekranie, więc przy
+// odhaczeniu serii rusza nagranie o długości przerwy: cisza, a na końcu sygnał. Takie nagranie
+// przejmuje dźwięk telefonu i zatrzymuje muzykę na czas przerwy. Powstaje na każdą przerwę osobno
+// i gra od początku, bo przewijanie iPhone może zignorować i wtedy grałaby sama cisza.
+//
 // Bez dotknięcia ekranu Safari nie pozwoli niczego zagrać, stąd wywołania w obsłudze stuknięć.
 
 const SAMPLE_RATE = 16000;
@@ -58,17 +62,21 @@ let element = null;
 let trackUrl = null;
 let context = null;
 let lastError = null;
+let suspendTimer = null;
 
 function setSession(takeOver) {
   // ambient miesza się z muzyką. auto to domyślne zachowanie telefonu: sygnał ma pierwszeństwo,
   // ale może zatrzymać muzykę. Ręczne wymuszanie trybu playback uciszało dźwięk na iPhonie.
-  if (!('audioSession' in navigator)) return;
+  if (typeof navigator === 'undefined' || !('audioSession' in navigator)) return;
   try {
     navigator.audioSession.type = takeOver ? 'auto' : 'ambient';
   } catch {
     // Brak zmiany trybu nie może zablokować samego sygnału.
   }
 }
+
+// Od samego startu aplikacja ma nie przeszkadzać muzyce, jeszcze zanim cokolwiek zagra.
+setSession(false);
 
 function playTrack(silenceSeconds, takeOver) {
   setSession(takeOver);
@@ -84,6 +92,7 @@ function playTrack(silenceSeconds, takeOver) {
   player.addEventListener('error', () => {
     if (player === element) lastError = player.error?.message || `kod ${player.error?.code}`;
   });
+  player.addEventListener('ended', () => { if (player === element) setSession(false); });
   player.src = trackUrl;
   player.play().catch((error) => {
     if (player !== element) return;
@@ -100,8 +109,12 @@ function playTrack(silenceSeconds, takeOver) {
   if (previousUrl) URL.revokeObjectURL(previousUrl);
 }
 
-/** Przygotowuje zapasowy dźwięk. Wywoływane przy każdym dotknięciu ekranu. */
-export function unlock() {
+/**
+ * Budzi silnik dźwięku na czas przerwy. Działający silnik może zatrzymać muzykę w iPhonie,
+ * więc nie może powstawać przy zwykłym dotknięciu ekranu, a po sygnale znów zasypia.
+ */
+function unlock() {
+  clearTimeout(suspendTimer);
   const Context = window.AudioContext ?? window.webkitAudioContext;
   if (!Context) return;
   if (context?.state === 'closed') context = null;
@@ -112,9 +125,34 @@ export function unlock() {
   }
 }
 
-/** Rusza nagranie: sygnał zagra za `seconds` sekund. Tylko w obsłudze stuknięcia. */
+/** Początek przerwy. Tylko w trybie blokady rusza nagranie, bo ono zatrzymuje muzykę. */
 export function startRest(seconds, { takeOver = false } = {}) {
-  playTrack(Math.min(Math.max(0, seconds), MAX_REST_SECONDS), takeOver);
+  lastError = null;
+  setSession(takeOver);
+  if (!takeOver) {
+    element?.pause();
+    unlock();
+    return;
+  }
+  playTrack(Math.min(Math.max(0, seconds), MAX_REST_SECONDS), true);
+}
+
+/** Sygnał od razu, do sprawdzenia dźwięku. Tylko w obsłudze stuknięcia. */
+export function playNow({ takeOver = false } = {}) {
+  lastError = null;
+  setSession(takeOver);
+  if (takeOver) {
+    playTrack(0, true);
+    return;
+  }
+  element?.pause();
+  unlock();
+  beepNow();
+}
+
+function sleepEngine(afterMs = 0) {
+  clearTimeout(suspendTimer);
+  suspendTimer = setTimeout(() => { context?.suspend?.().catch?.(() => {}); }, afterMs);
 }
 
 /** Po zmianie długości przerwy nagranie powstaje od nowa. */
@@ -125,6 +163,8 @@ export function syncRest(secondsLeft, options) {
 
 export function stopRest() {
   element?.pause();
+  setSession(false);
+  sleepEngine();
 }
 
 /** Czy sygnał wybrzmiał lub właśnie wybrzmiewa z nagrania. Stojące nagranie się nie liczy. */
@@ -136,7 +176,7 @@ export function isTrackPlaying() {
 /** Stan odtwarzania pokazywany w Ustawieniach, żeby dało się ustalić, co robi telefon. */
 export function status() {
   return {
-    state: !element ? 'nie uruchomiono' : element.ended ? 'zakończone' : element.paused ? 'zatrzymane' : 'gra',
+    state: !element ? 'bez nagrania' : element.ended ? 'zakończone' : element.paused ? 'zatrzymane' : 'gra',
     time: element?.currentTime ?? 0,
     duration: Number.isFinite(element?.duration) ? element.duration : 0,
     error: lastError,
@@ -145,9 +185,19 @@ export function status() {
   };
 }
 
-/** Zapasowy sygnał, gdy nagranie nie działa. Odzywa się tylko przy otwartej aplikacji. */
+/** Sygnał grany przez aplikację, nakłada się na muzykę. Odzywa się tylko przy otwartej aplikacji. */
 export function beepNow() {
-  if (!context || context.state !== 'running') return;
+  if (!context) return;
+  if (context.state !== 'running') {
+    // Kontekst wstrzymany na chwilę, np. przez dźwięk z innej aplikacji, zwykle da się wznowić.
+    const paused = context;
+    paused.resume().then(() => { if (paused === context) playBeeps(); }).catch(() => { lastError = 'nie można wznowić dźwięku'; });
+    return;
+  }
+  playBeeps();
+}
+
+function playBeeps() {
   let offset = 0;
   for (const { hz, seconds } of BEEPS) {
     const osc = context.createOscillator();
@@ -162,4 +212,5 @@ export function beepNow() {
     osc.stop(at + seconds);
     offset += seconds + GAP_SECONDS;
   }
+  sleepEngine(offset * 1000 + 300);
 }
