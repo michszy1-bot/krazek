@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { addDays, dayKey, fmtClock, fmtDuration, fmtMultiplier, fmtSet, fmtSetChange, fmtVolume, inputValue, parseNum, pastWorkoutStart, plural, startOfWeek } from '../js/format.js';
-import { ACHIEVEMENT_GROUPS, ACHIEVEMENTS, achievementProgress, achievementXp, rewardTier } from '../js/achievements.js';
+import { achievementDate, ACHIEVEMENT_GROUPS, ACHIEVEMENTS, achievementProgress, achievementXp, rewardTier } from '../js/achievements.js';
+import { badgeMarkup } from '../js/badges.js';
 import { backupStatus, bestSet, bestStreak, compareSets, estimate1RM, flagRecords, goalProgress, isComplete, loadBar, MUSCLE_SCALES, muscleLevel, muscleSets, neglectedMuscles, niceTicks, plateHeight, plateTier, plateTravel, plateWidth, recordsFor, recordTimeline, restAfterSet, setLabels, stepBaseWeight, steppedWeight, streakMultiplier, streakStatus, suggestNextWeight, summarizeSets, swapExercise, warmupSets, weekDays, weeklyTotals, weeksToShield, weightStep, workoutComparison, workoutRecords, workoutVolume } from '../js/stats.js';
 import { workoutsCsv } from '../js/csv.js';
 import { levelProgress, strengthCategory, strengthColour, strengthRatio, workoutGain } from '../js/level.js';
@@ -1377,4 +1378,27 @@ test('sklep: nowe przedmioty zakłada się jak pozostałe, a efekty można wył�
   const restored = cleanShop(JSON.parse(JSON.stringify(teal)));
   assert.deepEqual(restored.owned, ['theme-navy', 'accent-teal']);
   assert.ok(wornLooks(restored).includes('look-accent-teal'));
+});
+
+test('medale: każde osiągnięcie ma własny, a rysunek jest kompletny', () => {
+  const seen = new Set();
+  for (const item of ACHIEVEMENTS) {
+    const markup = badgeMarkup(item);
+    assert.ok(!markup.includes('undefined'), item.id);
+    assert.ok(markup.includes('class="badge-glyph"'), item.id);
+    seen.add(markup);
+  }
+  assert.equal(seen.size, ACHIEVEMENTS.length);
+});
+
+test('data medalu: trening, który ją dał, także przy zapisie nie po kolei', () => {
+  const at = (id, day, sets) => dayWorkout(id, new Date(2026, 9, day, 18), [['bench-press', sets]]);
+  const workouts = [at('c', 3, oneSet(100)), at('a', 1, oneSet(60)), at('d', 4, oneSet(90)), at('b', 2, oneSet(70))];
+  assert.equal(achievementDate(workouts, seedLookup, {}, 'bench-100'), new Date(2026, 9, 3, 18).getTime());
+  assert.equal(achievementDate(workouts, seedLookup, {}, 'workouts-1'), new Date(2026, 9, 1, 18).getTime());
+  assert.equal(achievementDate(workouts, seedLookup, {}, 'bench-120'), null);
+  assert.equal(achievementDate([], seedLookup, {}, 'workouts-1'), null);
+  // Rekord liczy się z historii do tamtego dnia: drugi trening jest pierwszym rekordem.
+  const ten = Array.from({ length: 11 }, (_, i) => at('r' + i, i + 1, oneSet(60 + i)));
+  assert.equal(achievementDate(ten, seedLookup, {}, 'records-10'), new Date(2026, 9, 11, 18).getTime());
 });

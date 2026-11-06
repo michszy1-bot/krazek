@@ -1,6 +1,7 @@
 // Poziomy na ekranie: sekcje profilu i wynik w podsumowaniu treningu.
 
 import { h, icon } from './ui.js';
+import { badge } from './badges.js';
 import { countOf, fmtMultiplier, fmtNum } from './format.js';
 import { shownTitle, spendable } from './shop.js';
 import { streakStatus } from './stats.js';
@@ -69,7 +70,7 @@ export function levelSections(onAddWeight) {
       shownTitle(state.shop) && h('p.level-title', shownTitle(state.shop)),
       h('div.level-head',
         h('strong.level-name', `Poziom ${progress.level}`),
-        levelLink('#/osiagniecia', 'trophy', `Osiągnięcia, zdobyte: ${progress.achievements.filter((item) => item.done).length} z ${progress.achievements.length}`),
+        levelLink('#/osiagniecia', 'trophy', `Medale, zdobyte: ${progress.achievements.filter((item) => item.done).length} z ${progress.achievements.length}`),
         levelLink('#/sklep', 'bag', `Sklep, do wydania: ${fmtNum(spendable(progress.xp, state.shop))} XP`)),
       xpBar(`Postęp poziomu ${progress.level}`, progress.share),
       h('p.level-meta', h('span', `${fmtNum(progress.xp)} XP`), h('span', nextText(progress))),
@@ -112,6 +113,7 @@ export function levelGainBlock({ xp, multiplier, before, after, muscleUps, newAc
     multiplier > 1 && h('p.level-meta', `Z mnożnikiem za serię tygodni: ${fmtMultiplier(multiplier)}`),
     muscleUps.length > 0 && h('p.level-meta', `Siła: ${muscleUps.map((row) => `${row.muscle} ${row.level}`).join(' · ')}`),
     newAchievements.map((item) => h('p.level-unlock',
-      h('span', h('span.level-unlock-label', 'Nowe osiągnięcie: '), h('strong', item.name)),
+      badge(item, 46),
+      h('span.level-unlock-text', h('span.level-unlock-label', 'Nowy medal'), h('strong', item.name)),
       h('span.level-unlock-xp', `+${fmtNum(item.xp)} XP`))));
 }

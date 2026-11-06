@@ -4,7 +4,7 @@
 import { weightOn } from './body.js';
 import { MUSCLES, musclesOf } from './exercises.js';
 import { dayKey, startOfDay, startOfWeek } from './format.js';
-import { bestStreak, isWorking, muscleLevel, plateTier, workingSetCount, workoutVolume } from './stats.js';
+import { bestStreak, isWorking, muscleLevel, plateTier, recordTimeline, workingSetCount, workoutVolume } from './stats.js';
 
 const EARLY_BEFORE_HOUR = 7;
 const LATE_FROM_HOUR = 22;
@@ -190,3 +190,25 @@ export function achievementProgress(workouts, exerciseById, { weeklyGoal = null,
 }
 
 export const achievementXp = (progress) => progress.reduce((sum, item) => sum + (item.done ? item.xp : 0), 0);
+
+/**
+ * Początek treningu, który dał osiągnięcie, albo null. Liczone tylko po stuknięciu w odznakę:
+ * nowe treningi nie zabierają osiągnięcia, więc najkrótszy fragment historii da się znaleźć przez połowienie.
+ */
+export function achievementDate(workouts, exerciseById, options, id) {
+  const sorted = [...workouts].sort((a, b) => a.startedAt - b.startedAt);
+  const hasIt = (count) => {
+    const part = sorted.slice(0, count);
+    const records = recordTimeline(part, exerciseById);
+    return achievementProgress(part, exerciseById, { ...options, records }).find((item) => item.id === id).done;
+  };
+  if (!sorted.length || !hasIt(sorted.length)) return null;
+  let low = 1;
+  let high = sorted.length;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (hasIt(middle)) high = middle;
+    else low = middle + 1;
+  }
+  return sorted[low - 1].startedAt;
+}

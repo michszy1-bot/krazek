@@ -1,19 +1,22 @@
-// Ekran osiągnięć w profilu.
+// Kolekcja medali w profilu.
 
-import { h, icon, pageHeader } from './ui.js';
-import { fmtNum } from './format.js';
-import { ACHIEVEMENT_GROUPS, ACHIEVEMENTS, rewardTier } from './achievements.js';
+import { emptyState, h, openSheet, pageHeader, segmented } from './ui.js';
+import { fmtDayMedium, fmtNum } from './format.js';
+import { achievementDate, ACHIEVEMENT_GROUPS } from './achievements.js';
+import { badge } from './badges.js';
 import { levelProgress } from './level.js';
 import { levelOptions } from './level-views.js';
 import { exerciseById, state } from './store.js';
 
 const fmtXp = (xp) => `${fmtNum(xp)} XP`;
-const TOTAL_XP = ACHIEVEMENTS.reduce((sum, item) => sum + item.xp, 0);
 
 const MISSING = {
   goal: 'Ustaw cel tygodniowy, żeby to liczyć',
   weight: 'Dodaj wagę w dzienniku wagi, żeby to liczyć',
 };
+
+// Zakładka zostaje wybrana po powrocie ze szczegółów i z innych ekranów.
+let shownTab = 'earned';
 
 /** Postęp słownie, np. 37 z 50 albo 46,2 z 100 ton. Tonaż przychodzi w kilogramach. */
 function progressText({ value, target, unit = '', scale = 1 }) {
@@ -21,37 +24,71 @@ function progressText({ value, target, unit = '', scale = 1 }) {
   return `${fmtNum(shown)} z ${fmtNum(target / scale)}${unit}`;
 }
 
-function achievementRow(item, missing) {
-  const needs = !item.done && missing[item.needs];
-  const showProgress = !item.done && item.target > 1 && !needs;
-  const share = Math.min(100, Math.floor((item.value / item.target) * 100));
-  return h(`div.achievement${item.done ? '.done' : ''}`,
-    h(`span.achievement-disc.tier-${rewardTier(item.xp)}`),
-    h('div.shop-text',
-      h('span.shop-name', item.name),
-      item.detail && h('span.shop-meta', item.detail),
-      needs && h('span.shop-meta', needs),
-      showProgress && h('span.shop-meta', progressText(item)),
-      showProgress && h('span.shop-progress', h('i', { style: `width:${share}%` }))),
-    h('span.achievement-xp', { role: 'img', 'aria-label': `${item.done ? 'Zdobyte' : 'Nagroda'}: ${fmtXp(item.xp)}` },
-      item.done && icon('check', 16),
-      `+${fmtXp(item.xp)}`));
+const shareOf = (item) => Math.min(100, Math.floor((item.value / item.target) * 100));
+const showsProgress = (item, needs) => !item.done && item.target > 1 && !needs;
+const missingFor = (item, missing) => (item.done ? false : missing[item.needs]);
+
+function medalSheet(item, missing) {
+  const needs = missingFor(item, missing);
+  const earnedOn = item.done && achievementDate(state.workouts, exerciseById, levelOptions(), item.id);
+  const progress = showsProgress(item, needs);
+  openSheet((close) => h('div.sheet-body.badge-sheet',
+    badge(item, 148),
+    h('h2.sheet-title', item.name),
+    item.detail && h('p.badge-sheet-text', item.detail),
+    needs && h('p.badge-sheet-text', needs),
+    progress && h('p.badge-sheet-text', progressText(item)),
+    progress && h('span.shop-progress', h('i', { style: `width:${shareOf(item)}%` })),
+    earnedOn && h('p.badge-sheet-text', `Zdobyty ${fmtDayMedium(earnedOn)}`),
+    h(`p.badge-sheet-xp${item.done ? '.earned' : ''}`, `+${fmtXp(item.xp)}`),
+    h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: close }, 'Zamknij')),
+  { label: item.name });
+}
+
+function medalCell(item, missing) {
+  const needs = missingFor(item, missing);
+  return h(`button.medal${item.done ? '.earned' : ''}`, {
+    type: 'button',
+    'aria-label': `${item.name}. ${item.done ? 'Zdobyty' : 'Jeszcze do zdobycia'}`,
+    onclick: () => medalSheet(item, missing),
+  },
+  badge(item, 92),
+  h('span.medal-plinth',
+    h('span.medal-name', item.name),
+    h('span.medal-pill', showsProgress(item, needs) ? `${shareOf(item)}%` : `+${fmtXp(item.xp)}`)));
+}
+
+function medalGroups(items, missing) {
+  return ACHIEVEMENT_GROUPS
+    .map((group) => ({ group, list: items.filter((item) => item.group === group) }))
+    .filter(({ list }) => list.length > 0)
+    .map(({ group, list }) => h('section.block',
+      h('h2.block-title', group),
+      h('div.medal-grid', list.map((item) => medalCell(item, missing)))));
 }
 
 export function achievementsView() {
-  const { achievements, achievementXp } = levelProgress(state.workouts, exerciseById, levelOptions());
+  const { achievements } = levelProgress(state.workouts, exerciseById, levelOptions());
   const missing = {
     goal: state.settings.weeklyGoal == null && MISSING.goal,
     weight: !state.bodyWeights.length && MISSING.weight,
   };
-  const done = achievements.filter((item) => item.done).length;
-  return h('div.page',
-    pageHeader('Osiągnięcia', { back: '#/profil' }),
-    h('section.shop-balance',
-      h('strong', `${done} z ${achievements.length}`),
-      h('span', `Zdobyte osiągnięcia dały ${fmtXp(achievementXp)} z ${fmtXp(TOTAL_XP)}.`)),
-    ACHIEVEMENT_GROUPS.map((group) => h('section.block',
-      h('h2.block-title', group),
-      h('div.shop-list', achievements.filter((item) => item.group === group).map((item) => achievementRow(item, missing))))),
-    h('p.settings-text', 'Liczą się też wcześniejsze treningi. Nagrody nie mają mnożnika za serię. Osiągnięcie wynika z historii, więc usunięcie treningu albo zmiana celu może je zabrać.'));
+  const earned = achievements.filter((item) => item.done);
+  const left = achievements.filter((item) => !item.done);
+  const content = h('div.medal-content');
+  const draw = () => {
+    const items = shownTab === 'earned' ? earned : left;
+    content.replaceChildren(...(items.length
+      ? medalGroups(items, missing)
+      : [emptyState(shownTab === 'earned' ? 'Jeszcze bez medali' : 'Masz wszystkie medale', shownTab === 'earned' ? 'Zapisz trening, a pierwszy medal wpadnie od razu.' : 'Cała kolekcja jest zebrana.')]));
+  };
+  draw();
+  return h('div.page.medal-page',
+    pageHeader('Medale', { back: '#/profil' }),
+    h('div.filters', segmented([
+      { value: 'earned', label: `Zdobyte ${earned.length}` },
+      { value: 'left', label: `Pozostałe ${left.length}` },
+    ], shownTab, (value) => { shownTab = value; draw(); }, 'Które medale pokazać')),
+    content,
+    h('p.settings-text', 'Liczą się też wcześniejsze treningi. Nagrody nie mają mnożnika za serię. Medal wynika z historii, więc usunięcie treningu albo zmiana celu może go zabrać.'));
 }
