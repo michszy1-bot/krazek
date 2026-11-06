@@ -6,6 +6,7 @@ import { exerciseSessions, flagRecords, isComplete, isWorking, recordsFor, worki
 import { exerciseById, flushActive, newId, saveActiveSoon, saveExercise, saveWorkout, setActive, state } from './store.js';
 import { pickExercises } from './picker.js';
 import { demoUrl, exerciseDemo, hasDemo } from './demo.js';
+import * as sound from './sound.js';
 
 const REST_OPTIONS = [0, 30, 45, 60, 90, 120, 150, 180, 240, 300];
 const MAX_WEIGHT = 1500;
@@ -388,7 +389,6 @@ function buildSetRow({ set, type, hint, label, onMenu, onChange, exercise }) {
     disc);
 
   function toggleDone() {
-    unlockAudio();
     if (set.done) {
       set.done = false;
     } else {
@@ -433,6 +433,7 @@ function buildRestBar() {
     if (!draft.restEndAt) return;
     draft.restEndAt += delta * 1000;
     draft.restTotal = Math.max(1, draft.restTotal + delta);
+    sound.syncRest((draft.restEndAt - Date.now()) / 1000, soundOptions());
     touch();
     tick();
   };
@@ -448,6 +449,8 @@ function buildRestBar() {
   return bar;
 }
 
+const soundOptions = () => ({ takeOver: state.settings.lockedAudio });
+
 function startRest(seconds) {
   clearTimeout(restEndedTimer);
   if (!seconds) {
@@ -457,11 +460,13 @@ function startRest(seconds) {
   ctx.draft.restEndAt = Date.now() + seconds * 1000;
   ctx.draft.restTotal = seconds;
   ctx.restBar.classList.remove('ended');
+  sound.startRest(seconds, soundOptions());
   tick();
 }
 
 function stopRest() {
   clearTimeout(restEndedTimer);
+  sound.stopRest();
   if (!ctx?.restBar) return;
   ctx.draft.restEndAt = null;
   ctx.restBar.hidden = true;
@@ -493,35 +498,10 @@ function tick() {
   restBar.time.textContent = 'Koniec przerwy';
   restBar.progress.style.transform = 'scaleX(0)';
   restBar.classList.add('ended');
-  beep();
+  // Sygnał jest zwykle już w nagraniu. Zapasowy gra tylko wtedy, gdy nagranie nie ruszyło.
+  if (!sound.isTrackPlaying()) sound.beepNow();
   navigator.vibrate?.([200, 100, 200]);
   restEndedTimer = setTimeout(stopRest, 5000);
-}
-
-// Safari pozwala grać dźwięk tylko po dotknięciu, dlatego kontekst powstaje przy odhaczeniu serii.
-let audio = null;
-
-function unlockAudio() {
-  const Ctx = window.AudioContext ?? window.webkitAudioContext;
-  if (!Ctx) return;
-  audio ??= new Ctx();
-  if (audio.state !== 'running') audio.resume().catch(() => {});
-}
-
-function beep() {
-  if (!audio || audio.state !== 'running') return;
-  [0, 0.22, 0.44].forEach((offset) => {
-    const osc = audio.createOscillator();
-    const gain = audio.createGain();
-    const at = audio.currentTime + offset;
-    osc.frequency.value = 880;
-    gain.gain.setValueAtTime(0.0001, at);
-    gain.gain.exponentialRampToValueAtTime(0.4, at + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.17);
-    osc.connect(gain).connect(audio.destination);
-    osc.start(at);
-    osc.stop(at + 0.18);
-  });
 }
 
 // --- Ekran nie gaśnie w trakcie treningu ---
@@ -552,6 +532,7 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 window.addEventListener('pagehide', () => { if (state.active) flushActive(); });
+window.addEventListener('pointerdown', sound.unlock, { capture: true, passive: true });
 
 // --- Zakończenie i zapis ---
 
@@ -646,6 +627,7 @@ async function discardLive() {
 
 async function closeLive() {
   clearTimeout(restEndedTimer);
+  sound.stopRest();
   unmount();
   await setActive(null);
 }

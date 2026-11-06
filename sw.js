@@ -1,7 +1,7 @@
 // Tryb offline: wszystkie pliki aplikacji są w pamięci telefonu.
 // Przy każdej zmianie plików podnieś VERSION, żeby telefon pobrał nową wersję.
 
-const VERSION = 'krazek-v3';
+const VERSION = 'krazek-v4';
 
 const FILES = [
   './',
@@ -17,6 +17,7 @@ const FILES = [
   './js/exercises.js',
   './js/format.js',
   './js/picker.js',
+  './js/sound.js',
   './js/stats.js',
   './js/store.js',
   './js/ui.js',

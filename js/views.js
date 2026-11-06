@@ -8,6 +8,7 @@ import { backupText, deleteExercise, deleteWorkout, exerciseById, isExerciseUsed
 import { applyFilter, exerciseFilter, exerciseForm } from './picker.js';
 import { addPastWorkout, editWorkout, resumeWorkout, startWorkout, stat } from './workout.js';
 import { exerciseDemo } from './demo.js';
+import * as sound from './sound.js';
 
 const BACKUP_REMINDER_DAYS = 30;
 const DAY_LETTERS = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'];
@@ -467,6 +468,7 @@ export function libraryView() {
 // --- Ustawienia ---
 
 const REST_CHOICES = [30, 45, 60, 90, 120, 150, 180, 240, 300];
+const SOUND_TEST_SECONDS = 15;
 
 async function exportBackup() {
   const name = `krazek-kopia-${dayKey(new Date())}.json`;
@@ -548,6 +550,25 @@ export function settingsView() {
         h('span.link-name', 'Domyślna przerwa'),
         h('span.link-meta', 'Każde ćwiczenie może mieć własną, ustawianą na ekranie treningu')),
       h('span.setting-value', fmtClock(rest)))),
+    h('section.block',
+      h('h2.block-title', 'Dźwięk końca przerwy'),
+      segmented(
+        [{ value: false, label: 'Nie przerywaj muzyki' }, { value: true, label: 'Pewniej na blokadzie' }],
+        state.settings.lockedAudio,
+        (value) => saveSettings({ lockedAudio: value }),
+        'Tryb dźwięku końca przerwy',
+      ),
+      h('p.settings-text', state.settings.lockedAudio
+        ? 'Sygnał ma pierwszeństwo. iPhone może zatrzymać muzykę na czas przerwy i nie wznowić jej sam.'
+        : 'Sygnał gra razem z muzyką. iPhone może go nie odtworzyć na zablokowanym ekranie albo przy wyciszonym telefonie.'),
+      h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => sound.startRest(0, { takeOver: state.settings.lockedAudio }) }, 'Zagraj sygnał teraz'),
+      h('button.btn.btn-ghost.btn-block', {
+        type: 'button',
+        onclick: () => {
+          sound.startRest(SOUND_TEST_SECONDS, { takeOver: state.settings.lockedAudio });
+          toast(`Zablokuj telefon. Sygnał zagra za ${SOUND_TEST_SECONDS} sekund.`);
+        },
+      }, 'Sprawdź przy zablokowanym ekranie')),
     h('section.block',
       h('h2.block-title', 'Kopia zapasowa'),
       h('p.settings-text', 'Treningi są zapisane tylko na tym telefonie. Bez kopii utrata telefonu albo usunięcie aplikacji z ekranu początkowego oznacza utratę danych.'),

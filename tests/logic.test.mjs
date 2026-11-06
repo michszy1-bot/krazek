@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { addDays, dayKey, fmtClock, fmtDuration, fmtSet, fmtVolume, inputValue, parseNum, pastWorkoutStart, plural, startOfWeek } from '../js/format.js';
 import { estimate1RM, flagRecords, isComplete, muscleSets, niceTicks, recordsFor, summarizeSets, weekDays, weeklyTotals, workoutRecords, workoutVolume } from '../js/stats.js';
 import { buildBackup, parseBackup } from '../js/backup.js';
+import { buildTrack } from '../js/sound.js';
 import { SEED_EXERCISES, MUSCLES, EQUIPMENT } from '../js/exercises.js';
 
 const nbsp = (s) => s.replace(/ /g, ' ');
@@ -192,6 +193,29 @@ test('niceTicks daje równe, okrągłe podziałki obejmujące zakres', () => {
   const step = ticks[1] - ticks[0];
   ticks.slice(1).forEach((t, i) => assert.ok(Math.abs(t - ticks[i] - step) < 1e-6));
   assert.ok(niceTicks(100, 100).length >= 2);
+});
+
+test('nagranie przerwy: poprawny WAV, cisza do końca odliczania, potem sygnał', () => {
+  const rate = 8000;
+  const track = buildTrack(3, rate);
+  const view = new DataView(track.buffer);
+  const text = (from, to) => String.fromCharCode(...track.slice(from, to));
+  assert.equal(text(0, 4), 'RIFF');
+  assert.equal(text(8, 12), 'WAVE');
+  assert.equal(view.getUint32(24, true), rate);
+  assert.equal(view.getUint32(40, true), track.length - 44);
+  assert.equal(view.getUint32(4, true), track.length - 8);
+  const silence = track.slice(44, 44 + 3 * rate);
+  assert.ok(silence.every((v) => v === 128), 'przed sygnałem ma być sama cisza');
+  const signal = track.slice(44 + 3 * rate);
+  assert.ok(Math.max(...signal) > 220, 'sygnał ma być głośny');
+  assert.ok(Math.min(...signal) < 36, 'sygnał ma być głośny');
+});
+
+test('kopia zapasowa zachowuje tryb dźwięku i odrzuca złą wartość', () => {
+  const base = { app: 'krazek', version: 1, exercises: [], workouts: [] };
+  assert.equal(parseBackup(JSON.stringify({ ...base, settings: { lockedAudio: true } })).settings.lockedAudio, true);
+  assert.equal('lockedAudio' in parseBackup(JSON.stringify({ ...base, settings: { lockedAudio: 'tak' } })).settings, false);
 });
 
 test('kopia zapasowa przechodzi w obie strony', () => {

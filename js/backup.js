@@ -81,6 +81,9 @@ export function parseBackup(text) {
       }
     }
   }
+  const settings = {};
   const rest = numOrNull(data.settings?.restSec);
-  return { exercises, workouts, settings: rest == null ? {} : { restSec: rest } };
+  if (rest != null) settings.restSec = rest;
+  if (typeof data.settings?.lockedAudio === 'boolean') settings.lockedAudio = data.settings.lockedAudio;
+  return { exercises, workouts, settings };
 }
