@@ -2,10 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { addDays, dayKey, fmtClock, fmtDuration, fmtSet, fmtVolume, inputValue, parseNum, pastWorkoutStart, plural, startOfWeek } from '../js/format.js';
-import { estimate1RM, flagRecords, goalProgress, isComplete, muscleSets, niceTicks, recordsFor, recordTimeline, setLabels, summarizeSets, weekDays, weeklyTotals, workoutRecords, workoutVolume } from '../js/stats.js';
+import { estimate1RM, flagRecords, goalProgress, isComplete, muscleLevel, muscleSets, neglectedMuscles, niceTicks, recordsFor, recordTimeline, setLabels, suggestNextWeight, summarizeSets, weekDays, weeklyTotals, workoutRecords, workoutVolume } from '../js/stats.js';
+import { applyFilter } from '../js/picker.js';
+import { SHAPE_TO_MUSCLE } from '../js/muscle-map.js';
+import { BODY_BACK, BODY_FRONT } from '../js/muscle-shapes.js';
 import { buildBackup, parseBackup } from '../js/backup.js';
 import { ageOn, cleanProfile, cleanWeights, dayTime, isDay, putWeight, removeWeight, weightChange, weightOn } from '../js/body.js';
-import { cleanRoutines, hasOwnName, isNameTaken, moveItem, putRoutine, routineFromWorkout, routineSetCount } from '../js/routines.js';
+import { cleanRoutines, hasOwnName, isNameTaken, moveItem, parseRepRange, putRoutine, routineDiffers, routineFromWorkout, routineSetCount } from '../js/routines.js';
 import { SEED_EXERCISES, MUSCLES, EQUIPMENT, RETIRED_EXERCISES, syncExercises } from '../js/exercises.js';
 import { ANIMATIONS } from '../js/animations.js';
 
@@ -315,6 +318,114 @@ test('weightOn bierze wagę z dnia albo ostatnią wcześniejszą', () => {
   assert.equal(weightOn(list, '2026-11-01').kg, 82);
   assert.equal(weightOn(list, '2026-01-01').kg, 82);
   assert.equal(weightOn([], '2026-01-01'), null);
+});
+
+test('filtr łączy sprzęt, partię i wyszukiwanie', () => {
+  const byEquipment = applyFilter(SEED_EXERCISES, { query: '', muscle: null, equipment: 'Hantle' });
+  assert.ok(byEquipment.length > 0);
+  assert.ok(byEquipment.every((e) => e.equipment === 'Hantle'));
+  const both = applyFilter(SEED_EXERCISES, { query: '', muscle: 'Barki', equipment: 'Maszyna' });
+  assert.ok(both.length > 0);
+  assert.ok(both.every((e) => e.muscle === 'Barki' && e.equipment === 'Maszyna'));
+  assert.deepEqual(applyFilter(SEED_EXERCISES, { query: 'iso-lateral', muscle: null, equipment: 'Hantle' }), []);
+  assert.equal(applyFilter(SEED_EXERCISES, { query: 'iso-lateral', muscle: null, equipment: null }).length, 1);
+});
+
+test('kopia zachowuje ulubione i stałą notatkę, a uzgadnianie z bazą ich nie rusza', () => {
+  const exercise = { ...SEED_EXERCISES[0], favorite: true, stickyNote: 'siedzenie na 4' };
+  const parsed = parseBackup(JSON.stringify(buildBackup({ exercises: [exercise], workouts: [], settings: {} })));
+  assert.equal(parsed.exercises[0].favorite, true);
+  assert.equal(parsed.exercises[0].stickyNote, 'siedzenie na 4');
+  const kept = syncExercises([{ ...exercise, name: 'Stara nazwa' }], () => false).exercises.get(exercise.id);
+  assert.equal(kept.name, SEED_EXERCISES[0].name);
+  assert.equal(kept.favorite, true);
+  assert.equal(kept.stickyNote, 'siedzenie na 4');
+  const plain = parseBackup(JSON.stringify(buildBackup({ exercises: [SEED_EXERCISES[0]], workouts: [], settings: {} }))).exercises[0];
+  assert.equal('favorite' in plain, false);
+  assert.equal('stickyNote' in plain, false);
+});
+
+test('zakres powtórzeń: jedno pole to stała liczba, a zły zakres jest odrzucany', () => {
+  assert.deepEqual(parseRepRange('8', '12'), { valid: true, repRange: { min: 8, max: 12 } });
+  assert.deepEqual(parseRepRange('10', ''), { valid: true, repRange: { min: 10, max: 10 } });
+  assert.deepEqual(parseRepRange('', '10'), { valid: true, repRange: { min: 10, max: 10 } });
+  assert.deepEqual(parseRepRange('', ' '), { valid: true, repRange: null });
+  assert.equal(parseRepRange('12', '8').valid, false);
+  assert.equal(parseRepRange('0', '8').valid, false);
+  assert.equal(parseRepRange('abc', '8').valid, false);
+  assert.equal(parseRepRange('8', '500').valid, false);
+});
+
+test('rutyna: zakres przechodzi przez kopię, a zły wypada bez odrzucania rutyny', () => {
+  const known = new Set(['a']);
+  const routine = (repRange) => [{ id: 'r', name: 'x', exercises: [{ exerciseId: 'a', sets: ['normal'], repRange }] }];
+  assert.deepEqual(cleanRoutines(routine({ min: 8, max: 12 }), known)[0].exercises[0].repRange, { min: 8, max: 12 });
+  assert.equal('repRange' in cleanRoutines(routine({ min: 12, max: 8 }), known)[0].exercises[0], false);
+  assert.equal('repRange' in cleanRoutines(routine('dużo'), known)[0].exercises[0], false);
+});
+
+test('rutyna z treningu: pomija ćwiczenia bez serii, a różnice wykrywa po treści', () => {
+  const base = { id: 'r', name: 'x', exercises: [{ exerciseId: 'a', sets: ['normal', 'normal'], repRange: { min: 8, max: 12 } }, { exerciseId: 'b', sets: ['normal'] }] };
+  const draft = {
+    exercises: [
+      { exerciseId: 'a', repRange: { min: 8, max: 12 }, sets: [{ kind: 'normal', done: true }, { kind: 'normal', done: false }] },
+      { exerciseId: 'b', sets: [{ kind: 'normal', done: false }] },
+      { exerciseId: 'c', sets: [] },
+    ],
+  };
+  const same = routineFromWorkout(draft, base);
+  assert.equal(same.exercises.length, 2);
+  assert.equal(routineDiffers(base, same), false, 'nieodhaczona seria to jeszcze nie zmiana rutyny');
+  draft.exercises[1].sets.push({ kind: 'failure' });
+  assert.equal(routineDiffers(base, routineFromWorkout(draft, base)), true);
+  const reordered = { ...base, exercises: [...base.exercises].reverse() };
+  assert.equal(routineDiffers(base, reordered), true);
+});
+
+test('propozycja ciężaru: tylko gdy wszystkie liczone serie sięgnęły górnej granicy', () => {
+  const range = { min: 8, max: 12 };
+  assert.equal(suggestNextWeight([set(60, 12), set(60, 12)], range, 'Sztanga'), 62.5);
+  assert.equal(suggestNextWeight([set(20, 12)], range, 'Hantle'), 22);
+  assert.equal(suggestNextWeight([set(60, 12), set(60, 11)], range, 'Sztanga'), null);
+  assert.equal(suggestNextWeight([set(60, 12)], null, 'Sztanga'), null);
+  assert.equal(suggestNextWeight([], range, 'Sztanga'), null);
+  assert.equal(suggestNextWeight([set(0, 12)], range, 'Sztanga'), null);
+  const mixed = [set(20, 5, { kind: 'warmup' }), set(60, 12), set(60, 13, { kind: 'failure' }), set(40, 6, { kind: 'drop' })];
+  assert.equal(suggestNextWeight(mixed, range, 'Sztanga'), 62.5);
+});
+
+test('zaniedbane partie: od najdłużej odkładanej, a rozgrzewka się nie liczy', () => {
+  const lookup = (id) => SEED_EXERCISES.find((e) => e.id === id);
+  const now = new Date(2026, 10, 20, 12);
+  const on = (id, month, day, items) => workout(id, new Date(2026, month, day, 18).toISOString(), items);
+  const history = [
+    on('a', 10, 18, { squat: [set(100, 5)] }),
+    on('b', 10, 8, { 'bench-press': [set(80, 5)] }),
+    on('c', 10, 13, { deadlift: [set(100, 5)] }),
+    on('d', 10, 19, { 'barbell-curl': [set(20, 5, { kind: 'warmup' })] }),
+  ];
+  const result = neglectedMuscles(history, lookup, ['Czworogłowe', 'Klatka', 'Plecy', 'Biceps'], now, 7);
+  assert.deepEqual(result, [
+    { muscle: 'Klatka', days: 12 },
+    { muscle: 'Plecy', days: 7 },
+    { muscle: 'Biceps', days: null },
+  ]);
+});
+
+test('mapa mięśni pokazuje każdą partię z aplikacji poza całym ciałem', () => {
+  const shapes = new Set([...Object.keys(BODY_FRONT), ...Object.keys(BODY_BACK)]);
+  for (const shape of Object.keys(SHAPE_TO_MUSCLE)) assert.ok(shapes.has(shape), `brak kształtu: ${shape}`);
+  const mapped = new Set(Object.values(SHAPE_TO_MUSCLE));
+  assert.deepEqual(MUSCLES.filter((m) => !mapped.has(m)), ['Całe ciało']);
+  assert.deepEqual([...mapped].filter((m) => !MUSCLES.includes(m)), []);
+  for (const paths of [...Object.values(BODY_FRONT), ...Object.values(BODY_BACK)]) {
+    assert.ok(paths.length > 0);
+    assert.ok(paths.every((d) => /^[Mm]/.test(d)));
+  }
+});
+
+test('poziom koloru mapy mięśni idzie za liczbą serii', () => {
+  assert.deepEqual([0, 1, 5, 6, 10, 11, 15, 16, 40].map(muscleLevel), [0, 1, 1, 2, 2, 3, 3, 4, 4]);
 });
 
 test('wiek rośnie dopiero w dniu urodzin', () => {

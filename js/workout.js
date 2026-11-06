@@ -2,9 +2,10 @@
 
 import { actionSheet, ask, h, icon, iconButton, openSheet, recordChip, toast } from './ui.js';
 import { countOf, fmtClock, fmtDuration, fmtSet, fmtUnit, fmtVolume, inputValue, parseNum, pastWorkoutStart, toLocalInput } from './format.js';
-import { exerciseSessions, flagRecords, isComplete, recordsFor, SET_KINDS, setLabels, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
-import { exerciseById, flushActive, newId, saveActiveSoon, saveExercise, saveWorkout, setActive, state } from './store.js';
-import { pickExercises } from './picker.js';
+import { exerciseSessions, flagRecords, isComplete, recordsFor, SET_KINDS, setLabels, suggestNextWeight, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
+import { exerciseById, flushActive, newId, saveActiveSoon, saveExercise, saveRoutines, saveWorkout, setActive, state } from './store.js';
+import { pickExercises, stickyNoteSheet } from './picker.js';
+import { hasOwnName, putRoutine, routineDiffers, routineFromWorkout } from './routines.js';
 import { demoUrl, exerciseDemo, hasDemo } from './demo.js';
 import { saveWorkoutAsRoutine } from './routine-views.js';
 import * as sound from './sound.js';
@@ -44,9 +45,20 @@ export async function startRoutine(routine) {
   }
   const exercises = routine.exercises
     .filter((item) => exerciseById(item.exerciseId))
-    .map((item) => ({ exerciseId: item.exerciseId, note: '', sets: item.sets.map((kind) => emptySet(kind)) }));
-  await setActive({ id: newId(), name: routine.name, startedAt: Date.now(), note: '', exercises, restEndAt: null, restTotal: 0 });
+    .map((item) => ({
+      exerciseId: item.exerciseId,
+      note: '',
+      sets: item.sets.map((kind) => emptySet(kind)),
+      ...(item.repRange ? { repRange: item.repRange } : {}),
+    }));
+  await setActive({ id: newId(), name: routine.name, routineId: routine.id, startedAt: Date.now(), note: '', exercises, restEndAt: null, restTotal: 0 });
   resumeWorkout();
+}
+
+/** Nowy trening na wzór zapisanego: te same ćwiczenia i serie, a ciężary jako podpowiedzi. */
+export function repeatWorkout(workout) {
+  const name = hasOwnName(workout) ? workout.name : defaultName();
+  return startRoutine(routineFromWorkout(workout, { id: null, name }));
 }
 
 export function resumeWorkout() {
@@ -331,10 +343,25 @@ function buildCard(item) {
     },
   })));
 
+  const editStickyNote = () => stickyNoteSheet(exercise, () => card.replaceWith(buildCard(item)));
+
+  // Propozycja większego ciężaru znika po użyciu albo po odhaczeniu pierwszej serii.
+  const nextWeight = ctx.mode === 'live' && type === 'weight' && !item.suggestionUsed && !item.sets.some((s) => s.done)
+    ? suggestNextWeight(previous, item.repRange, exercise.equipment)
+    : null;
+  const useNextWeight = () => {
+    item.sets.forEach((set) => {
+      if (set.kind !== 'warmup' && set.kind !== 'drop' && !set.done) set.weight = nextWeight;
+    });
+    item.suggestionUsed = true;
+    rebuild();
+  };
+
   const openMenu = () => {
     const position = ctx.draft.exercises.indexOf(item);
     actionSheet(exercise.name, [
-      { label: item.note || !noteField.hidden ? 'Edytuj notatkę' : 'Dodaj notatkę', onClick: () => { noteField.hidden = false; noteField.focus(); } },
+      { label: item.note || !noteField.hidden ? 'Edytuj notatkę' : 'Dodaj notatkę', hint: 'Tylko w tym treningu', onClick: () => { noteField.hidden = false; noteField.focus(); } },
+      { label: exercise.stickyNote ? 'Edytuj stałą notatkę' : 'Dodaj stałą notatkę', hint: 'Przy każdym treningu', onClick: editStickyNote },
       position > 0 && { label: 'Przesuń wyżej', onClick: () => moveTo(-1) },
       position < ctx.draft.exercises.length - 1 && { label: 'Przesuń niżej', onClick: () => moveTo(1) },
       { label: 'Usuń z treningu', danger: true, onClick: removeExercise },
@@ -363,6 +390,12 @@ function buildCard(item) {
         h('img', { src: demoUrl(exercise.id), alt: '', width: 48, height: 48, loading: 'lazy', referrerPolicy: 'no-referrer', onerror: (event) => { event.currentTarget.parentElement.hidden = true; } })),
       h('div.ex-title', h('h2', exercise.name), h('p', exercise.muscle)),
       iconButton('more', `Opcje: ${exercise.name}`, openMenu)),
+    exercise.stickyNote && h('button.sticky-note', { type: 'button', onclick: editStickyNote, 'aria-label': `Stała notatka: ${exercise.stickyNote}. Edytuj` },
+      icon('pin', 16), h('span', exercise.stickyNote)),
+    item.repRange && h('p.rep-range', `Zakres: ${item.repRange.min === item.repRange.max ? item.repRange.min : `${item.repRange.min}–${item.repRange.max}`} powt.`),
+    nextWeight && h('div.next-weight',
+      h('span', `Ostatnio wszystkie serie w górze zakresu. Spróbuj ${fmtUnit(nextWeight, 'kg')}.`),
+      h('button.btn.btn-chip', { type: 'button', onclick: useNextWeight }, 'Użyj')),
     noteField,
     ctx.mode === 'live' && h('button.rest-chip', { type: 'button', onclick: chooseRest, 'aria-label': `Przerwa ${restLabel(restFor(exercise))}. Zmień` },
       icon('timer', 16), `Przerwa ${restLabel(restFor(exercise))}`),
@@ -640,7 +673,7 @@ const countSets = (draft, test) => draft.exercises.reduce((sum, item) => sum + i
 
 /** Zapisywany trening ma tylko zaliczone serie i ćwiczenia, które jakieś mają. */
 function finalize(draft) {
-  const { restEndAt, restTotal, ...rest } = draft;
+  const { restEndAt, restTotal, routineId, ...rest } = draft;
   return {
     ...rest,
     name: draft.name.trim() || 'Trening',
@@ -710,8 +743,11 @@ async function finishLive() {
   workout.endedAt = Date.now();
   await saveWorkout(workout);
   const records = workoutRecords(workout, state.workouts, exerciseById);
+  // Porównanie z planem z treningu, a nie z zapisem, bo pominięta seria to jeszcze nie zmiana rutyny.
+  const routine = state.routines.find((r) => r.id === draft.routineId) ?? null;
+  const planned = routine ? routineFromWorkout(draft, routine) : null;
   await closeLive();
-  showSummary(workout, records);
+  showSummary(workout, records, routine, planned?.exercises.length && routineDiffers(routine, planned) ? planned : null);
 }
 
 async function discardLive() {
@@ -776,7 +812,7 @@ async function saveEdit() {
   onSaved?.();
 }
 
-function showSummary(workout, records) {
+function showSummary(workout, records, routine, updatedRoutine) {
   openSheet((close) => h('div.sheet-body',
     h('h2.sheet-title', 'Trening zapisany'),
     h('div.stats',
@@ -790,8 +826,17 @@ function showSummary(workout, records) {
         h('span.record-text',
           h('span.record-name', exerciseById(record.exerciseId).name),
           h('span.record-meta', `${record.label}: ${fmtUnit(record.value, record.unit)}`)))))),
-    h('button.btn.btn-primary.btn-block', { type: 'button', onclick: close }, 'Gotowe'),
-    h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => { close(); saveWorkoutAsRoutine(workout); } }, 'Zapisz jako rutynę')),
+    updatedRoutine && h('p.sheet-text', `Ćwiczenia lub serie różnią się od rutyny „${routine.name}”.`),
+    updatedRoutine && h('button.btn.btn-primary.btn-block', {
+      type: 'button',
+      onclick: async () => {
+        await saveRoutines(putRoutine(state.routines, updatedRoutine));
+        close();
+        toast(`Zaktualizowano rutynę: ${routine.name}.`);
+      },
+    }, 'Zaktualizuj rutynę'),
+    h(`button.btn.btn-block.${updatedRoutine ? 'btn-ghost' : 'btn-primary'}`, { type: 'button', onclick: close }, updatedRoutine ? 'Zostaw rutynę bez zmian' : 'Gotowe'),
+    !routine && h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => { close(); saveWorkoutAsRoutine(workout); } }, 'Zapisz jako rutynę')),
   { label: 'Trening zapisany' });
 }
 

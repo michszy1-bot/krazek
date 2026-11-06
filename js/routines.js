@@ -1,7 +1,26 @@
 // Rutyny, czyli zapisane zestawy ćwiczeń: reguły bez zależności od DOM, testowane w Node.
 // Rutyna pamięta ćwiczenia i rodzaje serii. Ciężary podpowiada ostatni trening, więc nie starzeją się.
 
+import { parseNum } from './format.js';
 import { isSetKind } from './stats.js';
+
+const MAX_REPS_IN_RANGE = 100;
+
+/** Odczytuje zakres powtórzeń z pól formularza. Jedno wypełnione pole oznacza stałą liczbę powtórzeń. */
+export function parseRepRange(minText, maxText) {
+  const minRaw = String(minText ?? '').trim();
+  const maxRaw = String(maxText ?? '').trim();
+  if (!minRaw && !maxRaw) return { valid: true, repRange: null };
+  const min = parseNum(minRaw || maxRaw, { integer: true, max: MAX_REPS_IN_RANGE });
+  const max = parseNum(maxRaw || minRaw, { integer: true, max: MAX_REPS_IN_RANGE });
+  if (!(min >= 1) || !(max >= 1) || min > max) return { valid: false, repRange: null };
+  return { valid: true, repRange: { min, max } };
+}
+
+const cleanRepRange = (raw) => {
+  const { valid, repRange } = parseRepRange(raw?.min, raw?.max);
+  return valid && raw?.min != null && raw?.max != null ? repRange : null;
+};
 
 const GENERIC_NAMES = new Set(['Trening', 'Trening poranny', 'Trening popołudniowy', 'Trening wieczorny']);
 
@@ -12,11 +31,20 @@ export function routineFromWorkout(workout, { id, name }) {
   return {
     id,
     name,
-    exercises: workout.exercises.map((item) => ({
-      exerciseId: item.exerciseId,
-      sets: item.sets.map((set) => set.kind),
-    })),
+    exercises: workout.exercises
+      .filter((item) => item.sets.length)
+      .map((item) => ({
+        exerciseId: item.exerciseId,
+        sets: item.sets.map((set) => set.kind),
+        ...(item.repRange ? { repRange: item.repRange } : {}),
+      })),
   };
+}
+
+/** Czy treść rutyny się różni: kolejność, ćwiczenia, serie albo zakresy powtórzeń. */
+export function routineDiffers(a, b) {
+  const shape = (routine) => JSON.stringify(routine.exercises.map((item) => [item.exerciseId, item.sets, item.repRange ?? null]));
+  return shape(a) !== shape(b);
 }
 
 export const routineSetCount = (routine) => routine.exercises.reduce((sum, item) => sum + item.sets.length, 0);
@@ -56,7 +84,10 @@ export function cleanRoutines(raw, knownExercises) {
     clean.push({
       id: routine.id,
       name: routine.name,
-      exercises: routine.exercises.map(({ exerciseId, sets }) => ({ exerciseId, sets: [...sets] })),
+      exercises: routine.exercises.map(({ exerciseId, sets, repRange }) => {
+        const range = cleanRepRange(repRange);
+        return { exerciseId, sets: [...sets], ...(range ? { repRange: range } : {}) };
+      }),
     });
   }
   return clean;

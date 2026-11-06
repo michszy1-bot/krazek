@@ -4,7 +4,7 @@ import { actionSheet, h, icon, iconButton, openSheet, toast } from './ui.js';
 import { countOf } from './format.js';
 import { pickExercises } from './picker.js';
 import { exerciseById, newId, saveRoutines, state } from './store.js';
-import { hasOwnName, isNameTaken, moveItem, putRoutine, routineFromWorkout, routineSetCount } from './routines.js';
+import { hasOwnName, isNameTaken, moveItem, parseRepRange, putRoutine, routineFromWorkout, routineSetCount } from './routines.js';
 
 const NAME_HINT = 'np. Dzień nóg';
 const DEFAULT_SETS = ['normal', 'normal', 'normal'];
@@ -56,6 +56,17 @@ function routineEditor(initial = null) {
     list.replaceChildren(...items.map((item, index) => {
       const exerciseName = exerciseById(item.exerciseId)?.name ?? 'Ćwiczenie';
       const change = (apply) => { apply(); render(); };
+      // Tekst z pól przeżywa odświeżenie listy, a sprawdzany jest dopiero przy zapisie.
+      item.rangeText ??= { min: String(item.repRange?.min ?? ''), max: String(item.repRange?.max ?? '') };
+      const rangeInput = (key, label) => h('input.routine-range-input', {
+        type: 'text',
+        inputMode: 'numeric',
+        autocomplete: 'off',
+        value: item.rangeText[key],
+        placeholder: label,
+        'aria-label': `Zakres powtórzeń ${label}: ${exerciseName}`,
+        oninput: (event) => { item.rangeText[key] = event.currentTarget.value; },
+      });
       const moveButton = (name, label, delta) => {
         const button = iconButton(name, `${label}: ${exerciseName}`, () => change(() => { items = moveItem(items, index, delta); }));
         button.disabled = moveItem(items, index, delta) === items;
@@ -79,7 +90,12 @@ function routineEditor(initial = null) {
             onclick: () => change(() => item.sets.push('normal')),
           }, '+'),
           moveButton('up', 'Przesuń wyżej', -1),
-          moveButton('down', 'Przesuń niżej', 1)));
+          moveButton('down', 'Przesuń niżej', 1)),
+        h('div.routine-range',
+          h('span.field-label', 'Powtórzenia'),
+          rangeInput('min', 'od'),
+          h('span.field-label', '–'),
+          rangeInput('max', 'do')));
     }));
     if (!items.length) list.append(h('p.muted', 'Dodaj ćwiczenia, które robisz w tej rutynie.'));
   };
@@ -102,7 +118,16 @@ function routineEditor(initial = null) {
         toast('Dodaj choć jedno ćwiczenie.');
         return;
       }
-      await saveRoutines(putRoutine(state.routines, { id: initial?.id ?? newId(), name: accepted, exercises: items }));
+      const exercises = [];
+      for (const item of items) {
+        const { valid, repRange } = parseRepRange(item.rangeText?.min, item.rangeText?.max);
+        if (!valid) {
+          toast(`Sprawdź zakres powtórzeń: ${exerciseById(item.exerciseId)?.name ?? 'ćwiczenie'}.`);
+          return;
+        }
+        exercises.push({ exerciseId: item.exerciseId, sets: item.sets, ...(repRange ? { repRange } : {}) });
+      }
+      await saveRoutines(putRoutine(state.routines, { id: initial?.id ?? newId(), name: accepted, exercises }));
       close();
       toast(initial ? 'Zapisano zmiany.' : `Zapisano rutynę: ${accepted}.`);
     },

@@ -3,13 +3,15 @@
 import { actionSheet, ask, emptyState, h, icon, iconButton, openSheet, pageHeader, recordChip, segmented, toast } from './ui.js';
 import { addDays, countOf, dayKey, fmtClock, fmtDayLong, fmtDayMedium, fmtDayShort, fmtDuration, fmtMonth, fmtNum, fmtSet, fmtTime, fmtUnit, fmtVolume, startOfWeek } from './format.js';
 import { columnChart, lineChart, rankedBars } from './chart.js';
-import { exerciseSessions, flagRecords, goalProgress, isWorking, METRICS, muscleSets, RECORD_TYPES, recordsFor, recordTimeline, SET_KINDS, setLabels, summarizeSets, weekDays, weeklyTotals, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
+import { exerciseSessions, flagRecords, goalProgress, isWorking, METRICS, muscleSets, neglectedMuscles, RECORD_TYPES, recordsFor, recordTimeline, SET_KINDS, setLabels, summarizeSets, weekDays, weeklyTotals, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
 import { bodyWeightChart, weightsFrom } from './profile.js';
 import { dayTime, weightOn } from './body.js';
 import { clearMedia, downloadMedia, isDownloadingMedia, mediaStatus } from './media.js';
 import { backupText, deleteExercise, deleteWorkout, exerciseById, isExerciseUsed, markBackedUp, previewBackup, restoreBackup, saveSettings, state, visibleExercises, wipeAll } from './store.js';
-import { applyFilter, exerciseFilter, exerciseForm } from './picker.js';
-import { addPastWorkout, editWorkout, resumeWorkout, startRoutine, startWorkout, stat } from './workout.js';
+import { MUSCLES } from './exercises.js';
+import { muscleMap } from './muscle-map.js';
+import { applyFilter, exerciseFilter, exerciseForm, favoriteButton, stickyNoteSheet } from './picker.js';
+import { addPastWorkout, editWorkout, repeatWorkout, resumeWorkout, startRoutine, startWorkout, stat } from './workout.js';
 import { routinesSection, saveWorkoutAsRoutine } from './routine-views.js';
 import { exerciseDemo, exerciseThumb } from './demo.js';
 import * as sound from './sound.js';
@@ -231,6 +233,7 @@ export function workoutDetailView(id) {
         }))));
     }),
     h('div.detail-actions',
+      h('button.btn.btn-primary.btn-block', { type: 'button', onclick: () => repeatWorkout(workout) }, 'Powtórz trening'),
       h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => saveWorkoutAsRoutine(workout) }, 'Zapisz jako rutynę'),
       h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => editWorkout(workout) }, 'Edytuj trening'),
       h('button.btn.btn-text-danger.btn-block', { type: 'button', onclick: remove }, 'Usuń trening')));
@@ -284,6 +287,28 @@ function recordsTimelineSection(from) {
     h('h2.block-title', 'Historia rekordów'),
     entries.length ? rows : h('p.muted', 'W tym okresie nie ma nowych rekordów.'),
     more);
+}
+
+const MAP_DAYS = 7;
+const WHOLE_BODY = 'Całe ciało';
+
+const neglectText = ({ muscle, days }) => (days === null
+  ? `${muscle}: jeszcze bez serii`
+  : `${muscle}: ${countOf(days, 'dzień', 'dni', 'dni')} temu`);
+
+/** Mapa i zaniedbane partie zawsze z ostatnich dni, bo to podpowiedź, co robić dalej. */
+function musclesSection() {
+  const rows = muscleSets(state.workouts, exerciseById, Date.now() - MAP_DAYS * 86400000);
+  const wholeBody = rows.find((row) => row.muscle === WHOLE_BODY)?.sets ?? 0;
+  const neglected = neglectedMuscles(state.workouts, exerciseById, MUSCLES.filter((m) => m !== WHOLE_BODY), new Date(), MAP_DAYS);
+  return h('section.block',
+    h('h2.block-title', `Mapa mięśni z ${MAP_DAYS} dni`),
+    muscleMap(rows),
+    wholeBody > 0 && h('p.settings-text', `Ćwiczenia na całe ciało: ${countOf(wholeBody, 'seria', 'serie', 'serii')}. Nie ma ich na mapie.`),
+    h('h2.block-title.chart-second-title', 'Zaniedbane partie'),
+    neglected.length
+      ? h('ul.neglected', neglected.map((row) => h('li', neglectText(row))))
+      : h('p.settings-text', `Każda partia była trenowana w ostatnich ${MAP_DAYS} dniach.`));
 }
 
 /** Waga ciała z tego samego okresu co wykresy powyżej. */
@@ -347,6 +372,7 @@ export function progressView() {
         muscles.length
           ? rankedBars(muscles.map((m) => ({ label: m.muscle, value: m.sets })), (v) => fmtNum(v))
           : h('p.muted', 'W tym okresie nie ma zapisanych serii.')),
+      musclesSection(),
       progressWeightSection(from),
       recordsTimelineSection(from),
       h('section.block',
@@ -400,10 +426,20 @@ export function exerciseView(id, backTo) {
     ? iconButton('more', 'Opcje ćwiczenia', () => exerciseMenu(exercise, backTo))
     : null;
 
+  const noteHost = h('div');
+  const drawNote = () => {
+    const note = exerciseById(id)?.stickyNote;
+    noteHost.replaceChildren(note
+      ? h('button.sticky-note', { type: 'button', onclick: () => stickyNoteSheet(exercise, drawNote), 'aria-label': `Stała notatka: ${note}. Edytuj` }, icon('pin', 16), h('span', note))
+      : h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => stickyNoteSheet(exercise, drawNote) }, icon('pin', 18), 'Dodaj stałą notatkę'));
+  };
+  drawNote();
+
   const host = h('div.page',
-    pageHeader(exercise.name, { back: backTo, actions }),
+    pageHeader(exercise.name, { back: backTo, actions: [!exercise.archived && favoriteButton(exercise), actions] }),
     h('p.detail-date', `${exercise.muscle} · ${exercise.equipment}`),
-    exerciseDemo(exercise));
+    exerciseDemo(exercise),
+    noteHost);
 
   if (!sessions.length) {
     host.append(emptyState('Brak zapisanych serii', 'Wykres i rekordy pojawią się po pierwszym treningu z tym ćwiczeniem.'));
@@ -544,12 +580,20 @@ export function libraryView() {
         h('button.btn.btn-ghost', { type: 'button', onclick: () => exerciseForm({ name: filter.query.trim() }) }, 'Dodaj własne ćwiczenie')));
       return;
     }
-    list.replaceChildren(...found.map((exercise) => h('a.link-row', { href: `#/cwiczenie/${exercise.id}` },
-      exerciseThumb(exercise),
-      h('span.link-text',
-        h('span.link-name', exercise.name),
-        h('span.link-meta', `${exercise.muscle} · ${exercise.equipment}${exercise.custom ? ' · własne' : ''}`)),
-      h('span.flip', icon('back', 20)))));
+    const rowFor = (exercise) => h('div.library-row',
+      h('a.link-row', { href: `#/cwiczenie/${exercise.id}` },
+        exerciseThumb(exercise),
+        h('span.link-text',
+          h('span.link-name', exercise.name),
+          h('span.link-meta', `${exercise.muscle} · ${exercise.equipment}${exercise.custom ? ' · własne' : ''}`))),
+      favoriteButton(exercise, () => render(controls.filter)));
+    const favorites = found.filter((e) => e.favorite);
+    const rest = found.filter((e) => !e.favorite);
+    list.replaceChildren(
+      ...(favorites.length ? [h('h3.list-label', 'Ulubione'), ...favorites.map(rowFor)] : []),
+      ...(favorites.length && rest.length ? [h('h3.list-label', 'Wszystkie')] : []),
+      ...rest.map(rowFor),
+    );
   };
   const controls = exerciseFilter(render);
   render(controls.filter);

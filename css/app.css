@@ -198,7 +198,40 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .thumb { flex: none; width: 52px; height: 52px; border-radius: 8px; overflow: hidden; background: #fff; display: flex; align-items: center; justify-content: center; }
 .thumb img, .thumb canvas { display: block; width: 100%; height: 100%; }
 .thumb-empty { background: var(--panel-raised); color: var(--ink-3); }
-.library .link-row { padding: 10px 12px; }
+.library-row { position: relative; }
+.library .link-row { padding: 10px 56px 10px 12px; }
+.library-row > .star-btn { position: absolute; top: 50%; right: 4px; transform: translateY(-50%); }
+/* Gwiazdka: 44 punkty na palec, kontur gdy wyłączona, żółta gdy włączona */
+.star-btn { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; color: var(--ink-3); }
+.star-btn svg { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; }
+.star-btn[aria-pressed="true"] { color: var(--yellow); }
+.star-btn[aria-pressed="true"] svg { fill: currentColor; }
+/* Stała notatka i propozycja ciężaru na karcie ćwiczenia */
+.sticky-note { display: flex; align-items: flex-start; gap: 6px; width: 100%; padding: 8px 10px; background: var(--panel-raised); border-radius: 8px; text-align: left; font-size: 14px; color: var(--ink); overflow-wrap: anywhere; }
+.sticky-note svg { flex: none; margin-top: 2px; color: var(--ink-3); }
+.rep-range { font-size: 14px; color: var(--ink-2); }
+.next-weight { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: var(--green-wash); border-radius: 8px; font-size: 14px; }
+.next-weight > span { flex: 1; min-width: 0; }
+.routine-range { display: flex; align-items: center; gap: 8px; padding-right: 6px; }
+.routine-range > .field-label:first-child { flex: 1; }
+.routine-range-input { width: 58px; min-height: 44px; border: 0; border-radius: 8px; background: var(--panel); text-align: center; font-size: 16px; }
+/* Mapa mięśni. Jeden odcień, od ciemnego do jasnego, bo jaśniej znaczy więcej serii. */
+.muscle-map { display: flex; flex-direction: column; gap: 8px; }
+.muscle-figures { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 100%; max-width: 360px; margin: 0 auto; touch-action: pan-y; }
+.muscle-figure { margin: 0; text-align: center; font-size: 13px; color: var(--ink-2); }
+.muscle-svg { display: block; width: 100%; height: auto; margin-bottom: 4px; }
+.muscle-body { fill: var(--panel); }
+.muscle { cursor: pointer; }
+.muscle-0 { fill: var(--panel-raised); }
+.muscle-1 { fill: #274a94; background: #274a94; }
+.muscle-2 { fill: #2f6bea; background: #2f6bea; }
+.muscle-3 { fill: #5b8def; background: #5b8def; }
+.muscle-4 { fill: #b3cbfa; background: #b3cbfa; }
+.muscle-info { min-height: 22px; text-align: center; font-size: 15px; font-weight: 500; }
+.muscle-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 12px; list-style: none; padding: 0; margin: 0; font-size: 13px; color: var(--ink-2); }
+.muscle-legend li { display: flex; align-items: center; gap: 5px; }
+.muscle-swatch { width: 14px; height: 14px; border-radius: 4px; }
+.neglected { display: flex; flex-direction: column; gap: 4px; list-style: none; padding: 0; margin: 0; color: var(--ink-2); }
 
 .history-row { display: flex; flex-direction: column; gap: 2px; }
 .history-date { font-size: 14px; color: var(--ink-2); }
@@ -657,16 +690,17 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 
 .picker-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 0 16px 8px; }
 .list-label { font-size: 13px; font-weight: 600; color: var(--ink-2); padding: 8px 0 4px; }
+.picker-item { display: flex; align-items: center; border-top: 1px solid var(--line); }
 .picker-row {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  width: 100%;
   min-height: 58px;
   padding: 7px 0;
   text-align: left;
-  border-top: 1px solid var(--line);
 }
 .picker-text { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .picker-name { font-weight: 500; }

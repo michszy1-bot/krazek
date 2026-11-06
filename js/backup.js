@@ -28,6 +28,8 @@ function cleanExercise(raw) {
   if (raw.custom) out.custom = true;
   if (raw.archived) out.archived = true;
   if (numOrNull(raw.restSec) != null) out.restSec = raw.restSec;
+  if (raw.favorite === true) out.favorite = true;
+  if (isText(raw.stickyNote)) out.stickyNote = raw.stickyNote;
   return out;
 }
 

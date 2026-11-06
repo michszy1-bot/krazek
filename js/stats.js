@@ -1,6 +1,6 @@
 // Obliczenia: objętość, 1RM, rekordy i agregaty do wykresów. Czysta logika, bez DOM.
 
-import { addDays, dayKey, startOfWeek } from './format.js';
+import { addDays, dayKey, startOfDay, startOfWeek } from './format.js';
 
 export const isWorking = (set) => set.kind !== 'warmup';
 
@@ -296,6 +296,60 @@ export function muscleSets(workouts, exerciseById, fromTs) {
     .map(([muscle, sets]) => ({ muscle, sets }))
     .filter((row) => row.sets > 0)
     .sort((a, b) => b.sets - a.sets);
+}
+
+/**
+ * Partie nietrenowane od `afterDays` dni, najpierw te najdłużej odkładane, a na końcu jeszcze nieruszone.
+ * Wynik: [{ muscle, days }], gdzie days to null przy partii bez żadnej serii.
+ */
+export function neglectedMuscles(workouts, exerciseById, muscles, now = new Date(), afterDays = 7) {
+  const last = new Map();
+  for (const workout of workouts) {
+    for (const item of workout.exercises) {
+      const muscle = exerciseById(item.exerciseId)?.muscle;
+      if (!muscle || !item.sets.some(isWorking)) continue;
+      last.set(muscle, Math.max(last.get(muscle) ?? 0, workout.startedAt));
+    }
+  }
+  const today = startOfDay(now).getTime();
+  return muscles
+    .map((muscle) => ({
+      muscle,
+      days: last.has(muscle) ? Math.round((today - startOfDay(last.get(muscle)).getTime()) / 86400000) : null,
+    }))
+    .filter(({ days }) => days === null || days >= afterDays)
+    .sort((a, b) => (b.days ?? -1) - (a.days ?? -1));
+}
+
+/** Poziom koloru na mapie mięśni. Stałe progi, bo 10 serii tygodniowo znaczy to samo w każdym tygodniu. */
+export const MUSCLE_LEVELS = [
+  { level: 1, label: '1–5' },
+  { level: 2, label: '6–10' },
+  { level: 3, label: '11–15' },
+  { level: 4, label: '16+' },
+];
+
+export function muscleLevel(sets) {
+  if (!(sets > 0)) return 0;
+  if (sets <= 5) return 1;
+  if (sets <= 10) return 2;
+  return sets <= 15 ? 3 : 4;
+}
+
+const HEAVIER_STEP_KG = 2.5;
+const HEAVIER_STEP_DUMBBELL_KG = 2; // hantle zwykle rosną co 1 kg na stronę
+
+/**
+ * Proponowany ciężar po sesji, w której wszystkie serie sięgnęły górnej granicy zakresu.
+ * Dropset i rozgrzewka się nie liczą, bo z założenia mają inny ciężar.
+ */
+export function suggestNextWeight(sets, repRange, equipment) {
+  if (!repRange) return null;
+  const counted = sets.filter((set) => set.kind !== 'warmup' && set.kind !== 'drop');
+  if (!counted.length || !counted.every((set) => set.reps >= repRange.max)) return null;
+  const top = Math.max(...counted.map((set) => set.weight || 0));
+  if (!(top > 0)) return null;
+  return top + (equipment === 'Hantle' ? HEAVIER_STEP_DUMBBELL_KG : HEAVIER_STEP_KG);
 }
 
 /** Równe podziałki osi Y: 1, 2, 2,5 lub 5 razy potęga dziesięciu. */

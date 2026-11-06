@@ -34,6 +34,11 @@ Kopię zapisuje się w Ustawieniach i najlepiej trzymać ją poza telefonem, np.
 Animacje pochodzą z darmowego ExerciseDB i ładują się z jego serwera, więc wymagają internetu.
 Reszta aplikacji działa bez internetu. Spis powiązań jest w `js/animations.js`.
 
+## Mapa mięśni
+
+Kształty sylwetki pochodzą z projektu [react-native-body-highlighter](https://github.com/HichamELBSI/react-native-body-highlighter) na licencji MIT.
+Dane i tekst licencji są w `js/muscle-shapes.js`.
+
 ## Aktualizacje
 
 Po zmianie plików podnieś `VERSION` w `sw.js`. Inaczej telefon zostanie przy starej wersji.

@@ -92,6 +92,19 @@ export async function saveExercise(exercise) {
   emit();
 }
 
+/**
+ * Zmienia pole ćwiczenia bez odświeżania ekranu, żeby gwiazdka nie kasowała wpisanego filtra.
+ * Widok, który tego potrzebuje, odświeża się sam.
+ */
+export async function patchExercise(id, patch) {
+  const current = state.exercises.get(id);
+  if (!current) return null;
+  const updated = { ...current, ...patch };
+  state.exercises.set(id, updated);
+  await put(STORES.exercises, updated);
+  return updated;
+}
+
 export const isExerciseUsed = (id) =>
   state.workouts.some((w) => w.exercises.some((i) => i.exerciseId === id))
   || state.routines.some((r) => r.exercises.some((i) => i.exerciseId === id))
