@@ -1,4 +1,4 @@
-// Ekran profilu: poziomy, mapa mięśni, wiek, wzrost i dziennik wagi.
+// Ekran profilu: poziomy, mapa siły, wiek, wzrost i dziennik wagi.
 
 import { emptyState, h, openSheet, pageHeader, segmented, toast } from './ui.js';
 import { countOf, dayKey, fmtDayMedium, fmtDayShort, fmtNum, fmtUnit, inputValue, parseNum } from './format.js';

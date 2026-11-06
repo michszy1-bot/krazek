@@ -1,20 +1,10 @@
 // Poziomy na ekranie: sekcje profilu i wynik w podsumowaniu treningu.
 
-import { h, segmented } from './ui.js';
-import { countOf, fmtNum } from './format.js';
-import { MUSCLES } from './exercises.js';
+import { h } from './ui.js';
+import { fmtNum } from './format.js';
 import { levelProgress, MAX_MUSCLE_LEVEL, strengthColour, XP_GOAL, XP_RECORD, XP_WORKOUT } from './level.js';
-import { muscleMap, strengthMap } from './muscle-map.js';
-import { muscleSets, neglectedMuscles } from './stats.js';
+import { strengthMap } from './muscle-map.js';
 import { exerciseById, state } from './store.js';
-
-const MAP_DAYS = 7;
-const WHOLE_BODY = 'Całe ciało';
-const MAP_MODES = [
-  { value: 'strength', label: 'Siła' },
-  { value: 'sets', label: `Serie z ${MAP_DAYS} dni` },
-];
-let mapMode = 'strength';
 
 export const levelOptions = () => ({ weeklyGoal: state.settings.weeklyGoal, bodyWeights: state.bodyWeights });
 
@@ -45,36 +35,7 @@ function muscleRow(row) {
     row.nextRatio != null && h('span.level-row-detail', `Poziom ${row.level + 1} od ${Math.ceil(row.nextRatio * 100)}%`));
 }
 
-const neglectText = ({ muscle, days }) => (days === null
-  ? `${muscle}: jeszcze bez serii`
-  : `${muscle}: ${countOf(days, 'dzień', 'dni', 'dni')} temu`);
-
-/** Mapa pokazuje siłę albo serie. Serie i zaniedbane partie zawsze z ostatnich dni, bo to podpowiedź, co robić dalej. */
-function musclesSection(strengthRows) {
-  const rows = muscleSets(state.workouts, exerciseById, Date.now() - MAP_DAYS * 86400000);
-  const wholeBody = rows.find((row) => row.muscle === WHOLE_BODY)?.sets ?? 0;
-  const neglected = neglectedMuscles(state.workouts, exerciseById, MUSCLES.filter((m) => m !== WHOLE_BODY), new Date(), MAP_DAYS);
-  const host = h('div');
-  const draw = (mode) => {
-    host.replaceChildren(
-      mode === 'strength' ? strengthMap(strengthRows) : muscleMap(rows),
-      ...(mode === 'sets' && wholeBody > 0 ? [h('p.settings-text', `Ćwiczenia na całe ciało: ${countOf(wholeBody, 'seria', 'serie', 'serii')}. Nie ma ich na mapie.`)] : []),
-    );
-  };
-  // Bez wagi nie ma poziomów siły, więc mapa zaczyna od serii.
-  const start = state.bodyWeights.length ? mapMode : 'sets';
-  draw(start);
-  return h('section.block',
-    h('h2.block-title', 'Mapa mięśni'),
-    h('div.filters', segmented(MAP_MODES, start, (mode) => { mapMode = mode; draw(mode); }, 'Co pokazuje mapa')),
-    host,
-    h('h2.block-title.chart-second-title', 'Zaniedbane partie'),
-    neglected.length
-      ? h('ul.neglected', neglected.map((row) => h('li', neglectText(row))))
-      : h('p.settings-text', `Każda partia była trenowana w ostatnich ${MAP_DAYS} dniach.`));
-}
-
-/** Poziom główny, mapa mięśni i siła partii, czyli górna część profilu. */
+/** Poziom główny, mapa siły i poziomy partii, czyli górna część profilu. */
 export function levelSections(onAddWeight) {
   const progress = levelProgress(state.workouts, exerciseById, levelOptions());
   return [
@@ -82,15 +43,14 @@ export function levelSections(onAddWeight) {
       h('p.level-line-top', h('strong', `Poziom ${progress.level}`), h('span', nextText(progress))),
       xpBar(`Postęp poziomu ${progress.level}`, progress.share),
       h('p.level-meta', `${fmtNum(progress.xp)} XP`)),
-    musclesSection(progress.muscles),
     h('section.block',
-      h('h2.block-title', 'Siła partii, od najsłabszej'),
+      h('h2.block-title', 'Siła partii'),
       state.bodyWeights.length
-        ? h('ul.level-list', progress.muscles.map(muscleRow))
+        ? [strengthMap(progress.muscles), h('h3.list-label', 'Od najsłabszej'), h('ul.level-list', progress.muscles.map(muscleRow))]
         : h('button.notice', { type: 'button', onclick: onAddWeight },
           h('strong', 'Dodaj swoją wagę'),
           h('span', 'Siłę partii liczę jako procent masy ciała, więc potrzebny jest choć jeden wpis w dzienniku wagi.')),
-      state.bodyWeights.length > 0 && h('p.settings-text', `Poziomy 1–${MAX_MUSCLE_LEVEL} to najlepszy szacowany ciężar maksymalny względem wagi z dnia treningu. Normy są orientacyjne, a przy maszynach szczególnie, bo ich ciężary się różnią. Własne ćwiczenia i te bez obciążenia się nie liczą.`)),
+      state.bodyWeights.length > 0 && h('p.settings-text', `Poziomy 1–${MAX_MUSCLE_LEVEL} to najlepszy szacowany ciężar maksymalny względem wagi z dnia treningu. Najpierw liczą się wolne ciężary, a maszyny i wyciągi tylko wtedy, gdy partia nie ma wyniku z wolnych ciężarów. Normy są orientacyjne. Własne ćwiczenia i te bez obciążenia się nie liczą.`)),
   ];
 }
 

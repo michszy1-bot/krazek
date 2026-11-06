@@ -3,12 +3,14 @@
 import { actionSheet, ask, emptyState, h, icon, iconButton, openSheet, pageHeader, recordChip, segmented, toast } from './ui.js';
 import { addDays, countOf, dayKey, fmtClock, fmtDayLong, fmtDayMedium, fmtDayShort, fmtDuration, fmtMonth, fmtNum, fmtSet, fmtTime, fmtUnit, fmtVolume, startOfWeek } from './format.js';
 import { columnChart, lineChart, rankedBars } from './chart.js';
-import { backupStatus, exerciseSessions, flagRecords, goalProgress, isWorking, METRICS, muscleSets, RECORD_TYPES, recordsFor, recordTimeline, SET_KINDS, setLabels, summarizeSets, weekDays, weeklyTotals, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
+import { backupStatus, exerciseSessions, flagRecords, goalProgress, isWorking, METRICS, muscleSets, neglectedMuscles, RECORD_TYPES, recordsFor, recordTimeline, SET_KINDS, setLabels, summarizeSets, weekDays, weeklyTotals, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
 import { bodyWeightChart, weightsFrom } from './profile.js';
 import { dayTime, weightOn } from './body.js';
 import { clearMedia, downloadMedia, isDownloadingMedia, mediaStatus } from './media.js';
 import { backupText, deleteExercise, deleteWorkout, exerciseById, isExerciseUsed, markBackedUp, previewBackup, restoreBackup, saveSettings, state, visibleExercises, wipeAll } from './store.js';
 import { workoutsCsv } from './csv.js';
+import { MUSCLES } from './exercises.js';
+import { muscleMap } from './muscle-map.js';
 import { applyFilter, exerciseFilter, exerciseForm, favoriteButton, stickyNoteSheet } from './picker.js';
 import { addPastWorkout, editWorkout, repeatWorkout, resumeWorkout, startRoutine, startWorkout, stat } from './workout.js';
 import { routinesSection, saveWorkoutAsRoutine } from './routine-views.js';
@@ -287,6 +289,28 @@ function recordsTimelineSection(from) {
     more);
 }
 
+const MAP_DAYS = 7;
+const WHOLE_BODY = 'Całe ciało';
+
+const neglectText = ({ muscle, days }) => (days === null
+  ? `${muscle}: jeszcze bez serii`
+  : `${muscle}: ${countOf(days, 'dzień', 'dni', 'dni')} temu`);
+
+/** Mapa i zaniedbane partie zawsze z ostatnich dni, bo to podpowiedź, co robić dalej. */
+function musclesSection() {
+  const rows = muscleSets(state.workouts, exerciseById, Date.now() - MAP_DAYS * 86400000);
+  const wholeBody = rows.find((row) => row.muscle === WHOLE_BODY)?.sets ?? 0;
+  const neglected = neglectedMuscles(state.workouts, exerciseById, MUSCLES.filter((m) => m !== WHOLE_BODY), new Date(), MAP_DAYS);
+  return h('section.block',
+    h('h2.block-title', `Mapa mięśni z ${MAP_DAYS} dni`),
+    muscleMap(rows),
+    wholeBody > 0 && h('p.settings-text', `Ćwiczenia na całe ciało: ${countOf(wholeBody, 'seria', 'serie', 'serii')}. Nie ma ich na mapie.`),
+    h('h2.block-title.chart-second-title', 'Zaniedbane partie'),
+    neglected.length
+      ? h('ul.neglected', neglected.map((row) => h('li', neglectText(row))))
+      : h('p.settings-text', `Każda partia była trenowana w ostatnich ${MAP_DAYS} dniach.`));
+}
+
 /** Waga ciała z tego samego okresu co wykresy powyżej. */
 function progressWeightSection(from) {
   const entries = weightsFrom(from);
@@ -348,6 +372,7 @@ export function progressView() {
         muscles.length
           ? rankedBars(muscles.map((m) => ({ label: m.muscle, value: m.sets })), (v) => fmtNum(v))
           : h('p.muted', 'W tym okresie nie ma zapisanych serii.')),
+      musclesSection(),
       progressWeightSection(from),
       recordsTimelineSection(from),
       h('section.block',

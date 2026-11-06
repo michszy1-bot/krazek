@@ -565,6 +565,32 @@ test('siła partii: przysiad i martwy ciąg liczą się też do innych partii n�
   assert.equal(strengthOf([deadlift], at75, 'Dwugłowe uda').exercise, 'Martwy ciąg');
 });
 
+test('siła partii: wolne ciężary mają pierwszeństwo przed maszyną i wyciągiem', () => {
+  const day = (d) => new Date(2026, 10, d, 9);
+  const machine = levelWorkout('a', day(2), 'machine-press', [lift(150, 1)]);
+  const cable = levelWorkout('b', day(3), 'cable-fly', [lift(10, 1)]);
+  const lightBarbell = levelWorkout('c', day(4), 'bench-press', [lift(40, 1)]);
+  const heavyBarbell = levelWorkout('d', day(5), 'bench-press', [lift(60, 1)]);
+  const nextMachine = levelWorkout('e', day(6), 'machine-press', [lift(200, 1)]);
+
+  // Bez wolnych ciężarów liczy się najlepszy wynik z maszyny i wyciągu.
+  assert.equal(strengthOf([machine, cable], at75, 'Klatka').exercise, 'Wyciskanie na maszynie');
+  // Wolny ciężar wygrywa nawet wtedy, gdy jego wynik jest niższy.
+  const free = strengthOf([machine, lightBarbell], at75, 'Klatka');
+  assert.equal(free.exercise, 'Wyciskanie sztangi na ławce płaskiej');
+  assert.ok(free.level < strengthOf([machine], at75, 'Klatka').level);
+  // Kolejność treningów nie ma znaczenia, a większy ciężar wolny poprawia wynik.
+  assert.equal(strengthOf([lightBarbell, nextMachine], at75, 'Klatka').exercise, 'Wyciskanie sztangi na ławce płaskiej');
+  assert.equal(strengthOf([lightBarbell, heavyBarbell, nextMachine], at75, 'Klatka').ratio, 60 / 75);
+  // Podciąganie to masa ciała, więc też ma pierwszeństwo przed maszyną.
+  const pullUp = levelWorkout('f', day(2), 'pull-up', [lift(null, 1)]);
+  const row = levelWorkout('g', day(3), 'machine-row', [lift(200, 1)]);
+  assert.equal(strengthOf([row, pullUp], at75, 'Plecy').exercise, 'Podciąganie nachwytem');
+  // Martwy ciąg liczy się do pleców przed maszyną.
+  const deadlift = levelWorkout('h', day(4), 'deadlift', [lift(60, 1)]);
+  assert.equal(strengthOf([row, deadlift], at75, 'Plecy').exercise, 'Martwy ciąg');
+});
+
 test('kolor poziomu siły: co pięć poziomów, a bez wyniku szary', () => {
   assert.deepEqual([null, 0, 1, 5, 6, 10, 11, 15, 16, 20].map(strengthColour), [0, 0, 1, 1, 2, 2, 3, 3, 4, 4]);
 });

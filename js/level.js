@@ -90,7 +90,12 @@ export function strengthRatio(exercise, set, bodyKg) {
   return (estimate1RM(set.weight, reps) * hands) / bodyKg;
 }
 
-/** Najlepszy wynik każdej partii w historii, z wagą z dnia treningu, więc późniejsza zmiana wagi go nie obniża. */
+const usesMachine = (exercise) => exercise.equipment === 'Maszyna' || exercise.equipment === 'Wyciąg';
+
+/**
+ * Najlepszy wynik każdej partii w historii, z wagą z dnia treningu, więc późniejsza zmiana wagi go nie obniża.
+ * Wolne ciężary mają pierwszeństwo: maszyny i wyciągi liczą się tylko, gdy partia nie ma wyniku z wolnych ciężarów.
+ */
 function bestStrength(workouts, exerciseById, bodyWeights) {
   const best = new Map();
   if (!bodyWeights.length) return best;
@@ -101,14 +106,16 @@ function bestStrength(workouts, exerciseById, bodyWeights) {
       const top = STRENGTH_TOPS[item.exerciseId];
       if (!exercise || !top) continue;
       const norms = [[exercise.muscle, top], ...Object.entries(STRENGTH_ALSO[item.exerciseId] ?? {})];
+      const free = !usesMachine(exercise);
       for (const set of item.sets) {
         if (!isWorking(set)) continue;
         const ratio = strengthRatio(exercise, set, bodyKg);
+        if (!(ratio > 0)) continue;
         for (const [muscle, norm] of norms) {
           const score = ratio / norm;
-          if (score > (best.get(muscle)?.score ?? 0)) {
-            best.set(muscle, { score, ratio, top: norm, exercise: exercise.name });
-          }
+          const current = best.get(muscle);
+          const wins = !current || (free && !current.free) || (free === current.free && score > current.score);
+          if (wins) best.set(muscle, { score, ratio, top: norm, exercise: exercise.name, free });
         }
       }
     }
