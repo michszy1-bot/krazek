@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { addDays, dayKey, fmtClock, fmtDuration, fmtSet, fmtVolume, inputValue, parseNum, plural, startOfWeek } from '../js/format.js';
+import { addDays, dayKey, fmtClock, fmtDuration, fmtSet, fmtVolume, inputValue, parseNum, pastWorkoutStart, plural, startOfWeek } from '../js/format.js';
 import { estimate1RM, flagRecords, isComplete, muscleSets, niceTicks, recordsFor, summarizeSets, weekDays, weeklyTotals, workoutRecords, workoutVolume } from '../js/stats.js';
 import { buildBackup, parseBackup } from '../js/backup.js';
 import { SEED_EXERCISES, MUSCLES, EQUIPMENT } from '../js/exercises.js';
@@ -65,6 +65,26 @@ test('tydzień zaczyna się w poniedziałek, także gdy dziś jest niedziela', (
   assert.equal(dayKey(startOfWeek(new Date(2026, 10, 8, 23, 30))), '2026-11-02');
   assert.equal(dayKey(startOfWeek(new Date(2026, 10, 2, 0, 5))), '2026-11-02');
   assert.equal(dayKey(addDays(new Date(2026, 9, 24), 7)), '2026-10-31');
+});
+
+test('wcześniejszy trening domyślnie zaczyna się wczoraj o 18:00 i nigdy w przyszłości', () => {
+  const now = new Date(2026, 10, 6, 12, 0);
+  assert.equal(pastWorkoutStart(null, now), new Date(2026, 10, 5, 18, 0).getTime());
+  assert.equal(pastWorkoutStart(new Date(2026, 10, 2, 9, 30), now), new Date(2026, 10, 2, 18, 0).getTime());
+  assert.equal(pastWorkoutStart(new Date(2026, 10, 6), now), now.getTime() - 3600000);
+  const evening = new Date(2026, 10, 6, 21, 0);
+  assert.equal(pastWorkoutStart(new Date(2026, 10, 6), evening), new Date(2026, 10, 6, 18, 0).getTime());
+});
+
+test('dopisanie starszego treningu nie czyni go rekordem, ale zmienia rekordy późniejszych', () => {
+  const lookup = (id) => SEED_EXERCISES.find((e) => e.id === id);
+  const newer = workout('newer', '2026-10-20', { squat: [set(100, 5)] });
+  const middle = workout('middle', '2026-10-10', { squat: [set(90, 5)] });
+  assert.deepEqual(workoutRecords(newer, [newer], lookup), []);
+  assert.ok(workoutRecords(newer, [newer, middle], lookup).some((r) => r.key === 'maxWeight'));
+  const heavierOld = workout('old', '2026-10-01', { squat: [set(140, 5)] });
+  assert.deepEqual(workoutRecords(newer, [newer, middle, heavierOld], lookup), []);
+  assert.deepEqual(workoutRecords(heavierOld, [newer, middle, heavierOld], lookup), []);
 });
 
 test('1RM: pojedyncze powtórzenie to sam ciężar, brak danych to zero', () => {

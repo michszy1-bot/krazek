@@ -1,7 +1,7 @@
 // Ekran treningu: trwającego (zapis na bieżąco, minutnik) oraz edycji zapisanego.
 
 import { actionSheet, ask, h, icon, iconButton, openSheet, recordChip, toast } from './ui.js';
-import { countOf, fmtClock, fmtDuration, fmtSet, fmtUnit, fmtVolume, inputValue, parseNum, toLocalInput } from './format.js';
+import { countOf, fmtClock, fmtDuration, fmtSet, fmtUnit, fmtVolume, inputValue, parseNum, pastWorkoutStart, toLocalInput } from './format.js';
 import { exerciseSessions, flagRecords, isComplete, isWorking, recordsFor, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
 import { exerciseById, flushActive, newId, saveActiveSoon, saveExercise, saveWorkout, setActive, state } from './store.js';
 import { pickExercises } from './picker.js';
@@ -45,10 +45,20 @@ export function editWorkout(workout, onSaved) {
   mount({ draft, mode: 'edit', onSaved });
 }
 
+/** Trening zrobiony wcześniej, np. zanim powstała aplikacja. `day` to dzień wybrany w kalendarzu. */
+export function addPastWorkout(day) {
+  const startedAt = pastWorkoutStart(day);
+  mount({
+    draft: { id: newId(), name: 'Trening', startedAt, endedAt: startedAt + 3600000, note: '', exercises: [] },
+    mode: 'edit',
+    isNew: true,
+  });
+}
+
 // --- Budowa ekranu ---
 
-function mount({ draft, mode, onSaved }) {
-  ctx = { draft, mode, onSaved, cards: new Map() };
+function mount({ draft, mode, onSaved, isNew = false }) {
+  ctx = { draft, mode, onSaved, isNew, cards: new Map() };
   const live = mode === 'live';
 
   const cardsHost = h('div.wk-cards');
@@ -61,8 +71,8 @@ function mount({ draft, mode, onSaved }) {
       h('p.wk-clock', { 'aria-label': 'Czas treningu' }, h('span', { id: 'wk-elapsed' }, elapsedText())),
       h('button.btn.btn-finish', { type: 'button', onclick: finishLive }, 'Zakończ'))
     : h('header.wk-head',
-      iconButton('close', 'Anuluj edycję', cancelEdit),
-      h('p.wk-head-title', 'Edycja treningu'),
+      iconButton('close', isNew ? 'Anuluj dodawanie' : 'Anuluj edycję', cancelEdit),
+      h('p.wk-head-title', isNew ? 'Wcześniejszy trening' : 'Edycja treningu'),
       h('button.btn.btn-finish', { type: 'button', onclick: saveEdit }, 'Zapisz'));
 
   const nameInput = h('input.wk-name', {
@@ -89,7 +99,8 @@ function mount({ draft, mode, onSaved }) {
     h('label.field', h('span.field-label', 'Notatka do treningu'), noteInput),
     live && h('button.btn.btn-text-danger.btn-block', { type: 'button', onclick: discardLive }, 'Odrzuć trening'));
 
-  ctx.layer = h('div.layer', { role: 'dialog', 'aria-modal': 'true', 'aria-label': live ? 'Trening w toku' : 'Edycja treningu' }, head, scroll, ctx.restBar);
+  const layerLabel = live ? 'Trening w toku' : (isNew ? 'Wcześniejszy trening' : 'Edycja treningu');
+  ctx.layer = h('div.layer', { role: 'dialog', 'aria-modal': 'true', 'aria-label': layerLabel }, head, scroll, ctx.restBar);
   document.body.append(ctx.layer);
   document.body.classList.add('layer-open');
   renderCards();
@@ -127,12 +138,15 @@ function editTimeFields() {
   const start = h('input', {
     type: 'datetime-local',
     value: toLocalInput(draft.startedAt),
+    max: toLocalInput(Date.now()),
     onchange: () => {
       const value = new Date(start.value).getTime();
       if (!Number.isFinite(value)) return;
       const length = draft.endedAt - draft.startedAt;
       draft.startedAt = value;
       draft.endedAt = value + length;
+      // "Poprzednio" i rekordy zależą od daty, więc karty muszą się przeliczyć.
+      renderCards();
     },
   });
   const minutes = h('input', {
@@ -154,7 +168,9 @@ function editTimeFields() {
 function renderCards() {
   ctx.cardsHost.replaceChildren(...ctx.draft.exercises.map(buildCard));
   if (!ctx.draft.exercises.length) {
-    ctx.cardsHost.append(h('p.wk-hint', 'Dodaj pierwsze ćwiczenie, a potem odhaczaj kolejne serie.'));
+    ctx.cardsHost.append(h('p.wk-hint', ctx.isNew
+      ? 'Ustaw datę, dodaj ćwiczenia i wpisz serie z tamtego treningu.'
+      : 'Dodaj pierwsze ćwiczenie, a potem odhaczaj kolejne serie.'));
   }
 }
 
@@ -634,23 +650,47 @@ async function closeLive() {
   await setActive(null);
 }
 
-function cancelEdit() {
+async function cancelEdit() {
+  if (ctx.isNew && countSets(ctx.draft, (s) => s.done || s.weight != null || s.reps != null || s.seconds != null) > 0) {
+    const confirmed = await ask({
+      title: 'Porzucić ten trening?',
+      text: 'Wpisane serie nie zostaną zapisane.',
+      confirm: 'Porzuć trening',
+      danger: true,
+      cancel: 'Wróć do wpisywania',
+    });
+    if (!confirmed) return;
+  }
   unmount();
 }
 
 async function saveEdit() {
-  const { draft, onSaved } = ctx;
+  const { draft, onSaved, isNew } = ctx;
+  if (draft.startedAt > Date.now()) {
+    toast('Początek treningu nie może być w przyszłości.');
+    return;
+  }
+  // Przy wpisywaniu z pamięci każda pełna seria się liczy, więc odhaczanie jest tu opcjonalne.
+  if (isNew) {
+    draft.exercises.forEach((item) => {
+      const { type } = exerciseById(item.exerciseId);
+      item.sets.forEach((s) => { if (isComplete(s, type)) s.done = true; });
+    });
+  }
   if (!(await resolvePending(draft))) return;
   const workout = finalize(draft);
   if (!workout.exercises.length) {
-    toast('Trening musi mieć choć jedną serię. Żeby go skasować, użyj „Usuń trening”.');
+    toast(isNew
+      ? 'Wpisz choć jedną serię, żeby zapisać trening.'
+      : 'Trening musi mieć choć jedną serię. Żeby go skasować, użyj „Usuń trening”.');
     return;
   }
   await saveWorkout(workout);
   unmount();
   // Zapis nastąpił przy otwartym edytorze, więc ekran pod spodem trzeba odświeżyć dopiero teraz.
   document.dispatchEvent(new CustomEvent('workout-collapsed'));
-  toast('Zapisano zmiany.');
+  if (isNew) location.hash = `#/dziennik/${workout.id}`;
+  toast(isNew ? 'Zapisano trening.' : 'Zapisano zmiany.');
   onSaved?.();
 }
 

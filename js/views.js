@@ -6,7 +6,7 @@ import { columnChart, lineChart, rankedBars } from './chart.js';
 import { exerciseSessions, flagRecords, isWorking, METRICS, muscleSets, RECORD_TYPES, recordsFor, summarizeSets, weekDays, weeklyTotals, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
 import { backupText, deleteExercise, deleteWorkout, exerciseById, isExerciseUsed, markBackedUp, previewBackup, restoreBackup, saveSettings, state, visibleExercises, wipeAll } from './store.js';
 import { applyFilter, exerciseFilter, exerciseForm } from './picker.js';
-import { editWorkout, resumeWorkout, startWorkout, stat } from './workout.js';
+import { addPastWorkout, editWorkout, resumeWorkout, startWorkout, stat } from './workout.js';
 import { exerciseDemo } from './demo.js';
 
 const BACKUP_REMINDER_DAYS = 30;
@@ -69,6 +69,7 @@ export function homeView() {
     state.active
       ? h('button.btn.btn-primary.btn-hero', { type: 'button', onclick: resumeWorkout }, 'Wróć do treningu', h('span.hero-time', { dataset: { elapsedFrom: state.active.startedAt } }, fmtClock((Date.now() - state.active.startedAt) / 1000)))
       : h('button.btn.btn-primary.btn-hero', { type: 'button', onclick: startWorkout }, 'Rozpocznij trening'),
+    h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => addPastWorkout() }, 'Dodaj wcześniejszy trening'),
     last
       ? h('section.block', h('h2.block-title', 'Ostatni trening'), workoutRow(last))
       : h('p.first-hint', 'Po pierwszym treningu zobaczysz tu podsumowanie i pierwszy krążek na sztandze.'),
@@ -94,9 +95,14 @@ function monthCalendar(month, byDay) {
     const label = `${fmtDayLong(date)}${list.length ? `: ${countOf(list.length, 'trening', 'treningi', 'treningów')}` : ''}`;
     const content = [h('span.cal-num', String(date.getDate())), list.length > 0 && h('span.cal-plate')];
     const cls = `cal-day${inMonth ? '' : ' outside'}${key === today ? ' today' : ''}${list.length ? ' trained' : ''}`;
-    cells.push(list.length
-      ? h('a', { class: cls, href: `#/dziennik/${list[0].id}`, 'aria-label': label }, content)
-      : h('div', { class: cls, 'aria-label': inMonth ? label : null }, content));
+    const canAdd = inMonth && !list.length && key <= today;
+    if (list.length) {
+      cells.push(h('a', { class: cls, href: `#/dziennik/${list[0].id}`, 'aria-label': label }, content));
+    } else if (canAdd) {
+      cells.push(h('button', { class: cls, type: 'button', 'aria-label': `Dodaj trening: ${label}`, onclick: () => addPastWorkout(date) }, content));
+    } else {
+      cells.push(h('div', { class: cls, 'aria-label': inMonth ? label : null }, content));
+    }
   }
   return h('div.calendar',
     DAY_LETTERS.map((d) => h('span.cal-head', d)),
@@ -132,6 +138,7 @@ export function journalView() {
         h('h2.month-title', fmtMonth(month)),
         h('button.icon-btn.flip', { type: 'button', 'aria-label': 'Następny miesiąc', title: 'Następny miesiąc', disabled: atCurrent, onclick: () => shift(1) }, icon('back'))),
       monthCalendar(month, byDay),
+      h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => addPastWorkout() }, 'Dodaj wcześniejszy trening'),
       inMonth.length
         ? h('section.block',
           h('h2.block-title', countOf(inMonth.length, 'trening', 'treningi', 'treningów')),

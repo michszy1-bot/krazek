@@ -107,10 +107,10 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
   width: 100%;
   font: 700 25px/1 var(--font-data);
   letter-spacing: 0.01em;
-  justify-content: space-between;
+  justify-content: center;
   padding: 0 20px;
 }
-.btn-hero:only-of-type { justify-content: center; }
+.btn-hero:has(.hero-time) { justify-content: space-between; }
 .hero-time { font-variant-numeric: tabular-nums; }
 .btn-finish { background: var(--green); color: #0d1f15; min-height: 44px; padding: 0 16px; }
 .btn-chip { background: var(--panel-raised); min-height: 44px; padding: 0 12px; font-size: 15px; }

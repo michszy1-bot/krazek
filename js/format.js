@@ -109,6 +109,16 @@ export const fmtDayShort = (d) => dayShortFmt.format(new Date(d));
 export const fmtTime = (d) => timeFmt.format(new Date(d));
 export const fmtMonth = (d) => monthFmt.format(new Date(d));
 
+/**
+ * Domyślny początek wcześniejszego treningu: wybrany dzień (albo wczoraj) o 18:00.
+ * Jeśli wypadłoby to w przyszłości, czyli dziś przed 18:00, trening kończy się teraz.
+ */
+export function pastWorkoutStart(day, now = new Date(), lengthMs = 3600000) {
+  const start = day ? new Date(day) : addDays(now, -1);
+  start.setHours(18, 0, 0, 0);
+  return start.getTime() > now.getTime() ? now.getTime() - lengthMs : start.getTime();
+}
+
 /** Wartość do pola datetime-local. */
 export function toLocalInput(date) {
   const d = new Date(date);
