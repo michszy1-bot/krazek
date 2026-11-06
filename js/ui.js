@@ -130,10 +130,13 @@ export function toast(message, { actionLabel, onAction } = {}) {
   const dialog = [...document.querySelectorAll('dialog[open]')].at(-1);
   (dialog ?? document.body).append(el);
   const hide = () => el.classList.remove('show');
-  el.replaceChildren(h('span', message), actionLabel && h('button.toast-action', {
-    type: 'button',
-    onclick: () => { hide(); onAction?.(); },
-  }, actionLabel));
+  el.replaceChildren(h('span', message));
+  if (actionLabel) {
+    el.append(h('button.toast-action', {
+      type: 'button',
+      onclick: () => { hide(); onAction?.(); },
+    }, actionLabel));
+  }
   el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(hide, actionLabel ? 6000 : 3200);

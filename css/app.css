@@ -363,6 +363,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 /* Ustawienia */
 
 .settings-text { color: var(--ink-2); font-size: 15px; }
+.sound-status { color: var(--ink-2); font-size: 13px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 
 /* Pasek zakładek */
 

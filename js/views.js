@@ -469,6 +469,7 @@ export function libraryView() {
 
 const REST_CHOICES = [30, 45, 60, 90, 120, 150, 180, 240, 300];
 const SOUND_TEST_SECONDS = 15;
+const oneDecimalSeconds = (seconds) => `${seconds.toFixed(1).replace('.', ',')} s`;
 
 async function exportBackup() {
   const name = `krazek-kopia-${dayKey(new Date())}.json`;
@@ -534,6 +535,23 @@ async function wipeData() {
 
 export function settingsView() {
   const rest = state.settings.restSec;
+  const soundLine = h('p.sound-status', { role: 'status', hidden: true });
+  let soundTimer = null;
+  const showSound = () => {
+    const s = sound.status();
+    soundLine.hidden = false;
+    soundLine.textContent = `Stan: ${s.state}, ${oneDecimalSeconds(s.time)} z ${oneDecimalSeconds(s.duration)}, tryb ${s.session}, zapas ${s.backup}${s.error ? `, błąd ${s.error}` : ''}`;
+  };
+  const watchSound = () => {
+    clearInterval(soundTimer);
+    let ticks = 0;
+    showSound();
+    soundTimer = setInterval(() => {
+      showSound();
+      ticks += 1;
+      if (ticks >= 40 || !soundLine.isConnected) clearInterval(soundTimer);
+    }, 500);
+  };
   return h('div.page',
     pageHeader('Ustawienia', { back: '#/' }),
     h('section.block',
@@ -561,14 +579,22 @@ export function settingsView() {
       h('p.settings-text', state.settings.lockedAudio
         ? 'Sygnał ma pierwszeństwo. iPhone może zatrzymać muzykę na czas przerwy i nie wznowić jej sam.'
         : 'Sygnał gra razem z muzyką. iPhone może go nie odtworzyć na zablokowanym ekranie albo przy wyciszonym telefonie.'),
-      h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => sound.startRest(0, { takeOver: state.settings.lockedAudio }) }, 'Zagraj sygnał teraz'),
+      h('button.btn.btn-ghost.btn-block', {
+        type: 'button',
+        onclick: () => {
+          sound.startRest(0, { takeOver: state.settings.lockedAudio });
+          watchSound();
+        },
+      }, 'Zagraj sygnał teraz'),
       h('button.btn.btn-ghost.btn-block', {
         type: 'button',
         onclick: () => {
           sound.startRest(SOUND_TEST_SECONDS, { takeOver: state.settings.lockedAudio });
+          watchSound();
           toast(`Zablokuj telefon. Sygnał zagra za ${SOUND_TEST_SECONDS} sekund.`);
         },
-      }, 'Sprawdź przy zablokowanym ekranie')),
+      }, 'Sprawdź przy zablokowanym ekranie'),
+      soundLine),
     h('section.block',
       h('h2.block-title', 'Kopia zapasowa'),
       h('p.settings-text', 'Treningi są zapisane tylko na tym telefonie. Bez kopii utrata telefonu albo usunięcie aplikacji z ekranu początkowego oznacza utratę danych.'),

@@ -196,20 +196,36 @@ test('niceTicks daje równe, okrągłe podziałki obejmujące zakres', () => {
 });
 
 test('nagranie przerwy: poprawny WAV, cisza do końca odliczania, potem sygnał', () => {
-  const rate = 8000;
+  const rate = 16000;
   const track = buildTrack(3, rate);
   const view = new DataView(track.buffer);
   const text = (from, to) => String.fromCharCode(...track.slice(from, to));
   assert.equal(text(0, 4), 'RIFF');
   assert.equal(text(8, 12), 'WAVE');
+  assert.equal(view.getUint16(20, true), 1);
+  assert.equal(view.getUint16(34, true), 16);
   assert.equal(view.getUint32(24, true), rate);
+  assert.equal(view.getUint32(28, true), rate * 2);
   assert.equal(view.getUint32(40, true), track.length - 44);
   assert.equal(view.getUint32(4, true), track.length - 8);
-  const silence = track.slice(44, 44 + 3 * rate);
-  assert.ok(silence.every((v) => v === 128), 'przed sygnałem ma być sama cisza');
-  const signal = track.slice(44 + 3 * rate);
-  assert.ok(Math.max(...signal) > 220, 'sygnał ma być głośny');
-  assert.ok(Math.min(...signal) < 36, 'sygnał ma być głośny');
+  assert.equal((track.length - 44) % 2, 0);
+  const silence = track.slice(44, 44 + 3 * rate * 2);
+  assert.ok(silence.every((v) => v === 0), 'przed sygnałem ma być sama cisza');
+  let peak = 0;
+  for (let i = 44 + 3 * rate * 2; i < track.length; i += 2) peak = Math.max(peak, Math.abs(view.getInt16(i, true)));
+  assert.ok(peak > 25000, 'sygnał ma być głośny');
+});
+
+test('nagranie bez ciszy zaczyna się od razu sygnałem', () => {
+  const rate = 16000;
+  const track = buildTrack(0, rate);
+  const view = new DataView(track.buffer);
+  let firstLoud = -1;
+  for (let i = 44; i < track.length; i += 2) {
+    if (Math.abs(view.getInt16(i, true)) > 10000) { firstLoud = (i - 44) / 2 / rate; break; }
+  }
+  assert.ok(firstLoud >= 0 && firstLoud < 0.02, `sygnał zaczął się po ${firstLoud} s`);
+  assert.ok((track.length - 44) / 2 / rate < 2, 'nagranie testowe ma być krótkie');
 });
 
 test('kopia zapasowa zachowuje tryb dźwięku i odrzuca złą wartość', () => {
