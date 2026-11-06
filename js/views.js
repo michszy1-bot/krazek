@@ -577,7 +577,7 @@ export function settingsView() {
         'Tryb dźwięku końca przerwy',
       ),
       h('p.settings-text', state.settings.lockedAudio
-        ? 'Sygnał ma pierwszeństwo. iPhone może zatrzymać muzykę na czas przerwy i nie wznowić jej sam.'
+        ? 'Sygnał ma pierwszeństwo. iPhone może zatrzymać muzykę na czas przerwy i nie wznowić jej sam. Działanie zależy od telefonu, więc sprawdź go poniżej.'
         : 'Sygnał gra razem z muzyką. iPhone może go nie odtworzyć na zablokowanym ekranie albo przy wyciszonym telefonie.'),
       h('button.btn.btn-ghost.btn-block', {
         type: 'button',

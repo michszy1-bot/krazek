@@ -60,34 +60,56 @@ let context = null;
 let lastError = null;
 
 function setSession(takeOver) {
-  // ambient miesza się z muzyką, playback ma pierwszeństwo, ale może ją zatrzymać.
-  if ('audioSession' in navigator) navigator.audioSession.type = takeOver ? 'playback' : 'ambient';
+  // ambient miesza się z muzyką. auto to domyślne zachowanie telefonu: sygnał ma pierwszeństwo,
+  // ale może zatrzymać muzykę. Ręczne wymuszanie trybu playback uciszało dźwięk na iPhonie.
+  if (!('audioSession' in navigator)) return;
+  try {
+    navigator.audioSession.type = takeOver ? 'auto' : 'ambient';
+  } catch {
+    // Brak zmiany trybu nie może zablokować samego sygnału.
+  }
 }
 
 function playTrack(silenceSeconds, takeOver) {
   setSession(takeOver);
   lastError = null;
-  if (!element) {
-    element = new Audio();
-    element.preload = 'auto';
-    element.addEventListener('error', () => { lastError = element.error?.message || `kod ${element.error?.code}`; });
-  }
-  if (trackUrl) URL.revokeObjectURL(trackUrl);
+
+  // Każde nagranie dostaje nowy odtwarzacz, bo stary po przerwaniu przez blokadę może zostać niemy.
+  const previous = element;
+  const previousUrl = trackUrl;
+  const player = new Audio();
+  element = player;
   trackUrl = URL.createObjectURL(new Blob([buildTrack(silenceSeconds)], { type: 'audio/wav' }));
-  element.src = trackUrl;
-  element.play().catch((error) => {
+  player.preload = 'auto';
+  player.addEventListener('error', () => {
+    if (player === element) lastError = player.error?.message || `kod ${player.error?.code}`;
+  });
+  player.src = trackUrl;
+  player.play().catch((error) => {
+    if (player !== element) return;
     lastError = error.name;
     // Nagranie odrzucone: spróbuj chociaż dźwięku zapasowego, jeśli sygnał ma zagrać teraz.
     if (silenceSeconds === 0) beepNow();
   });
+
+  if (previous) {
+    previous.pause();
+    previous.removeAttribute('src');
+    previous.load();
+  }
+  if (previousUrl) URL.revokeObjectURL(previousUrl);
 }
 
 /** Przygotowuje zapasowy dźwięk. Wywoływane przy każdym dotknięciu ekranu. */
 export function unlock() {
   const Context = window.AudioContext ?? window.webkitAudioContext;
   if (!Context) return;
+  if (context?.state === 'closed') context = null;
   context ??= new Context();
-  if (context.state !== 'running') context.resume().catch(() => {});
+  if (context.state !== 'running') {
+    // Kontekst przerwany przez blokadę, którego nie da się wznowić, powstanie przy następnym dotknięciu.
+    context.resume().catch(() => { context = null; });
+  }
 }
 
 /** Rusza nagranie: sygnał zagra za `seconds` sekund. Tylko w obsłudze stuknięcia. */
