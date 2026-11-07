@@ -2,6 +2,7 @@
 
 import { h, icon } from './ui.js';
 import { ANIMATION_BASE, ANIMATIONS } from './animations.js';
+import { L } from './i18n.js';
 
 export const hasDemo = (exerciseId) => Boolean(ANIMATIONS[exerciseId]);
 export const demoUrl = (exerciseId) => `${ANIMATION_BASE}${ANIMATIONS[exerciseId]}.gif`;
@@ -53,7 +54,7 @@ export function exerciseDemo(exercise) {
 
   const image = h('img.demo-image', {
     src: demoUrl(exercise.id),
-    alt: `Animacja: ${exercise.name}`,
+    alt: L(`Animacja: ${exercise.name}`, `Animation: ${exercise.name}`),
     width: 180,
     height: 180,
     referrerPolicy: 'no-referrer',
@@ -72,11 +73,11 @@ export function exerciseDemo(exercise) {
     image.hidden = paused;
     pauseIcon.hidden = paused;
     playIcon.hidden = !paused;
-    toggle.setAttribute('aria-label', paused ? 'Wznów animację' : 'Zatrzymaj animację');
+    toggle.setAttribute('aria-label', paused ? L('Wznów animację', 'Resume animation') : L('Zatrzymaj animację', 'Pause animation'));
     toggle.title = toggle.getAttribute('aria-label');
   };
 
-  const toggle = h('button.demo-toggle', { type: 'button', 'aria-label': 'Zatrzymaj animację', title: 'Zatrzymaj animację', onclick: () => setPaused(!paused) }, pauseIcon, playIcon);
+  const toggle = h('button.demo-toggle', { type: 'button', 'aria-label': L('Zatrzymaj animację', 'Pause animation'), title: L('Zatrzymaj animację', 'Pause animation'), onclick: () => setPaused(!paused) }, pauseIcon, playIcon);
 
   const stage = h('div.demo-stage', image, frozen, toggle);
   const root = h('figure.demo', stage);
@@ -85,7 +86,7 @@ export function exerciseDemo(exercise) {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) setPaused(true);
   }, { once: true });
   image.addEventListener('error', () => {
-    root.replaceChildren(h('p.demo-offline', 'Animacja wymaga internetu. Sprawdź połączenie i otwórz ten ekran ponownie.'));
+    root.replaceChildren(h('p.demo-offline', L('Animacja wymaga internetu. Sprawdź połączenie i otwórz ten ekran ponownie.', 'The animation needs an internet connection. Check it and open this screen again.')));
   }, { once: true });
 
   return root;

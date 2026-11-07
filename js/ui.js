@@ -1,5 +1,7 @@
 // Małe narzędzia interfejsu: tworzenie elementów, ikony, arkusze, potwierdzenia i komunikaty.
 
+import { L } from './i18n.js';
+
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 /** h('div.karta', { onclick }, 'tekst', dziecko). Tekst zawsze trafia do DOM jako węzeł tekstowy. */
@@ -114,11 +116,11 @@ export function actionSheet(title, actions) {
       'aria-pressed': action.selected == null ? null : String(action.selected),
       onclick: () => { close(); action.onClick?.(); },
     }, h('span', action.label), action.hint && h('span.hint', action.hint), action.selected && icon('check', 20)))),
-    h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: close }, 'Anuluj')), { label: title });
+    h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: close }, L('Anuluj', 'Cancel'))), { label: title });
 }
 
 /** Pytanie z potwierdzeniem. Zwraca true, gdy wybrano działanie. */
-export function ask({ title, text, confirm, danger = false, cancel = 'Anuluj' }) {
+export function ask({ title, text, confirm, danger = false, cancel = L('Anuluj', 'Cancel') }) {
   return new Promise((resolve) => {
     let result = false;
     openSheet((close) => h('div.sheet-body',
@@ -181,9 +183,9 @@ export function emptyState(title, text, action) {
 
 export function pageHeader(title, { back, actions } = {}) {
   return h('header.page-head',
-    back && h('a.icon-btn', { href: back, 'aria-label': 'Wstecz', title: 'Wstecz' }, icon('back')),
+    back && h('a.icon-btn', { href: back, 'aria-label': L('Wstecz', 'Back'), title: L('Wstecz', 'Back') }, icon('back')),
     h(`h1.page-title${back ? '.page-title-sub' : ''}`, title),
     actions && h('div.page-actions', actions));
 }
 
-export const recordChip = () => h('span.pr-chip', { title: 'Rekord osobisty', 'aria-label': 'Rekord osobisty' }, 'PR');
+export const recordChip = () => h('span.pr-chip', { title: L('Rekord osobisty', 'Personal record'), 'aria-label': L('Rekord osobisty', 'Personal record') }, 'PR');

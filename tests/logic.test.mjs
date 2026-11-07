@@ -1,11 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { addDays, dayKey, fmtClock, fmtDuration, fmtMultiplier, fmtSet, fmtSetChange, fmtVolume, inputValue, parseNum, pastWorkoutStart, plural, startOfWeek } from '../js/format.js';
+import { addDays, countOf, dayKey, fmtClock, fmtDayMedium, fmtDuration, fmtMultiplier, fmtNum, fmtSet, fmtSetChange, fmtVolume, inputValue, parseNum, pastWorkoutStart, plural, startOfWeek } from '../js/format.js';
 import { achievementDate, ACHIEVEMENT_GROUPS, ACHIEVEMENTS, achievementProgress, achievementXp, rewardTier } from '../js/achievements.js';
 import { badgeMarkup } from '../js/badges.js';
 import { backupStatus, bestSet, bestStreak, compareSets, estimate1RM, flagRecords, goalProgress, isComplete, loadBar, MUSCLE_SCALES, muscleLevel, muscleSets, neglectedMuscles, niceTicks, plateHeight, plateTier, plateTravel, plateWidth, recordsFor, recordTimeline, restAfterSet, setLabels, stepBaseWeight, steppedWeight, streakMultiplier, streakStatus, suggestNextWeight, summarizeSets, swapExercise, warmupSets, weekDays, weeklyTotals, weeksToShield, weightStep, workoutComparison, workoutRecords, workoutVolume } from '../js/stats.js';
 import { workoutsCsv } from '../js/csv.js';
+import { L, language, useLanguageInTests } from '../js/i18n.js';
+import { EXERCISE_NAMES_EN } from '../js/exercises-en.js';
 import { levelProgress, strengthCategory, strengthColour, strengthRatio, workoutGain } from '../js/level.js';
 import { LIFTS_BODY, ONE_DUMBBELL, STRENGTH_ALSO, STRENGTH_TOPS } from '../js/strength-norms.js';
 import { applyFilter } from '../js/picker.js';
@@ -15,7 +17,7 @@ import { buildBackup, parseBackup } from '../js/backup.js';
 import { buyItem, cleanInscription, cleanShop, hasChalkDust, hasRecordSparks, INSCRIPTION_MAX, SHOP_ITEMS, SHOP_SECTIONS, shownInscription, shownTitle, spendable, themeColor, useShields, wearItem, wornItem, wornLooks } from '../js/shop.js';
 import { ageOn, cleanProfile, cleanWeights, dayTime, isDay, putWeight, removeWeight, weightChange, weightOn } from '../js/body.js';
 import { cleanRoutines, hasOwnName, isNameTaken, moveItem, parseRepRange, putRoutine, routineDiffers, routineFromWorkout, routineSetCount } from '../js/routines.js';
-import { SEED_EXERCISES, MUSCLES, EQUIPMENT, HELPER_MUSCLES, musclesOf, RETIRED_EXERCISES, syncExercises } from '../js/exercises.js';
+import { SEED_EXERCISES, MUSCLES, EQUIPMENT, equipmentName, HELPER_MUSCLES, muscleName, musclesOf, RETIRED_EXERCISES, syncExercises } from '../js/exercises.js';
 import { ANIMATIONS } from '../js/animations.js';
 
 const nbsp = (s) => s.replace(/ /g, ' ');
@@ -1401,4 +1403,61 @@ test('data medalu: trening, który ją dał, także przy zapisie nie po kolei', 
   // Rekord liczy się z historii do tamtego dnia: drugi trening jest pierwszym rekordem.
   const ten = Array.from({ length: 11 }, (_, i) => at('r' + i, i + 1, oneSet(60 + i)));
   assert.equal(achievementDate(ten, seedLookup, {}, 'records-10'), new Date(2026, 9, 11, 18).getTime());
+});
+
+/** Uruchamia sprawdzenie w wersji angielskiej i zawsze wraca do polskiej. */
+function inEnglish(check) {
+  useLanguageInTests('en');
+  try {
+    check();
+  } finally {
+    useLanguageInTests('pl');
+  }
+}
+
+test('język: poza przeglądarką aplikacja startuje po polsku', () => {
+  assert.equal(language(), 'pl');
+  assert.equal(L('Zapisz', 'Save'), 'Zapisz');
+  inEnglish(() => assert.equal(L('Zapisz', 'Save'), 'Save'));
+  assert.equal(L('Zapisz', 'Save'), 'Zapisz');
+});
+
+test('wersja angielska: liczby z kropką, dwie formy odmiany i daty po angielsku', () => {
+  inEnglish(() => {
+    assert.equal(fmtNum(82.5), '82.5');
+    assert.equal(inputValue(82.5), '82.5');
+    assert.equal(parseNum('82.5'), 82.5);
+    assert.equal(parseNum('82,5'), 82.5);
+    assert.equal(plural(1, 'trening', 'treningi', 'treningów', 'workout', 'workouts'), 'workout');
+    assert.equal(plural(5, 'trening', 'treningi', 'treningów', 'workout', 'workouts'), 'workouts');
+    assert.equal(countOf(2, 'seria', 'serie', 'serii', 'set', 'sets'), '2 sets');
+    assert.equal(fmtMultiplier(1.2), '×1.2');
+    assert.equal(fmtSetChange({ weight: 2.5, reps: -1 }), '+2.5 kg, −1 reps');
+    assert.equal(fmtSetChange({}), 'No change');
+    assert.equal(fmtDayMedium(new Date(2026, 10, 6)), '6 November 2026');
+    assert.equal(fmtSet({ weight: 60, reps: 1, seconds: null }, 'bodyweight'), '+60 kg × 1');
+    assert.equal(fmtSet({ weight: null, reps: 1, seconds: null }, 'bodyweight'), '1 rep');
+  });
+  // Po powrocie do polskiego formatery też wracają.
+  assert.equal(fmtNum(82.5), '82,5');
+  assert.equal(fmtDayMedium(new Date(2026, 10, 6)), '6 listopada 2026');
+});
+
+test('wersja angielska: każde ćwiczenie, partia i sprzęt mają angielską nazwę', () => {
+  assert.deepEqual(SEED_EXERCISES.filter((exercise) => !EXERCISE_NAMES_EN[exercise.id]).map((exercise) => exercise.id), []);
+  assert.equal(new Set(Object.values(EXERCISE_NAMES_EN)).size, Object.keys(EXERCISE_NAMES_EN).length);
+  assert.equal(muscleName('Dwugłowe uda'), 'Dwugłowe uda');
+  inEnglish(() => {
+    assert.equal(muscleName('Dwugłowe uda'), 'Hamstrings');
+    assert.equal(equipmentName('Wyciąg'), 'Cable');
+    assert.equal(muscleName('Własna partia'), 'Własna partia');
+  });
+});
+
+test('eksport CSV: kolumny i liczby zgodne z językiem', () => {
+  const lookup = (id) => ({ id, name: 'Bench', muscle: 'Klatka', equipment: 'Sztanga', type: 'weight' });
+  const workout = { id: 'w', name: 'T', startedAt: new Date(2026, 10, 2, 18).getTime(), endedAt: 0, note: '', exercises: [{ exerciseId: 'b', note: '', sets: [{ weight: 82.5, reps: 5, kind: 'normal' }] }] };
+  const polish = workoutsCsv([workout], lookup);
+  assert.ok(polish.includes('Data;Godzina'));
+  assert.ok(polish.includes(';82,5;5;'));
 });

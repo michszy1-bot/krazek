@@ -2,6 +2,7 @@
 // Nagroda jest stała i nie ma mnożnika za serię, żeby nie zależała od tygodnia, w którym wpadła.
 
 import { weightOn } from './body.js';
+import { isEnglish, L } from './i18n.js';
 import { MUSCLES, musclesOf } from './exercises.js';
 import { dayKey, startOfDay, startOfWeek } from './format.js';
 import { bestStreak, isWorking, muscleLevel, plateTier, recordTimeline, workingSetCount, workoutVolume } from './stats.js';
@@ -17,70 +18,87 @@ const LIFT_OF = new Map([['squat', 'squat'], ['bench-press', 'bench'], ['deadlif
 const TRAINED_MUSCLES = MUSCLES.filter((muscle) => muscle !== 'Całe ciało');
 
 const achievement = (id, group, name, stat, target, xp, extra = {}) => ({ id, group, name, stat, target, xp, ...extra });
-const tons = { unit: ' ton', scale: 1000 };
+const tons = { unit: L(' ton', ' t'), scale: 1000 };
 const kilos = { unit: ' kg' };
-const parts = { unit: ' partii' };
-const bigLift = { detail: 'W przysiadzie ze sztangą lub martwym ciągu', ...kilos };
-const benchLift = { detail: 'Sztanga na ławce płaskiej', ...kilos };
-const dumbbell = { detail: 'Na rękę, w dowolnym ćwiczeniu z hantlami', ...kilos };
-const threeLifts = { detail: 'Najlepsze ciężary z przysiadu, ławki i martwego ciągu', ...kilos };
-const ofBody = { unit: '% masy ciała', needs: 'weight' };
+const parts = { unit: L(' partii', ' muscles') };
+const bigLift = { detail: L('W przysiadzie ze sztangą lub martwym ciągu', 'In the barbell squat or deadlift'), ...kilos };
+const benchLift = { detail: L('Sztanga na ławce płaskiej', 'Flat barbell bench press'), ...kilos };
+const dumbbell = { detail: L('Na rękę, w dowolnym ćwiczeniu z hantlami', 'Per hand, in any dumbbell exercise'), ...kilos };
+const threeLifts = { detail: L('Najlepsze ciężary z przysiadu, ławki i martwego ciągu', 'Best squat, bench and deadlift added together'), ...kilos };
+const ofBody = { unit: L('% masy ciała', '% of body weight'), needs: 'weight' };
+
+const GROUP_NAMES_EN = {
+  Treningi: 'Workouts',
+  'Seria tygodni': 'Week streak',
+  'Łączny tonaż': 'Total tonnage',
+  Rekordy: 'Records',
+  Siła: 'Strength',
+  'Siła względem wagi': 'Strength for your weight',
+  'Trzy boje': 'Big three',
+  'Krążki i mapa': 'Plates and map',
+  'Jeden trening': 'Single workout',
+  Wytrwałość: 'Persistence',
+  Okazje: 'Occasions',
+};
+
+/** Nazwa grupy na ekranie. Polskie nazwy zostają kluczami, bo od nich zależy kształt medalu. */
+export const groupName = (group) => (isEnglish() ? GROUP_NAMES_EN[group] ?? group : group);
 
 export const ACHIEVEMENT_GROUPS = ['Treningi', 'Seria tygodni', 'Łączny tonaż', 'Rekordy', 'Siła', 'Siła względem wagi', 'Trzy boje', 'Krążki i mapa', 'Jeden trening', 'Wytrwałość', 'Okazje'];
 
 export const ACHIEVEMENTS = [
-  achievement('workouts-1', 'Treningi', 'Pierwszy trening', 'workouts', 1, 50),
-  achievement('workouts-10', 'Treningi', '10 treningów', 'workouts', 10, 150),
-  achievement('workouts-50', 'Treningi', '50 treningów', 'workouts', 50, 500),
-  achievement('workouts-100', 'Treningi', '100 treningów', 'workouts', 100, 1000),
-  achievement('workouts-250', 'Treningi', '250 treningów', 'workouts', 250, 2000),
+  achievement('workouts-1', 'Treningi', L("Pierwszy trening", "First workout"), 'workouts', 1, 50),
+  achievement('workouts-10', 'Treningi', L("10 treningów", "10 workouts"), 'workouts', 10, 150),
+  achievement('workouts-50', 'Treningi', L("50 treningów", "50 workouts"), 'workouts', 50, 500),
+  achievement('workouts-100', 'Treningi', L("100 treningów", "100 workouts"), 'workouts', 100, 1000),
+  achievement('workouts-250', 'Treningi', L("250 treningów", "250 workouts"), 'workouts', 250, 2000),
 
-  achievement('streak-4', 'Seria tygodni', '4 tygodnie z rzędu', 'streak', 4, 300, { needs: 'goal' }),
-  achievement('streak-12', 'Seria tygodni', '12 tygodni z rzędu', 'streak', 12, 800, { needs: 'goal' }),
-  achievement('streak-26', 'Seria tygodni', '26 tygodni z rzędu', 'streak', 26, 2000, { needs: 'goal' }),
-  achievement('streak-52', 'Seria tygodni', '52 tygodnie z rzędu', 'streak', 52, 5000, { needs: 'goal' }),
+  achievement('streak-4', 'Seria tygodni', L("4 tygodnie z rzędu", "4 weeks in a row"), 'streak', 4, 300, { needs: 'goal' }),
+  achievement('streak-12', 'Seria tygodni', L("12 tygodni z rzędu", "12 weeks in a row"), 'streak', 12, 800, { needs: 'goal' }),
+  achievement('streak-26', 'Seria tygodni', L("26 tygodni z rzędu", "26 weeks in a row"), 'streak', 26, 2000, { needs: 'goal' }),
+  achievement('streak-52', 'Seria tygodni', L("52 tygodnie z rzędu", "52 weeks in a row"), 'streak', 52, 5000, { needs: 'goal' }),
 
-  achievement('tonnage-100', 'Łączny tonaż', '100 ton', 'tonnage', 100000, 300, tons),
-  achievement('tonnage-500', 'Łączny tonaż', '500 ton', 'tonnage', 500000, 1000, tons),
-  achievement('tonnage-1000', 'Łączny tonaż', '1000 ton', 'tonnage', 1000000, 2500, tons),
+  achievement('tonnage-100', 'Łączny tonaż', L("100 ton", "100 tonnes"), 'tonnage', 100000, 300, tons),
+  achievement('tonnage-500', 'Łączny tonaż', L("500 ton", "500 tonnes"), 'tonnage', 500000, 1000, tons),
+  achievement('tonnage-1000', 'Łączny tonaż', L("1000 ton", "1000 tonnes"), 'tonnage', 1000000, 2500, tons),
 
-  achievement('records-10', 'Rekordy', '10 rekordów', 'records', 10, 200),
-  achievement('records-50', 'Rekordy', '50 rekordów', 'records', 50, 800),
-  achievement('records-100', 'Rekordy', '100 rekordów', 'records', 100, 1500),
+  achievement('records-10', 'Rekordy', L("10 rekordów", "10 records"), 'records', 10, 200),
+  achievement('records-50', 'Rekordy', L("50 rekordów", "50 records"), 'records', 50, 800),
+  achievement('records-100', 'Rekordy', L("100 rekordów", "100 records"), 'records', 100, 1500),
 
-  achievement('lift-100', 'Siła', 'Pierwsza setka', 'bigLift', 100, 500, bigLift),
-  achievement('lift-150', 'Siła', 'Półtorej setki', 'bigLift', 150, 1000, bigLift),
-  achievement('lift-200', 'Siła', 'Dwie setki', 'bigLift', 200, 2500, bigLift),
-  achievement('bench-100', 'Siła', 'Setka na ławce', 'bench', 100, 1000, benchLift),
-  achievement('bench-120', 'Siła', 'Ławka 120 kg', 'bench', 120, 2000, benchLift),
-  achievement('dumbbell-30', 'Siła', 'Hantel 30 kg', 'dumbbell', 30, 500, dumbbell),
-  achievement('dumbbell-40', 'Siła', 'Hantel 40 kg', 'dumbbell', 40, 1000, dumbbell),
+  achievement('lift-100', 'Siła', L("Pierwsza setka", "First 100 kg"), 'bigLift', 100, 500, bigLift),
+  achievement('lift-150', 'Siła', L("Półtorej setki", "150 kg lift"), 'bigLift', 150, 1000, bigLift),
+  achievement('lift-200', 'Siła', L("Dwie setki", "200 kg lift"), 'bigLift', 200, 2500, bigLift),
+  achievement('bench-100', 'Siła', L("Setka na ławce", "100 kg bench"), 'bench', 100, 1000, benchLift),
+  achievement('bench-120', 'Siła', L("Ławka 120 kg", "120 kg bench"), 'bench', 120, 2000, benchLift),
+  achievement('dumbbell-30', 'Siła', L("Hantel 30 kg", "30 kg dumbbell"), 'dumbbell', 30, 500, dumbbell),
+  achievement('dumbbell-40', 'Siła', L("Hantel 40 kg", "40 kg dumbbell"), 'dumbbell', 40, 1000, dumbbell),
 
-  achievement('body-bench', 'Siła względem wagi', 'Ławka równa masie ciała', 'benchShare', 100, 500, { detail: 'Sztanga na ławce płaskiej', ...ofBody }),
-  achievement('body-squat', 'Siła względem wagi', 'Przysiad 1,5× masa ciała', 'squatShare', 150, 1000, { detail: 'Przysiad ze sztangą', ...ofBody }),
-  achievement('body-deadlift', 'Siła względem wagi', 'Martwy ciąg 2× masa ciała', 'deadliftShare', 200, 1500, { detail: 'Klasyczny lub sumo', ...ofBody }),
+  achievement('body-bench', 'Siła względem wagi', L("Ławka równa masie ciała", "Bodyweight bench"), 'benchShare', 100, 500, { detail: L('Sztanga na ławce płaskiej', 'Flat barbell bench press'), ...ofBody }),
+  achievement('body-squat', 'Siła względem wagi', L("Przysiad 1,5× masa ciała", "1.5× bodyweight squat"), 'squatShare', 150, 1000, { detail: L("Przysiad ze sztangą", "Barbell squat"), ...ofBody }),
+  achievement('body-deadlift', 'Siła względem wagi', L("Martwy ciąg 2× masa ciała", "2× bodyweight deadlift"), 'deadliftShare', 200, 1500, { detail: L("Klasyczny lub sumo", "Conventional or sumo"), ...ofBody }),
 
-  achievement('total-300', 'Trzy boje', 'Suma 300 kg', 'threeLifts', 300, 500, threeLifts),
-  achievement('total-400', 'Trzy boje', 'Suma 400 kg', 'threeLifts', 400, 1000, threeLifts),
-  achievement('total-500', 'Trzy boje', 'Suma 500 kg', 'threeLifts', 500, 2500, threeLifts),
+  achievement('total-300', 'Trzy boje', L("Suma 300 kg", "300 kg total"), 'threeLifts', 300, 500, threeLifts),
+  achievement('total-400', 'Trzy boje', L("Suma 400 kg", "400 kg total"), 'threeLifts', 400, 1000, threeLifts),
+  achievement('total-500', 'Trzy boje', L("Suma 500 kg", "500 kg total"), 'threeLifts', 500, 2500, threeLifts),
 
-  achievement('red-plate', 'Krążki i mapa', 'Czerwony krążek', 'mostSets', RED_PLATE_SETS, 200, { detail: 'Trening z co najmniej 20 seriami', unit: ' serii' }),
-  achievement('red-bar', 'Krążki i mapa', 'Czerwona sztanga', 'redBar', 1, 1000, { detail: 'Cel tygodnia wykonany i same czerwone krążki', needs: 'goal' }),
-  achievement('all-muscles', 'Krążki i mapa', 'Cała mapa', 'muscles', TRAINED_MUSCLES.length, 300, { detail: 'Seria na każdą partię w jednym tygodniu', ...parts }),
-  achievement('green-map', 'Krążki i mapa', 'Zielona mapa', 'greenMuscles', TRAINED_MUSCLES.length, 1000, { detail: 'Wszystkie partie zielone w jednym tygodniu', ...parts }),
+  achievement('red-plate', 'Krążki i mapa', L("Czerwony krążek", "Red plate"), 'mostSets', RED_PLATE_SETS, 200, { detail: L("Trening z co najmniej 20 seriami", "A workout with 20 or more sets"), unit: L(' serii', ' sets') }),
+  achievement('red-bar', 'Krążki i mapa', L("Czerwona sztanga", "Red bar"), 'redBar', 1, 1000, { detail: L("Cel tygodnia wykonany i same czerwone krążki", "Weekly goal met with only red plates"), needs: 'goal' }),
+  achievement('all-muscles', 'Krążki i mapa', L("Cała mapa", "Full map"), 'muscles', TRAINED_MUSCLES.length, 300, { detail: L("Seria na każdą partię w jednym tygodniu", "A set for every muscle in one week"), ...parts }),
+  achievement('green-map', 'Krążki i mapa', L("Zielona mapa", "Green map"), 'greenMuscles', TRAINED_MUSCLES.length, 1000, { detail: L("Wszystkie partie zielone w jednym tygodniu", "Every muscle green in one week"), ...parts }),
 
-  achievement('workout-10t', 'Jeden trening', '10 ton w treningu', 'heaviestWorkout', 10000, 300, tons),
-  achievement('workout-records', 'Jeden trening', '5 rekordów w treningu', 'recordsInWorkout', 5, 500, { detail: 'Rekord w 5 ćwiczeniach jednego treningu' }),
+  achievement('workout-10t', 'Jeden trening', L("10 ton w treningu", "10 tonnes in a workout"), 'heaviestWorkout', 10000, 300, tons),
+  achievement('workout-records', 'Jeden trening', L("5 rekordów w treningu", "5 records in a workout"), 'recordsInWorkout', 5, 500, { detail: L("Rekord w 5 ćwiczeniach jednego treningu", "Records in 5 exercises in one workout") }),
 
-  achievement('hours-100', 'Wytrwałość', '100 godzin treningu', 'hours', 100 * HOUR_MS, 1000, { unit: ' godzin', scale: HOUR_MS }),
-  achievement('sets-1000', 'Wytrwałość', '1000 serii', 'sets', 1000, 500),
-  achievement('sets-5000', 'Wytrwałość', '5000 serii', 'sets', 5000, 1500),
-  achievement('exercises-25', 'Wytrwałość', '25 różnych ćwiczeń', 'exercises', 25, 200),
+  achievement('hours-100', 'Wytrwałość', L("100 godzin treningu", "100 hours of training"), 'hours', 100 * HOUR_MS, 1000, { unit: L(' godzin', ' hours'), scale: HOUR_MS }),
+  achievement('sets-1000', 'Wytrwałość', L("1000 serii", "1000 sets"), 'sets', 1000, 500),
+  achievement('sets-5000', 'Wytrwałość', L("5000 serii", "5000 sets"), 'sets', 5000, 1500),
+  achievement('exercises-25', 'Wytrwałość', L("25 różnych ćwiczeń", "25 different exercises"), 'exercises', 25, 200),
 
-  achievement('early', 'Okazje', 'Ranny ptak', 'early', 1, 100, { detail: `Trening rozpoczęty przed ${EARLY_BEFORE_HOUR}:00` }),
-  achievement('late', 'Okazje', 'Nocna zmiana', 'late', 1, 100, { detail: `Trening rozpoczęty od ${LATE_FROM_HOUR}:00` }),
-  achievement('comeback', 'Okazje', 'Powrót', 'comeback', 1, 200, { detail: `Trening po co najmniej ${COMEBACK_DAYS} dniach przerwy` }),
-  achievement('new-year', 'Okazje', 'Nowy Rok', 'newYear', 1, 200, { detail: 'Trening 1 stycznia' }),
+  achievement('early', 'Okazje', L("Ranny ptak", "Early bird"), 'early', 1, 100, { detail: L(`Trening rozpoczęty przed ${EARLY_BEFORE_HOUR}:00`, `A workout started before ${EARLY_BEFORE_HOUR}:00`) }),
+  achievement('late', 'Okazje', L("Nocna zmiana", "Night shift"), 'late', 1, 100, { detail: L(`Trening rozpoczęty od ${LATE_FROM_HOUR}:00`, `A workout started at ${LATE_FROM_HOUR}:00 or later`) }),
+  achievement('comeback', 'Okazje', L("Powrót", "Comeback"), 'comeback', 1, 200, { detail: L(`Trening po co najmniej ${COMEBACK_DAYS} dniach przerwy`, `A workout after a break of ${COMEBACK_DAYS} days or more`) }),
+  achievement('new-year', 'Okazje', L("Nowy Rok", "New Year"), 'newYear', 1, 200, { detail: L("Trening 1 stycznia", "A workout on 1 January") }),
 ];
 
 /** Kolor krążka jak na sztandze: im większa nagroda, tym cięższy krążek. */

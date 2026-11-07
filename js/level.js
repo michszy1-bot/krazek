@@ -3,6 +3,7 @@
 
 import { achievementProgress, achievementXp } from './achievements.js';
 import { weightOn } from './body.js';
+import { L } from './i18n.js';
 import { HELPER_MUSCLES, MUSCLES } from './exercises.js';
 import { dayKey, startOfWeek } from './format.js';
 import { estimate1RM, isWorking, muscleTopSets, recordTimeline, streakFrom, streakMultiplier, weekCounter } from './stats.js';
@@ -28,10 +29,10 @@ const bodyFactor = (bodyKg, exerciseId) => (bodyKg / REFERENCE_KG) ** (1 - (DEAD
 
 /** Nazwa poziomu siły. Elita zaczyna się dopiero na poziomie najwyższym. */
 export function strengthCategory(level) {
-  if (level >= MAX_MUSCLE_LEVEL) return 'Elita';
-  if (level >= 16) return 'Zaawansowany';
-  if (level >= 11) return 'Średnio zaawansowany';
-  return level >= 6 ? 'Nowicjusz' : 'Początkujący';
+  if (level >= MAX_MUSCLE_LEVEL) return L('Elita', 'Elite');
+  if (level >= 16) return L('Zaawansowany', 'Advanced');
+  if (level >= 11) return L('Średnio zaawansowany', 'Intermediate');
+  return level >= 6 ? L('Nowicjusz', 'Novice') : L('Początkujący', 'Beginner');
 }
 
 /** Kolory poziomów siły, te same co na mapie serii: od czerwonego do zielonego. */

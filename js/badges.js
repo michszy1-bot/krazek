@@ -1,6 +1,7 @@
 // Odznaki osiągnięć jako metalowe medale. Kształt mówi o grupie, metal o nagrodzie, a znak i napis o samym osiągnięciu.
 
 import { rewardTier } from './achievements.js';
+import { L } from './i18n.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const CENTER = 50;
@@ -71,7 +72,7 @@ const MARKS = {
   'lift-100': mark('lifter', '100'), 'lift-150': mark('lifter', '150'), 'lift-200': mark('lifter', '200'),
   'bench-100': mark('bench', '100'), 'bench-120': mark('bench', '120'),
   'dumbbell-30': mark('dumbbell', '30'), 'dumbbell-40': mark('dumbbell', '40'),
-  'body-bench': mark('flex', '1×'), 'body-squat': mark('flex', '1,5×'), 'body-deadlift': mark('flex', '2×'),
+  'body-bench': mark('flex', '1×'), 'body-squat': mark('flex', L('1,5×', '1.5×')), 'body-deadlift': mark('flex', '2×'),
   'total-300': mark('podium', '300'), 'total-400': mark('podium', '400'), 'total-500': mark('podium', '500'),
   'red-plate': mark('plate'), 'red-bar': mark('barbell'), 'all-muscles': mark('person'), 'green-map': mark('person', '11'),
   'workout-10t': mark('bolt', '10 t'), 'workout-records': mark('trophy', '5×'),

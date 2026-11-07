@@ -1,13 +1,25 @@
-// Formatowanie po polsku i parsowanie wpisów. Bez zależności od DOM, więc da się to testować w Node.
+// Formatowanie w języku aplikacji i parsowanie wpisów. Bez zależności od DOM, więc da się to testować w Node.
 
-const numberFmt = new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 2 });
-const oneDecimal = new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 1 });
-const pluralRules = new Intl.PluralRules('pl-PL');
+import { isEnglish, locale } from './i18n.js';
 
-export const fmtNum = (n) => numberFmt.format(n);
+/** Formatery Intl dla bieżącego języka, tworzone raz na język. */
+function perLanguage(make) {
+  const made = new Map();
+  return () => {
+    const key = locale();
+    if (!made.has(key)) made.set(key, make(key));
+    return made.get(key);
+  };
+}
 
-/** Tekst do pola formularza: 82,5 zamiast 82.5, pusty dla braku wartości. */
-export const inputValue = (n) => (n == null ? '' : String(n).replace('.', ','));
+const numberFmt = perLanguage((tag) => new Intl.NumberFormat(tag, { maximumFractionDigits: 2 }));
+const oneDecimal = perLanguage((tag) => new Intl.NumberFormat(tag, { maximumFractionDigits: 1 }));
+const pluralRules = perLanguage((tag) => new Intl.PluralRules(tag));
+
+export const fmtNum = (n) => numberFmt().format(n);
+
+/** Tekst do pola formularza: po polsku 82,5 zamiast 82.5, pusty dla braku wartości. */
+export const inputValue = (n) => (n == null ? '' : isEnglish() ? String(n) : String(n).replace('.', ','));
 
 /** Czyta liczbę wpisaną z przecinkiem lub kropką. Zwraca null, gdy wpis jest niepoprawny. */
 export function parseNum(raw, { max = Infinity, integer = false } = {}) {
@@ -19,17 +31,22 @@ export function parseNum(raw, { max = Infinity, integer = false } = {}) {
   return integer ? Math.round(value) : value;
 }
 
-export function plural(n, one, few, many) {
+/**
+ * Odmiana przez liczbę. Po polsku trzy formy: 1 trening, 2 treningi, 5 treningów.
+ * Po angielsku dwie, podawane na końcu: 1 workout, 2 workouts.
+ */
+export function plural(n, one, few, many, enOne = one, enOther = many) {
+  if (isEnglish()) return n === 1 ? enOne : enOther;
   if (!Number.isInteger(n)) return few;
-  const form = pluralRules.select(n);
+  const form = pluralRules().select(n);
   if (form === 'one') return one;
   return form === 'few' ? few : many;
 }
 
-export const countOf = (n, one, few, many) => `${fmtNum(n)} ${plural(n, one, few, many)}`;
+export const countOf = (n, one, few, many, enOne, enOther) => `${fmtNum(n)} ${plural(n, one, few, many, enOne, enOther)}`;
 
 export function fmtVolume(kg) {
-  if (kg >= 10000) return `${oneDecimal.format(kg / 1000)} t`;
+  if (kg >= 10000) return `${oneDecimal().format(kg / 1000)} t`;
   return `${fmtNum(Math.round(kg))} kg`;
 }
 
@@ -55,7 +72,7 @@ function setResult(set, type, compact) {
   if (type === 'bodyweight') {
     if (!set.reps) return '';
     if (set.weight > 0) return compact ? `+${fmtNum(set.weight)} × ${set.reps}` : `+${fmtNum(set.weight)} kg × ${set.reps}`;
-    return compact ? `× ${set.reps}` : countOf(set.reps, 'powtórzenie', 'powtórzenia', 'powtórzeń');
+    return compact ? `× ${set.reps}` : countOf(set.reps, 'powtórzenie', 'powtórzenia', 'powtórzeń', 'rep', 'reps');
   }
   if (set.weight == null || !set.reps) return '';
   return compact ? `${fmtNum(set.weight)} × ${set.reps}` : `${fmtNum(set.weight)} kg × ${set.reps}`;
@@ -77,18 +94,18 @@ const signed = (value, unit) => `${value > 0 ? '+' : '−'}${fmtNum(Math.abs(val
 export function fmtSetChange({ weight, reps, seconds, rpe }) {
   const parts = [];
   if (weight) parts.push(signed(weight, 'kg'));
-  if (reps) parts.push(signed(reps, 'powt.'));
+  if (reps) parts.push(signed(reps, isEnglish() ? 'reps' : 'powt.'));
   if (seconds) parts.push(signed(seconds, 's'));
   if (rpe) parts.push(`RPE ${rpe.from} → ${rpe.to}`);
-  return parts.join(', ') || 'Bez zmian';
+  return parts.join(', ') || (isEnglish() ? 'No change' : 'Bez zmian');
 }
 
 /** Wartość wskaźnika lub rekordu z jednostką. */
 export function fmtUnit(value, unit) {
   if (unit === 'seconds') return fmtClock(value);
   if (unit === 'volume') return fmtVolume(value);
-  if (unit === 'reps') return countOf(Math.round(value), 'powtórzenie', 'powtórzenia', 'powtórzeń');
-  return `${oneDecimal.format(value)} kg`;
+  if (unit === 'reps') return countOf(Math.round(value), 'powtórzenie', 'powtórzenia', 'powtórzeń', 'rep', 'reps');
+  return `${oneDecimal().format(value)} kg`;
 }
 
 // --- Daty (zawsze w czasie lokalnym, tydzień od poniedziałku) ---
@@ -117,17 +134,17 @@ export function startOfWeek(date) {
   return addDays(d, -((d.getDay() + 6) % 7));
 }
 
-const dayLongFmt = new Intl.DateTimeFormat('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' });
-const dayMediumFmt = new Intl.DateTimeFormat('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' });
-const dayShortFmt = new Intl.DateTimeFormat('pl-PL', { day: 'numeric', month: 'short' });
-const timeFmt = new Intl.DateTimeFormat('pl-PL', { hour: '2-digit', minute: '2-digit' });
-const monthFmt = new Intl.DateTimeFormat('pl-PL', { month: 'long', year: 'numeric' });
+const dayLongFmt = perLanguage((tag) => new Intl.DateTimeFormat(tag, { weekday: 'long', day: 'numeric', month: 'long' }));
+const dayMediumFmt = perLanguage((tag) => new Intl.DateTimeFormat(tag, { day: 'numeric', month: 'long', year: 'numeric' }));
+const dayShortFmt = perLanguage((tag) => new Intl.DateTimeFormat(tag, { day: 'numeric', month: 'short' }));
+const timeFmt = perLanguage((tag) => new Intl.DateTimeFormat(tag, { hour: '2-digit', minute: '2-digit' }));
+const monthFmt = perLanguage((tag) => new Intl.DateTimeFormat(tag, { month: 'long', year: 'numeric' }));
 
-export const fmtDayLong = (d) => dayLongFmt.format(new Date(d));
-export const fmtDayMedium = (d) => dayMediumFmt.format(new Date(d));
-export const fmtDayShort = (d) => dayShortFmt.format(new Date(d));
-export const fmtTime = (d) => timeFmt.format(new Date(d));
-export const fmtMonth = (d) => monthFmt.format(new Date(d));
+export const fmtDayLong = (d) => dayLongFmt().format(new Date(d));
+export const fmtDayMedium = (d) => dayMediumFmt().format(new Date(d));
+export const fmtDayShort = (d) => dayShortFmt().format(new Date(d));
+export const fmtTime = (d) => timeFmt().format(new Date(d));
+export const fmtMonth = (d) => monthFmt().format(new Date(d));
 
 /**
  * Domyślny początek wcześniejszego treningu: wybrany dzień (albo wczoraj) o 18:00.

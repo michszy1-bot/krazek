@@ -2,14 +2,15 @@
 
 import { musclesOf } from './exercises.js';
 import { addDays, dayKey, startOfDay, startOfWeek } from './format.js';
+import { L } from './i18n.js';
 
 export const isWorking = (set) => set.kind !== 'warmup';
 
 /** Rodzaje serii. Wszystkie poza rozgrzewkową liczą się do objętości i rekordów. */
 export const SET_KINDS = {
-  normal: { label: 'Robocza', name: 'Seria' },
-  warmup: { label: 'Rozgrzewkowa', mark: 'R', name: 'Seria rozgrzewkowa', hint: 'Nie liczy się do objętości ani rekordów' },
-  failure: { label: 'Do upadku', mark: 'U', name: 'Seria do upadku' },
+  normal: { label: L('Robocza', 'Working'), name: L('Seria', 'Set') },
+  warmup: { label: L('Rozgrzewkowa', 'Warm-up'), mark: L('R', 'W'), name: L('Seria rozgrzewkowa', 'Warm-up set'), hint: L('Nie liczy się do objętości ani rekordów', 'Not counted in volume or records') },
+  failure: { label: L('Do upadku', 'To failure'), mark: L('U', 'F'), name: L('Seria do upadku', 'Set to failure') },
   drop: { label: 'Dropset', mark: 'D', name: 'Dropset' },
 };
 
@@ -99,33 +100,33 @@ export function summarizeSets(sets) {
 /** Wskaźniki do wykresu, zależne od rodzaju ćwiczenia. */
 export const METRICS = {
   weight: [
-    { key: 'maxWeight', label: 'Ciężar', title: 'Największy ciężar', unit: 'kg' },
-    { key: 'est1RM', label: '1RM', title: 'Szacowany 1RM', unit: 'kg' },
-    { key: 'volume', label: 'Objętość', title: 'Objętość sesji', unit: 'volume' },
+    { key: 'maxWeight', label: L('Ciężar', 'Weight'), title: L('Największy ciężar', 'Heaviest weight'), unit: 'kg' },
+    { key: 'est1RM', label: '1RM', title: L('Szacowany 1RM', 'Estimated 1RM'), unit: 'kg' },
+    { key: 'volume', label: L('Objętość', 'Volume'), title: L('Objętość sesji', 'Session volume'), unit: 'volume' },
   ],
   bodyweight: [
-    { key: 'maxReps', label: 'Powtórzenia', title: 'Najwięcej powtórzeń w serii', unit: 'reps' },
-    { key: 'totalReps', label: 'Suma', title: 'Suma powtórzeń w sesji', unit: 'reps' },
-    { key: 'maxWeight', label: 'Dociążenie', title: 'Największe dociążenie', unit: 'kg' },
+    { key: 'maxReps', label: L('Powtórzenia', 'Reps'), title: L('Najwięcej powtórzeń w serii', 'Most reps in a set'), unit: 'reps' },
+    { key: 'totalReps', label: L('Suma', 'Total'), title: L('Suma powtórzeń w sesji', 'Total reps in session'), unit: 'reps' },
+    { key: 'maxWeight', label: L('Dociążenie', 'Added weight'), title: L('Największe dociążenie', 'Heaviest added weight'), unit: 'kg' },
   ],
   time: [
-    { key: 'maxSeconds', label: 'Najdłużej', title: 'Najdłuższa seria', unit: 'seconds' },
-    { key: 'totalSeconds', label: 'Suma', title: 'Suma czasu w sesji', unit: 'seconds' },
+    { key: 'maxSeconds', label: L('Najdłużej', 'Longest'), title: L('Najdłuższa seria', 'Longest set'), unit: 'seconds' },
+    { key: 'totalSeconds', label: L('Suma', 'Total'), title: L('Suma czasu w sesji', 'Total time in session'), unit: 'seconds' },
   ],
 };
 
 /** Rodzaje rekordów. Każdy jest liczony z pojedynczej serii. */
 export const RECORD_TYPES = {
   weight: [
-    { key: 'maxWeight', label: 'Największy ciężar', unit: 'kg' },
-    { key: 'est1RM', label: 'Szacowany 1RM', unit: 'kg' },
-    { key: 'setVolume', label: 'Największa objętość serii', unit: 'kg' },
+    { key: 'maxWeight', label: L('Największy ciężar', 'Heaviest weight'), unit: 'kg' },
+    { key: 'est1RM', label: L('Szacowany 1RM', 'Estimated 1RM'), unit: 'kg' },
+    { key: 'setVolume', label: L('Największa objętość serii', 'Best set volume'), unit: 'kg' },
   ],
   bodyweight: [
-    { key: 'maxReps', label: 'Najwięcej powtórzeń', unit: 'reps' },
-    { key: 'maxWeight', label: 'Największe dociążenie', unit: 'kg' },
+    { key: 'maxReps', label: L('Najwięcej powtórzeń', 'Most reps'), unit: 'reps' },
+    { key: 'maxWeight', label: L('Największe dociążenie', 'Heaviest added weight'), unit: 'kg' },
   ],
-  time: [{ key: 'maxSeconds', label: 'Najdłuższa seria', unit: 'seconds' }],
+  time: [{ key: 'maxSeconds', label: L('Najdłuższa seria', 'Longest set'), unit: 'seconds' }],
 };
 
 function setRecordValues(set) {
@@ -350,10 +351,10 @@ export function weekDays(workouts, now = new Date()) {
 
 /** Kolory krążków jak na zawodach: im więcej serii, tym cięższy krążek. */
 export const PLATE_TIERS = [
-  { tier: 'green', label: 'do 9' },
+  { tier: 'green', label: L('do 9', 'up to 9') },
   { tier: 'yellow', label: '10–14' },
   { tier: 'blue', label: '15–19' },
-  { tier: 'red', label: '20+ serii' },
+  { tier: 'red', label: L('20+ serii', '20+ sets') },
 ];
 
 export function plateTier(sets) {
@@ -462,8 +463,8 @@ function levelLabels(tops) {
 
 /** Skale kolorów do legendy mapy mięśni. Nogom wystarcza mniej serii niż reszcie ciała. */
 export const MUSCLE_SCALES = [
-  { name: 'Góra', levels: levelLabels(UPPER_TOPS) },
-  { name: 'Nogi', levels: levelLabels(LEG_TOPS) },
+  { name: L('Góra', 'Upper'), levels: levelLabels(UPPER_TOPS) },
+  { name: L('Nogi', 'Legs'), levels: levelLabels(LEG_TOPS) },
 ];
 
 /** Liczba serii w tygodniu, od której partia jest na mapie zielona. */

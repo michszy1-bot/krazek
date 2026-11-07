@@ -12,6 +12,8 @@ import { workoutGain } from './level.js';
 import { levelGainBlock, levelOptions } from './level-views.js';
 import { saveWorkoutAsRoutine } from './routine-views.js';
 import * as sound from './sound.js';
+import { L } from './i18n.js';
+import { muscleName } from './exercises.js';
 
 const REST_OPTIONS = [0, 30, 45, 60, 90, 120, 150, 180, 240, 300];
 const MAX_WEIGHT = 1500;
@@ -25,9 +27,9 @@ let wakeLock = null;
 
 function defaultName(date = new Date()) {
   const hour = date.getHours();
-  if (hour < 12) return 'Trening poranny';
-  if (hour < 18) return 'Trening popołudniowy';
-  return 'Trening wieczorny';
+  if (hour < 12) return L('Trening poranny', 'Morning workout');
+  if (hour < 18) return L('Trening popołudniowy', 'Afternoon workout');
+  return L('Trening wieczorny', 'Evening workout');
 }
 
 export const isWorkoutOpen = () => Boolean(ctx);
@@ -41,7 +43,7 @@ export async function startWorkout() {
 /** Nowy trening z rutyny: ma jej nazwę, ćwiczenia i liczbę serii. Ciężary podpowiada historia. */
 export async function startRoutine(routine) {
   if (state.active) {
-    toast('Masz trening w toku. Zakończ go, żeby zacząć rutynę.', { actionLabel: 'Wróć', onAction: resumeWorkout });
+    toast(L('Masz trening w toku. Zakończ go, żeby zacząć rutynę.', 'You have a workout in progress. Finish it to start a routine.'), { actionLabel: L('Wróć', 'Back'), onAction: resumeWorkout });
     return;
   }
   const exercises = routine.exercises
@@ -77,7 +79,7 @@ export function editWorkout(workout, onSaved) {
 export function addPastWorkout(day) {
   const startedAt = pastWorkoutStart(day);
   mount({
-    draft: { id: newId(), name: 'Trening', startedAt, endedAt: startedAt + 3600000, note: '', exercises: [] },
+    draft: { id: newId(), name: L('Trening', 'Workout'), startedAt, endedAt: startedAt + 3600000, note: '', exercises: [] },
     mode: 'edit',
     isNew: true,
   });
@@ -95,26 +97,26 @@ function mount({ draft, mode, onSaved, isNew = false }) {
 
   const head = live
     ? h('header.wk-head',
-      iconButton('down', 'Zwiń trening', collapse),
-      h('p.wk-clock', { 'aria-label': 'Czas treningu' }, h('span', { id: 'wk-elapsed' }, elapsedText())),
-      h('button.btn.btn-finish', { type: 'button', onclick: finishLive }, 'Zakończ'))
+      iconButton('down', L('Zwiń trening', 'Minimise workout'), collapse),
+      h('p.wk-clock', { 'aria-label': L('Czas treningu', 'Workout time') }, h('span', { id: 'wk-elapsed' }, elapsedText())),
+      h('button.btn.btn-finish', { type: 'button', onclick: finishLive }, L('Zakończ', 'Finish')))
     : h('header.wk-head',
-      iconButton('close', isNew ? 'Anuluj dodawanie' : 'Anuluj edycję', cancelEdit),
-      h('p.wk-head-title', isNew ? 'Wcześniejszy trening' : 'Edycja treningu'),
-      h('button.btn.btn-finish', { type: 'button', onclick: saveEdit }, 'Zapisz'));
+      iconButton('close', isNew ? L('Anuluj dodawanie', 'Cancel adding') : L('Anuluj edycję', 'Cancel editing'), cancelEdit),
+      h('p.wk-head-title', isNew ? L('Wcześniejszy trening', 'Past workout') : L('Edycja treningu', 'Edit workout')),
+      h('button.btn.btn-finish', { type: 'button', onclick: saveEdit }, L('Zapisz', 'Save')));
 
   const nameInput = h('input.wk-name', {
     type: 'text',
     value: draft.name,
     maxLength: 60,
-    'aria-label': 'Nazwa treningu',
+    'aria-label': L('Nazwa treningu', 'Workout name'),
     oninput: () => { draft.name = nameInput.value; touch(); },
   });
 
   const noteInput = h('textarea.wk-note', {
     rows: 2,
-    placeholder: 'Jak poszło? Samopoczucie, sen, ból…',
-    'aria-label': 'Notatka do treningu',
+    placeholder: L('Jak poszło? Samopoczucie, sen, ból…', 'How did it go? Mood, sleep, pain…'),
+    'aria-label': L('Notatka do treningu', 'Workout note'),
     value: draft.note ?? '',
     oninput: () => { draft.note = noteInput.value; touch(); },
   });
@@ -123,11 +125,11 @@ function mount({ draft, mode, onSaved, isNew = false }) {
     nameInput,
     !live && editTimeFields(),
     cardsHost,
-    h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: addExercises }, icon('plus', 20), 'Dodaj ćwiczenie'),
-    h('label.field', h('span.field-label', 'Notatka do treningu'), noteInput),
-    live && h('button.btn.btn-text-danger.btn-block', { type: 'button', onclick: discardLive }, 'Odrzuć trening'));
+    h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: addExercises }, icon('plus', 20), L('Dodaj ćwiczenie', 'Add exercise')),
+    h('label.field', h('span.field-label', L('Notatka do treningu', 'Workout note')), noteInput),
+    live && h('button.btn.btn-text-danger.btn-block', { type: 'button', onclick: discardLive }, L('Odrzuć trening', 'Discard workout')));
 
-  const layerLabel = live ? 'Trening w toku' : (isNew ? 'Wcześniejszy trening' : 'Edycja treningu');
+  const layerLabel = live ? L('Trening w toku', 'Workout in progress') : (isNew ? L('Wcześniejszy trening', 'Past workout') : L('Edycja treningu', 'Edit workout'));
   ctx.layer = h('div.layer', { role: 'dialog', 'aria-modal': 'true', 'aria-label': layerLabel }, head, scroll, ctx.restBar);
   document.body.append(ctx.layer);
   document.body.classList.add('layer-open');
@@ -187,8 +189,8 @@ function editTimeFields() {
     },
   });
   return h('div.field-row',
-    h('label.field', h('span.field-label', 'Początek'), start),
-    h('label.field.field-narrow', h('span.field-label', 'Czas (min)'), minutes));
+    h('label.field', h('span.field-label', L('Początek', 'Start')), start),
+    h('label.field.field-narrow', h('span.field-label', L('Czas (min)', 'Length (min)')), minutes));
 }
 
 // --- Karty ćwiczeń ---
@@ -197,8 +199,8 @@ function renderCards() {
   ctx.cardsHost.replaceChildren(...ctx.draft.exercises.map(buildCard));
   if (!ctx.draft.exercises.length) {
     ctx.cardsHost.append(h('p.wk-hint', ctx.isNew
-      ? 'Ustaw datę, dodaj ćwiczenia i wpisz serie z tamtego treningu.'
-      : 'Dodaj pierwsze ćwiczenie, a potem odhaczaj kolejne serie.'));
+      ? L('Ustaw datę, dodaj ćwiczenia i wpisz serie z tamtego treningu.', 'Set the date, add exercises and enter the sets from that workout.')
+      : L('Dodaj pierwsze ćwiczenie, a potem odhaczaj kolejne serie.', 'Add your first exercise, then tick off each set.')));
   }
 }
 
@@ -206,7 +208,7 @@ function addExercises() {
   pickExercises((ids) => {
     const present = new Set(ctx.draft.exercises.map((i) => i.exerciseId));
     const fresh = ids.filter((id) => !present.has(id));
-    if (fresh.length < ids.length) toast('Ćwiczenia, które już są w treningu, zostały pominięte.');
+    if (fresh.length < ids.length) toast(L('Ćwiczenia, które już są w treningu, zostały pominięte.', 'Exercises already in the workout were skipped.'));
     for (const id of fresh) {
       const previous = previousSets(id);
       const sets = previous.length ? previous.map((s) => emptySet(s.kind)) : [emptySet()];
@@ -225,7 +227,7 @@ function previousSets(exerciseId) {
 }
 
 const restFor = (exercise) => exercise.restSec ?? state.settings.restSec;
-const restLabel = (seconds) => (seconds ? fmtClock(seconds) : 'wył.');
+const restLabel = (seconds) => (seconds ? fmtClock(seconds) : L('wył.', 'off'));
 
 function buildCard(item) {
   const exercise = exerciseById(item.exerciseId);
@@ -266,8 +268,8 @@ function buildCard(item) {
     const { draft } = ctx;
     item.sets.splice(index, 1);
     rebuild();
-    toast('Usunięto serię.', {
-      actionLabel: 'Cofnij',
+    toast(L('Usunięto serię.', 'Set deleted.'), {
+      actionLabel: L('Cofnij', 'Undo'),
       onAction: () => {
         if (ctx?.draft !== draft || !draft.exercises.includes(item)) return;
         item.sets.splice(Math.min(index, item.sets.length), 0, set);
@@ -279,7 +281,7 @@ function buildCard(item) {
 
   const setMenu = (index) => {
     const set = item.sets[index];
-    actionSheet(`Seria ${numberLabel(index)}`, [
+    actionSheet(L(`Seria ${numberLabel(index)}`, `Set ${numberLabel(index)}`), [
       ...Object.entries(SET_KINDS).map(([kind, { label, hint }]) => ({
         label,
         hint,
@@ -287,12 +289,12 @@ function buildCard(item) {
         onClick: () => { set.kind = kind; rebuild(); },
       })),
       set.done && isWorking(set) && {
-        label: 'Oceń wysiłek (RPE)',
-        hint: set.rpe ? `Teraz: ${set.rpe}` : 'Ile powtórzeń zostało w zapasie',
+        label: L('Oceń wysiłek (RPE)', 'Rate effort (RPE)'),
+        hint: set.rpe ? L(`Teraz: ${set.rpe}`, `Now: ${set.rpe}`) : L('Ile powtórzeń zostało w zapasie', 'How many reps you had left'),
         onClick: () => rows[index].openRpe(),
       },
       {
-        label: 'Usuń serię',
+        label: L('Usuń serię', 'Delete set'),
         danger: true,
         onClick: () => deleteSet(set),
       },
@@ -323,8 +325,8 @@ function buildCard(item) {
     refreshWeightBar();
     touch();
   };
-  const minus = h('button.btn.btn-chip', { type: 'button', 'aria-label': `Zmniejsz ciężar o ${stepText} kg`, onclick: () => changeWeight(-step) }, `−${stepText}`);
-  const plus = h('button.btn.btn-chip', { type: 'button', 'aria-label': `Zwiększ ciężar o ${stepText} kg`, onclick: () => changeWeight(step) }, `+${stepText}`);
+  const minus = h('button.btn.btn-chip', { type: 'button', 'aria-label': L(`Zmniejsz ciężar o ${stepText} kg`, `Decrease weight by ${stepText} kg`), onclick: () => changeWeight(-step) }, `−${stepText}`);
+  const plus = h('button.btn.btn-chip', { type: 'button', 'aria-label': L(`Zwiększ ciężar o ${stepText} kg`, `Increase weight by ${stepText} kg`), onclick: () => changeWeight(step) }, `+${stepText}`);
   const weightBar = type === 'time' ? null : h('div.weight-bar', minus, barLabel, plus);
   function refreshWeightBar() {
     if (!weightBar) return;
@@ -332,7 +334,7 @@ function buildCard(item) {
     weightBar.hidden = index < 0;
     if (index < 0) return;
     const base = stepBaseWeight(item.sets, index, hintFor(index)?.weight);
-    barLabel.textContent = `Seria ${numberLabel(index)}: ${fmtUnit(base, 'kg')}`;
+    barLabel.textContent = L(`Seria ${numberLabel(index)}: ${fmtUnit(base, 'kg')}`, `Set ${numberLabel(index)}: ${fmtUnit(base, 'kg')}`);
     minus.disabled = base <= 0;
   }
   refreshWeightBar();
@@ -350,9 +352,9 @@ function buildCard(item) {
     const hasDone = item.sets.some((s) => s.done);
     if (hasDone) {
       const confirmed = await ask({
-        title: `Usunąć ${exercise.name}?`,
-        text: 'Odhaczone serie tego ćwiczenia znikną z treningu.',
-        confirm: 'Usuń ćwiczenie',
+        title: L(`Usunąć ${exercise.name}?`, `Remove ${exercise.name}?`),
+        text: L('Odhaczone serie tego ćwiczenia znikną z treningu.', 'Ticked sets of this exercise will be removed from the workout.'),
+        confirm: L('Usuń ćwiczenie', 'Remove exercise'),
         danger: true,
       });
       if (!confirmed) return;
@@ -364,15 +366,15 @@ function buildCard(item) {
 
   const noteField = h('textarea.ex-note', {
     rows: 1,
-    placeholder: 'Notatka do ćwiczenia',
-    'aria-label': `Notatka do ćwiczenia ${exercise.name}`,
+    placeholder: L('Notatka do ćwiczenia', 'Exercise note'),
+    'aria-label': L(`Notatka do ćwiczenia ${exercise.name}`, `Note for ${exercise.name}`),
     value: item.note ?? '',
     hidden: !item.note,
     oninput: () => { item.note = noteField.value; touch(); },
   });
 
-  const chooseRest = () => actionSheet(`Przerwa: ${exercise.name}`, REST_OPTIONS.map((seconds) => ({
-    label: seconds ? fmtClock(seconds) : 'Bez minutnika',
+  const chooseRest = () => actionSheet(L(`Przerwa: ${exercise.name}`, `Rest: ${exercise.name}`), REST_OPTIONS.map((seconds) => ({
+    label: seconds ? fmtClock(seconds) : L('Bez minutnika', 'No timer'),
     selected: restFor(exercise) === seconds,
     onClick: async () => {
       await saveExercise({ ...exercise, restSec: seconds });
@@ -398,7 +400,7 @@ function buildCard(item) {
     const { draft } = ctx;
     const list = draft.exercises;
     if (list.some((other) => other.exerciseId === id)) {
-      toast('To ćwiczenie już jest w treningu.');
+      toast(L('To ćwiczenie już jest w treningu.', 'This exercise is already in the workout.'));
       return;
     }
     const { kept, fresh } = swapExercise(item, id);
@@ -406,8 +408,8 @@ function buildCard(item) {
     list.splice(list.indexOf(item), 1, ...replacement);
     renderCards();
     touch();
-    toast(`Zamieniono na: ${exerciseById(id).name}.`, {
-      actionLabel: 'Cofnij',
+    toast(L(`Zamieniono na: ${exerciseById(id).name}.`, `Swapped for: ${exerciseById(id).name}.`), {
+      actionLabel: L('Cofnij', 'Undo'),
       onAction: () => {
         if (ctx?.draft !== draft || !replacement.every((part) => list.includes(part))) return;
         list.splice(list.indexOf(replacement[0]), replacement.length, item);
@@ -420,9 +422,9 @@ function buildCard(item) {
   const swapOption = () => {
     if (ctx.mode !== 'live' || item.sets.every((s) => s.done)) return null;
     return {
-      label: 'Zamień ćwiczenie',
-      hint: item.sets.some((s) => s.done) ? 'Odhaczone serie zostają przy tym ćwiczeniu' : 'Liczba serii zostaje',
-      onClick: () => pickExercises(swapTo, { single: true, title: `Zamień: ${exercise.name}`, muscle: exercise.muscle }),
+      label: L('Zamień ćwiczenie', 'Swap exercise'),
+      hint: item.sets.some((s) => s.done) ? L('Odhaczone serie zostają przy tym ćwiczeniu', 'Ticked sets stay with this exercise') : L('Liczba serii zostaje', 'The number of sets stays'),
+      onClick: () => pickExercises(swapTo, { single: true, title: L(`Zamień: ${exercise.name}`, `Swap: ${exercise.name}`), muscle: exercise.muscle }),
     };
   };
 
@@ -433,13 +435,13 @@ function buildCard(item) {
     const sets = warmupSets(base, exercise.equipment);
     if (sets.length) {
       return {
-        label: 'Dodaj rozgrzewkę',
+        label: L('Dodaj rozgrzewkę', 'Add warm-up'),
         hint: sets.map((set) => `${fmtUnit(set.weight, 'kg')} × ${set.reps}`).join(', '),
         onClick: () => { item.sets.unshift(...sets); rebuild(); },
       };
     }
     if (base > 0) return null; // Ciężar jest za mały, żeby go jeszcze dzielić.
-    return { label: 'Dodaj rozgrzewkę', hint: 'Najpierw wpisz ciężar pierwszej serii', onClick: () => toast('Wpisz ciężar pierwszej serii, a wyliczę rozgrzewkę.') };
+    return { label: L('Dodaj rozgrzewkę', 'Add warm-up'), hint: L('Najpierw wpisz ciężar pierwszej serii', 'Enter the weight of the first set first'), onClick: () => toast(L('Wpisz ciężar pierwszej serii, a wyliczę rozgrzewkę.', 'Enter the weight of the first set and the warm-up will be worked out.')) };
   };
 
   const openMenu = () => {
@@ -447,11 +449,11 @@ function buildCard(item) {
     actionSheet(exercise.name, [
       swapOption(),
       warmupOption(),
-      { label: item.note || !noteField.hidden ? 'Edytuj notatkę' : 'Dodaj notatkę', hint: 'Tylko w tym treningu', onClick: () => { noteField.hidden = false; noteField.focus(); } },
-      { label: exercise.stickyNote ? 'Edytuj stałą notatkę' : 'Dodaj stałą notatkę', hint: 'Przy każdym treningu', onClick: editStickyNote },
-      position > 0 && { label: 'Przesuń wyżej', onClick: () => moveTo(-1) },
-      position < ctx.draft.exercises.length - 1 && { label: 'Przesuń niżej', onClick: () => moveTo(1) },
-      { label: 'Usuń z treningu', danger: true, onClick: removeExercise },
+      { label: item.note || !noteField.hidden ? L('Edytuj notatkę', 'Edit note') : L('Dodaj notatkę', 'Add note'), hint: L('Tylko w tym treningu', 'Only in this workout'), onClick: () => { noteField.hidden = false; noteField.focus(); } },
+      { label: exercise.stickyNote ? L('Edytuj stałą notatkę', 'Edit pinned note') : L('Dodaj stałą notatkę', 'Add pinned note'), hint: L('Przy każdym treningu', 'In every workout'), onClick: editStickyNote },
+      position > 0 && { label: L('Przesuń wyżej', 'Move up'), onClick: () => moveTo(-1) },
+      position < ctx.draft.exercises.length - 1 && { label: L('Przesuń niżej', 'Move down'), onClick: () => moveTo(1) },
+      { label: L('Usuń z treningu', 'Remove from workout'), danger: true, onClick: removeExercise },
     ].filter(Boolean));
   };
 
@@ -462,34 +464,34 @@ function buildCard(item) {
   };
 
   const columns = type === 'time'
-    ? [h('span', 'Sekundy')]
-    : [h('span', type === 'bodyweight' ? '+kg' : 'kg'), h('span', 'Powt.')];
+    ? [h('span', L('Sekundy', 'Seconds'))]
+    : [h('span', type === 'bodyweight' ? '+kg' : 'kg'), h('span', L('Powt.', 'Reps'))];
 
   const showDemo = () => openSheet((close) => h('div.sheet-body',
-    h('div.sheet-head.sheet-head-flush', h('h2.sheet-title', exercise.name), iconButton('close', 'Zamknij', close)),
+    h('div.sheet-head.sheet-head-flush', h('h2.sheet-title', exercise.name), iconButton('close', L('Zamknij', 'Close'), close)),
     exerciseDemo(exercise),
-    h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: close }, 'Wróć do treningu')),
+    h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: close }, L('Wróć do treningu', 'Back to workout'))),
   { label: exercise.name });
 
   const card = h(`section.ex-card${type === 'time' ? '.type-time' : ''}`,
     h('div.ex-head',
-      hasDemo(exercise.id) && h('button.ex-thumb', { type: 'button', onclick: showDemo, 'aria-label': `Pokaż animację: ${exercise.name}` },
+      hasDemo(exercise.id) && h('button.ex-thumb', { type: 'button', onclick: showDemo, 'aria-label': L(`Pokaż animację: ${exercise.name}`, `Show animation: ${exercise.name}`) },
         h('img', { src: demoUrl(exercise.id), alt: '', width: 48, height: 48, loading: 'lazy', referrerPolicy: 'no-referrer', onerror: (event) => { event.currentTarget.parentElement.hidden = true; } })),
-      h('div.ex-title', h('h2', exercise.name), h('p', exercise.muscle)),
-      iconButton('more', `Opcje: ${exercise.name}`, openMenu)),
-    exercise.stickyNote && h('button.sticky-note', { type: 'button', onclick: editStickyNote, 'aria-label': `Stała notatka: ${exercise.stickyNote}. Edytuj` },
+      h('div.ex-title', h('h2', exercise.name), h('p', muscleName(exercise.muscle))),
+      iconButton('more', L(`Opcje: ${exercise.name}`, `Options: ${exercise.name}`), openMenu)),
+    exercise.stickyNote && h('button.sticky-note', { type: 'button', onclick: editStickyNote, 'aria-label': L(`Stała notatka: ${exercise.stickyNote}. Edytuj`, `Pinned note: ${exercise.stickyNote}. Edit`) },
       icon('pin', 16), h('span', exercise.stickyNote)),
-    item.repRange && h('p.rep-range', `Zakres: ${item.repRange.min === item.repRange.max ? item.repRange.min : `${item.repRange.min}–${item.repRange.max}`} powt.`),
+    item.repRange && h('p.rep-range', L(`Zakres: ${item.repRange.min === item.repRange.max ? item.repRange.min : `${item.repRange.min}–${item.repRange.max}`} powt.`, `Target: ${item.repRange.min === item.repRange.max ? item.repRange.min : `${item.repRange.min}–${item.repRange.max}`} reps`)),
     nextWeight && h('div.next-weight',
-      h('span', `${nextWeight.reason === 'rpe' ? 'Ostatnio było lekko: co najmniej 3 powtórzenia w zapasie.' : 'Ostatnio wszystkie serie w górze zakresu.'} Spróbuj ${fmtUnit(nextWeight.weight, 'kg')}.`),
-      h('button.btn.btn-chip', { type: 'button', onclick: useNextWeight }, 'Użyj')),
+      h('span', L(`${nextWeight.reason === 'rpe' ? 'Ostatnio było lekko: co najmniej 3 powtórzenia w zapasie.' : 'Ostatnio wszystkie serie w górze zakresu.'} Spróbuj ${fmtUnit(nextWeight.weight, 'kg')}.`, `${nextWeight.reason === 'rpe' ? 'Last time felt light: 3 or more reps left.' : 'Last time every set hit the top of the range.'} Try ${fmtUnit(nextWeight.weight, 'kg')}.`)),
+      h('button.btn.btn-chip', { type: 'button', onclick: useNextWeight }, L('Użyj', 'Use'))),
     noteField,
-    ctx.mode === 'live' && h('button.rest-chip', { type: 'button', onclick: chooseRest, 'aria-label': `Przerwa ${restLabel(restFor(exercise))}. Zmień` },
-      icon('timer', 16), `Przerwa ${restLabel(restFor(exercise))}`),
-    h('div.set-head', { 'aria-hidden': 'true' }, h('span', 'Seria'), h('span', 'Poprzednio'), columns, h('span')),
+    ctx.mode === 'live' && h('button.rest-chip', { type: 'button', onclick: chooseRest, 'aria-label': L(`Przerwa ${restLabel(restFor(exercise))}. Zmień`, `Rest ${restLabel(restFor(exercise))}. Change`) },
+      icon('timer', 16), L(`Przerwa ${restLabel(restFor(exercise))}`, `Rest ${restLabel(restFor(exercise))}`)),
+    h('div.set-head', { 'aria-hidden': 'true' }, h('span', L('Seria', 'Set')), h('span', L('Poprzednio', 'Previous')), columns, h('span')),
     rowsHost,
     weightBar,
-    h('button.btn.btn-ghost.btn-block.btn-small', { type: 'button', onclick: addSet }, icon('plus', 18), 'Dodaj serię'));
+    h('button.btn.btn-ghost.btn-block.btn-small', { type: 'button', onclick: addSet }, icon('plus', 18), L('Dodaj serię', 'Add set')));
   return card;
 }
 
@@ -584,7 +586,7 @@ function buildSetRow({ set, type, hint, label, onMenu, onChange, onDelete, exerc
       inputMode,
       autocomplete: 'off',
       enterKeyHint: 'done',
-      'aria-label': `${name}, seria ${label}`,
+      'aria-label': L(`${name}, seria ${label}`, `${name}, set ${label}`),
       value: inputValue(set[key]),
       placeholder: hint?.[key] != null ? inputValue(hint[key]) : '',
       oninput: () => {
@@ -599,10 +601,10 @@ function buildSetRow({ set, type, hint, label, onMenu, onChange, onDelete, exerc
   };
 
   const fields = type === 'time'
-    ? [fieldFor('seconds', { max: MAX_SECONDS, integer: true, inputMode: 'numeric', name: 'Sekundy' })]
+    ? [fieldFor('seconds', { max: MAX_SECONDS, integer: true, inputMode: 'numeric', name: L('Sekundy', 'Seconds') })]
     : [
-      fieldFor('weight', { max: MAX_WEIGHT, inputMode: 'decimal', name: type === 'bodyweight' ? 'Dociążenie w kg' : 'Ciężar w kg' }),
-      fieldFor('reps', { max: MAX_REPS, integer: true, inputMode: 'numeric', name: 'Powtórzenia' }),
+      fieldFor('weight', { max: MAX_WEIGHT, inputMode: 'decimal', name: type === 'bodyweight' ? L('Dociążenie w kg', 'Added weight in kg') : L('Ciężar w kg', 'Weight in kg') }),
+      fieldFor('reps', { max: MAX_REPS, integer: true, inputMode: 'numeric', name: L('Powtórzenia', 'Reps') }),
     ];
 
   const prevText = hint?.fromHistory ? fmtSet(hint, type, { compact: true }) : '';
@@ -620,28 +622,28 @@ function buildSetRow({ set, type, hint, label, onMenu, onChange, onDelete, exerc
   const disc = h('button.disc', {
     type: 'button',
     'aria-pressed': String(Boolean(set.done)),
-    'aria-label': `Odhacz serię ${label}`,
+    'aria-label': L(`Odhacz serię ${label}`, `Tick off set ${label}`),
     onclick: () => toggleDone(),
   }, icon('check', 22));
 
   const node = h(`div.set-row${set.done ? '.done' : ''}${set.kind && set.kind !== 'normal' ? `.${set.kind}` : ''}`,
-    h('button.set-num', { type: 'button', onclick: onMenu, 'aria-label': `Opcje serii ${label}` }, label),
+    h('button.set-num', { type: 'button', onclick: onMenu, 'aria-label': L(`Opcje serii ${label}`, `Set ${label} options`) }, label),
     prevCell,
     fields.map((f) => f.input),
     disc);
 
-  const wrapper = h('div.set-swipe', h('div.set-swipe-bg', { 'aria-hidden': 'true' }, 'Usuń'), node);
+  const wrapper = h('div.set-swipe', h('div.set-swipe-bg', { 'aria-hidden': 'true' }, L('Usuń', 'Delete')), node);
   attachSwipeToDelete(node, wrapper, onDelete);
 
   /** Skala pod odhaczoną serią. Jedno dotknięcie zapisuje ocenę, a następna seria chowa skalę bez oceny. */
   function openRpe() {
     closeRpeStrip?.();
     const strip = h('div.rpe-strip',
-      h('p.rpe-title', 'RPE: ile powtórzeń zostało w zapasie?'),
+      h('p.rpe-title', L('RPE: ile powtórzeń zostało w zapasie?', 'RPE: how many reps did you have left?')),
       h('div.rpe-choices', RPE_SCALE.map(({ value, left }) => h(`button.rpe-choice${set.rpe === value ? '.selected' : ''}`, {
         type: 'button',
         'aria-pressed': String(set.rpe === value),
-        'aria-label': `RPE ${value}, w zapasie ${left}`,
+        'aria-label': L(`RPE ${value}, w zapasie ${left}`, `RPE ${value}, ${left} left`),
         onclick: () => {
           if (set.rpe === value) delete set.rpe;
           else set.rpe = value;
@@ -649,7 +651,7 @@ function buildSetRow({ set, type, hint, label, onMenu, onChange, onDelete, exerc
           touch();
           closeRpeStrip?.();
         },
-      }, h('strong', String(value)), h('span', `zapas ${left}`)))));
+      }, h('strong', String(value)), h('span', L(`zapas ${left}`, `${left} left`))))));
     wrapper.after(strip);
     closeRpeStrip = () => { strip.remove(); closeRpeStrip = null; };
   }
@@ -672,7 +674,7 @@ function buildSetRow({ set, type, hint, label, onMenu, onChange, onDelete, exerc
         const missing = fields.find(({ key }) => !(set[key] > 0) && !(key === 'weight' && (type === 'bodyweight' || set.weight === 0)));
         (missing ?? fields[0]).input.classList.add('invalid');
         (missing ?? fields[0]).input.focus();
-        toast(type === 'time' ? 'Wpisz czas serii w sekundach.' : 'Wpisz ciężar i powtórzenia.');
+        toast(type === 'time' ? L('Wpisz czas serii w sekundach.', 'Enter the set time in seconds.') : L('Wpisz ciężar i powtórzenia.', 'Enter weight and reps.'));
         return;
       }
       set.done = true;
@@ -715,13 +717,13 @@ function buildRestBar() {
     touch();
     tick();
   };
-  const bar = h('div.rest-bar', { hidden: true, role: 'timer', 'aria-label': 'Przerwa' },
+  const bar = h('div.rest-bar', { hidden: true, role: 'timer', 'aria-label': L('Przerwa', 'Rest') },
     h('span.rest-track', progress),
     h('div.rest-row',
       time,
-      h('button.btn.btn-chip', { type: 'button', onclick: () => shift(-15), 'aria-label': 'Skróć przerwę o 15 sekund' }, '−15'),
-      h('button.btn.btn-chip', { type: 'button', onclick: () => shift(15), 'aria-label': 'Wydłuż przerwę o 15 sekund' }, '+15'),
-      h('button.btn.btn-chip', { type: 'button', onclick: stopRest }, 'Pomiń')));
+      h('button.btn.btn-chip', { type: 'button', onclick: () => shift(-15), 'aria-label': L('Skróć przerwę o 15 sekund', 'Shorten rest by 15 seconds') }, '−15'),
+      h('button.btn.btn-chip', { type: 'button', onclick: () => shift(15), 'aria-label': L('Wydłuż przerwę o 15 sekund', 'Extend rest by 15 seconds') }, '+15'),
+      h('button.btn.btn-chip', { type: 'button', onclick: stopRest }, L('Pomiń', 'Skip'))));
   bar.time = time;
   bar.progress = progress;
   return bar;
@@ -771,7 +773,7 @@ function tick() {
     restBar.hidden = true;
     return;
   }
-  restBar.time.textContent = 'Koniec przerwy';
+  restBar.time.textContent = L('Koniec przerwy', 'Rest over');
   restBar.progress.style.transform = 'scaleX(0)';
   restBar.classList.add('ended');
   sound.beepNow();
@@ -817,7 +819,7 @@ function finalize(draft) {
   const { restEndAt, restTotal, routineId, ...rest } = draft;
   return {
     ...rest,
-    name: draft.name.trim() || 'Trening',
+    name: draft.name.trim() || L('Trening', 'Workout'),
     note: draft.note?.trim() ?? '',
     exercises: draft.exercises
       .map((item) => ({
@@ -835,14 +837,14 @@ function resolvePending(draft) {
   const partial = countSets(draft, (s, type) => !s.done && !isComplete(s, type) && (s.weight != null || s.reps != null || s.seconds != null));
   if (!pending && !partial) return Promise.resolve(true);
   const title = pending
-    ? `Masz ${countOf(pending, 'nieodhaczoną serię', 'nieodhaczone serie', 'nieodhaczonych serii')}`
-    : `Masz ${countOf(partial, 'niedokończoną serię', 'niedokończone serie', 'niedokończonych serii')}`;
-  const partialNote = partial ? `Bez kompletu danych nie da się zapisać: ${countOf(partial, 'seria', 'serie', 'serii')}.` : null;
+    ? L(`Masz ${countOf(pending, 'nieodhaczoną serię', 'nieodhaczone serie', 'nieodhaczonych serii')}`, `You have ${countOf(pending, '', '', '', 'unticked set', 'unticked sets')}`)
+    : L(`Masz ${countOf(partial, 'niedokończoną serię', 'niedokończone serie', 'niedokończonych serii')}`, `You have ${countOf(partial, '', '', '', 'unfinished set', 'unfinished sets')}`);
+  const partialNote = partial ? L(`Bez kompletu danych nie da się zapisać: ${countOf(partial, 'seria', 'serie', 'serii')}.`, `Can’t be saved without complete data: ${countOf(partial, '', '', '', 'set', 'sets')}.`) : null;
   return new Promise((resolve) => {
     let answer = false;
     openSheet((close) => h('div.sheet-body',
       h('h2.sheet-title', title),
-      pending > 0 && h('p.sheet-text', 'Są wypełnione, ale nie zostały odhaczone.'),
+      pending > 0 && h('p.sheet-text', L('Są wypełnione, ale nie zostały odhaczone.', 'They’re filled in but not ticked off.')),
       partialNote && h('p.sheet-text', partialNote),
       pending > 0 && h('button.btn.btn-primary.btn-block', {
         type: 'button',
@@ -854,10 +856,10 @@ function resolvePending(draft) {
           answer = true;
           close();
         },
-      }, 'Zalicz je i zapisz'),
-      h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => { answer = true; close(); } }, pending ? 'Pomiń je i zapisz' : 'Pomiń i zapisz'),
-      h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: close }, 'Wróć do treningu')),
-    { label: 'Nieodhaczone serie', onClose: () => resolve(answer) });
+      }, L('Zalicz je i zapisz', 'Count them and save')),
+      h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => { answer = true; close(); } }, pending ? L('Pomiń je i zapisz', 'Skip them and save') : L('Pomiń i zapisz', 'Skip and save')),
+      h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: close }, L('Wróć do treningu', 'Back to workout'))),
+    { label: L('Nieodhaczone serie', 'Unticked sets'), onClose: () => resolve(answer) });
   });
 }
 
@@ -866,11 +868,11 @@ async function finishLive() {
   const anything = countSets(draft, (s, type) => s.done || isComplete(s, type));
   if (!anything) {
     const confirmed = await ask({
-      title: 'Ten trening nie ma żadnej serii',
-      text: 'Nie ma czego zapisać. Możesz go odrzucić albo wrócić i dodać serie.',
-      confirm: 'Odrzuć trening',
+      title: L('Ten trening nie ma żadnej serii', 'This workout has no sets'),
+      text: L('Nie ma czego zapisać. Możesz go odrzucić albo wrócić i dodać serie.', 'There’s nothing to save. You can discard it or go back and add sets.'),
+      confirm: L('Odrzuć trening', 'Discard workout'),
       danger: true,
-      cancel: 'Wróć do treningu',
+      cancel: L('Wróć do treningu', 'Back to workout'),
     });
     if (confirmed) await closeLive();
     return;
@@ -878,7 +880,7 @@ async function finishLive() {
   if (!(await resolvePending(draft))) return;
   const workout = finalize(draft);
   if (!workout.exercises.length) {
-    toast('Odhacz choć jedną serię, żeby zapisać trening.');
+    toast(L('Odhacz choć jedną serię, żeby zapisać trening.', 'Tick off at least one set to save the workout.'));
     return;
   }
   workout.endedAt = Date.now();
@@ -895,11 +897,11 @@ async function finishLive() {
 
 async function discardLive() {
   const confirmed = await ask({
-    title: 'Odrzucić ten trening?',
-    text: 'Wpisane serie nie zostaną zapisane.',
-    confirm: 'Odrzuć trening',
+    title: L('Odrzucić ten trening?', 'Discard this workout?'),
+    text: L('Wpisane serie nie zostaną zapisane.', 'The sets you entered won’t be saved.'),
+    confirm: L('Odrzuć trening', 'Discard workout'),
     danger: true,
-    cancel: 'Wróć do treningu',
+    cancel: L('Wróć do treningu', 'Back to workout'),
   });
   if (confirmed) await closeLive();
 }
@@ -914,11 +916,11 @@ async function closeLive() {
 async function cancelEdit() {
   if (ctx.isNew && countSets(ctx.draft, (s) => s.done || s.weight != null || s.reps != null || s.seconds != null) > 0) {
     const confirmed = await ask({
-      title: 'Porzucić ten trening?',
-      text: 'Wpisane serie nie zostaną zapisane.',
-      confirm: 'Porzuć trening',
+      title: L('Porzucić ten trening?', 'Abandon this workout?'),
+      text: L('Wpisane serie nie zostaną zapisane.', 'The sets you entered won’t be saved.'),
+      confirm: L('Porzuć trening', 'Abandon workout'),
       danger: true,
-      cancel: 'Wróć do wpisywania',
+      cancel: L('Wróć do wpisywania', 'Keep editing'),
     });
     if (!confirmed) return;
   }
@@ -928,7 +930,7 @@ async function cancelEdit() {
 async function saveEdit() {
   const { draft, onSaved, isNew } = ctx;
   if (draft.startedAt > Date.now()) {
-    toast('Początek treningu nie może być w przyszłości.');
+    toast(L('Początek treningu nie może być w przyszłości.', 'The workout can’t start in the future.'));
     return;
   }
   // Przy wpisywaniu z pamięci każda pełna seria się liczy, więc odhaczanie jest tu opcjonalne.
@@ -942,8 +944,8 @@ async function saveEdit() {
   const workout = finalize(draft);
   if (!workout.exercises.length) {
     toast(isNew
-      ? 'Wpisz choć jedną serię, żeby zapisać trening.'
-      : 'Trening musi mieć choć jedną serię. Żeby go skasować, użyj „Usuń trening”.');
+      ? L('Wpisz choć jedną serię, żeby zapisać trening.', 'Enter at least one set to save the workout.')
+      : L('Trening musi mieć choć jedną serię. Żeby go skasować, użyj „Usuń trening”.', 'A workout needs at least one set. To remove it, use “Delete workout”.'));
     return;
   }
   await saveWorkout(workout);
@@ -951,7 +953,7 @@ async function saveEdit() {
   // Zapis nastąpił przy otwartym edytorze, więc ekran pod spodem trzeba odświeżyć dopiero teraz.
   document.dispatchEvent(new CustomEvent('workout-collapsed'));
   if (isNew) location.hash = `#/dziennik/${workout.id}`;
-  toast(isNew ? 'Zapisano trening.' : 'Zapisano zmiany.');
+  toast(isNew ? L('Zapisano trening.', 'Workout saved.') : L('Zapisano zmiany.', 'Changes saved.'));
   onSaved?.();
 }
 
@@ -959,38 +961,38 @@ function showSummary(workout, records, gain, routine, updatedRoutine) {
   const changes = workoutComparison(workout, state.workouts, exerciseById);
   openSheet((close) => h('div.sheet-body.sheet-summary',
     records.length > 0 && hasRecordSparks(state.shop) && h('span.spark-burst', { 'aria-hidden': 'true' }, particles('spark', 22, 150)),
-    h('h2.sheet-title', 'Trening zapisany'),
+    h('h2.sheet-title', L('Trening zapisany', 'Workout saved')),
     h('div.stats',
-      stat('Czas', fmtDuration(workout.endedAt - workout.startedAt)),
-      stat('Objętość', fmtVolume(workoutVolume(workout))),
-      stat('Serie', String(workingSetCount(workout)))),
+      stat(L('Czas', 'Time'), fmtDuration(workout.endedAt - workout.startedAt)),
+      stat(L('Objętość', 'Volume'), fmtVolume(workoutVolume(workout))),
+      stat(L('Serie', 'Sets'), String(workingSetCount(workout)))),
     levelGainBlock(gain),
     changes.length > 0 && h('div.summary-records',
-      h('h3.list-label', 'Względem poprzedniego razu'),
+      h('h3.list-label', L('Względem poprzedniego razu', 'Compared with last time')),
       h('ul.change-list', changes.map((change) => h('li',
         h('span.change-text',
           h('span.record-name', change.name),
-          h('span.record-meta', `${fmtSet(change.now, change.type, { compact: true })} · było ${fmtSet(change.before, change.type, { compact: true })}`)),
+          h('span.record-meta', L(`${fmtSet(change.now, change.type, { compact: true })} · było ${fmtSet(change.before, change.type, { compact: true })}`, `${fmtSet(change.now, change.type, { compact: true })} · was ${fmtSet(change.before, change.type, { compact: true })}`))),
         h(`span.change-value${change.direction > 0 ? '.up' : ''}`, fmtSetChange(change)))))),
     records.length > 0 && h('div.summary-records',
-      h('h3.list-label', 'Nowe rekordy'),
+      h('h3.list-label', L('Nowe rekordy', 'New records')),
       h('ul.record-list', records.map((record) => h('li',
         recordChip(),
         h('span.record-text',
           h('span.record-name', exerciseById(record.exerciseId).name),
           h('span.record-meta', `${record.label}: ${fmtUnit(record.value, record.unit)}`)))))),
-    updatedRoutine && h('p.sheet-text', `Ćwiczenia lub serie różnią się od rutyny „${routine.name}”.`),
+    updatedRoutine && h('p.sheet-text', L(`Ćwiczenia lub serie różnią się od rutyny „${routine.name}”.`, `The exercises or sets differ from the routine “${routine.name}”.`)),
     updatedRoutine && h('button.btn.btn-primary.btn-block', {
       type: 'button',
       onclick: async () => {
         await saveRoutines(putRoutine(state.routines, updatedRoutine));
         close();
-        toast(`Zaktualizowano rutynę: ${routine.name}.`);
+        toast(L(`Zaktualizowano rutynę: ${routine.name}.`, `Routine updated: ${routine.name}.`));
       },
-    }, 'Zaktualizuj rutynę'),
-    h(`button.btn.btn-block.${updatedRoutine ? 'btn-ghost' : 'btn-primary'}`, { type: 'button', onclick: close }, updatedRoutine ? 'Zostaw rutynę bez zmian' : 'Gotowe'),
-    !routine && h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => { close(); saveWorkoutAsRoutine(workout); } }, 'Zapisz jako rutynę')),
-  { label: 'Trening zapisany', onClose: releasePlate });
+    }, L('Zaktualizuj rutynę', 'Update routine')),
+    h(`button.btn.btn-block.${updatedRoutine ? 'btn-ghost' : 'btn-primary'}`, { type: 'button', onclick: close }, updatedRoutine ? L('Zostaw rutynę bez zmian', 'Keep the routine as is') : L('Gotowe', 'Done')),
+    !routine && h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => { close(); saveWorkoutAsRoutine(workout); } }, L('Zapisz jako rutynę', 'Save as routine'))),
+  { label: L('Trening zapisany', 'Workout saved'), onClose: releasePlate });
 }
 
 export const stat = (label, value) => h('div.stat', h('span.stat-value', value), h('span.stat-label', label));

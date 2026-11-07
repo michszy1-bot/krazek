@@ -1,6 +1,7 @@
 // Start aplikacji: wczytanie danych, nawigacja po adresach z # i pasek zakładek.
 
 import { h, icon } from './ui.js';
+import { L, language } from './i18n.js';
 import { fmtClock } from './format.js';
 import { applyDueShields, load, state, subscribe } from './store.js';
 import { isWorkoutOpen, resumeWorkout } from './workout.js';
@@ -15,10 +16,10 @@ const nav = document.getElementById('tabs');
 const pill = document.getElementById('active-pill');
 
 const TABS = [
-  { href: '#/', label: 'Trening', icon: 'home' },
-  { href: '#/dziennik', label: 'Dziennik', icon: 'book' },
-  { href: '#/postepy', label: 'Postępy', icon: 'chart' },
-  { href: '#/cwiczenia', label: 'Ćwiczenia', icon: 'list' },
+  { href: '#/', label: L('Trening', 'Workout'), icon: 'home' },
+  { href: '#/dziennik', label: L('Dziennik', 'History'), icon: 'book' },
+  { href: '#/postepy', label: L('Postępy', 'Progress'), icon: 'chart' },
+  { href: '#/cwiczenia', label: L('Ćwiczenia', 'Exercises'), icon: 'list' },
 ];
 
 // Wstecz ze szczegółów ćwiczenia wraca do zakładki, z której przyszedł użytkownik.
@@ -79,8 +80,10 @@ function tickElapsed() {
 }
 
 function buildShell() {
+  document.documentElement.lang = language();
+  nav.setAttribute('aria-label', L('Główna nawigacja', 'Main navigation'));
   nav.append(...TABS.map((tab) => h('a.tab', { href: tab.href }, icon(tab.icon, 24), h('span', tab.label))));
-  pill.append(h('span', 'Trening w toku'), h('strong', { dataset: { elapsed: '' } }, '0:00'));
+  pill.append(h('span', L('Trening w toku', 'Workout in progress')), h('strong', { dataset: { elapsed: '' } }, '0:00'));
   pill.addEventListener('click', resumeWorkout);
 }
 
@@ -90,8 +93,8 @@ async function start() {
     await load();
   } catch (error) {
     main.replaceChildren(h('div.empty',
-      h('p.empty-title', 'Nie można otworzyć danych'),
-      h('p.empty-text', 'Przeglądarka zablokowała zapis na tym urządzeniu. Wyjdź z trybu prywatnego i otwórz aplikację ponownie.')));
+      h('p.empty-title', L('Nie można otworzyć danych', 'Your data can’t be opened')),
+      h('p.empty-text', L('Przeglądarka zablokowała zapis na tym urządzeniu. Wyjdź z trybu prywatnego i otwórz aplikację ponownie.', 'The browser blocked storage on this device. Leave private browsing and open the app again.'))));
     console.error(error);
     return;
   }

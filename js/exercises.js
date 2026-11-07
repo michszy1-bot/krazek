@@ -1,4 +1,14 @@
 // Wbudowana baza ćwiczeń. Identyfikatory są stałe, bo odwołują się do nich zapisane treningi.
+// Partie i sprzęt zostają po polsku jako klucze w danych, a na ekranie pokazują je muscleName i equipmentName.
+
+import { EQUIPMENT_NAMES_EN, EXERCISE_NAMES_EN, MUSCLE_NAMES_EN } from './exercises-en.js';
+import { isEnglish, L } from './i18n.js';
+
+/** Nazwa partii do pokazania w bieżącym języku. */
+export const muscleName = (muscle) => (isEnglish() ? MUSCLE_NAMES_EN[muscle] ?? muscle : muscle);
+
+/** Nazwa sprzętu do pokazania w bieżącym języku. */
+export const equipmentName = (equipment) => (isEnglish() ? EQUIPMENT_NAMES_EN[equipment] ?? equipment : equipment);
 
 export const MUSCLES = [
   'Klatka', 'Plecy', 'Barki', 'Biceps', 'Triceps', 'Przedramiona',
@@ -8,12 +18,13 @@ export const MUSCLES = [
 export const EQUIPMENT = ['Sztanga', 'Hantle', 'Maszyna', 'Wyciąg', 'Masa ciała', 'Kettlebell', 'Inne'];
 
 export const TYPES = [
-  { id: 'weight', label: 'Ciężar i powtórzenia' },
-  { id: 'bodyweight', label: 'Masa ciała: powtórzenia, opcjonalne dociążenie' },
-  { id: 'time', label: 'Czas' },
+  { id: 'weight', label: L('Ciężar i powtórzenia', 'Weight and reps') },
+  { id: 'bodyweight', label: L('Masa ciała: powtórzenia, opcjonalne dociążenie', 'Bodyweight: reps, optional added weight') },
+  { id: 'time', label: L('Czas', 'Time') },
 ];
 
-const row = (id, name, muscle, equipment, type = 'weight') => ({ id, name, muscle, equipment, type });
+// Nazwa wbudowanego ćwiczenia idzie za językiem aplikacji, bo przy starcie i tak trafia do bazy od nowa.
+const row = (id, name, muscle, equipment, type = 'weight') => ({ id, name: isEnglish() ? EXERCISE_NAMES_EN[id] ?? name : name, muscle, equipment, type });
 
 export const SEED_EXERCISES = [
   // Klatka

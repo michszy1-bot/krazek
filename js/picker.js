@@ -1,7 +1,8 @@
 // Wybór ćwiczeń do treningu oraz formularz własnego ćwiczenia.
 
 import { h, icon, iconButton, openSheet, toast } from './ui.js';
-import { EQUIPMENT, MUSCLES, TYPES } from './exercises.js';
+import { EQUIPMENT, equipmentName, MUSCLES, muscleName, TYPES } from './exercises.js';
+import { L } from './i18n.js';
 import { newId, patchExercise, saveExercise, state, visibleExercises } from './store.js';
 import { exerciseThumb } from './demo.js';
 
@@ -9,7 +10,8 @@ const norm = (text) => text.toLocaleLowerCase('pl').normalize('NFD').replace(/\p
 
 export function matchesSearch(exercise, query) {
   const words = norm(query).split(/\s+/).filter(Boolean);
-  const haystack = norm(`${exercise.name} ${exercise.muscle} ${exercise.equipment}`);
+  // Partia i sprzęt w obu językach, bo własne ćwiczenia mogą mieć polskie nazwy także w wersji angielskiej.
+  const haystack = norm(`${exercise.name} ${exercise.muscle} ${exercise.equipment} ${muscleName(exercise.muscle)} ${equipmentName(exercise.equipment)}`);
   return words.every((w) => haystack.includes(w));
 }
 
@@ -20,8 +22,8 @@ const EQUIPMENT_FILTERS = EQUIPMENT.filter((name) => name !== 'Kettlebell');
 export function favoriteButton(exercise, onChange) {
   const button = h('button.star-btn', {
     type: 'button',
-    title: 'Ulubione',
-    'aria-label': `Ulubione: ${exercise.name}`,
+    title: L('Ulubione', 'Favourite'),
+    'aria-label': L(`Ulubione: ${exercise.name}`, `Favourite: ${exercise.name}`),
     'aria-pressed': String(Boolean(exercise.favorite)),
     onclick: async (event) => {
       event.preventDefault();
@@ -41,7 +43,7 @@ export function stickyNoteSheet(exercise, onSaved) {
     const note = h('textarea', {
       rows: 3,
       maxLength: 200,
-      placeholder: 'Np. siedzenie na 4, uchwyt szeroki',
+      placeholder: L("Np. siedzenie na 4, uchwyt szeroki", "E.g. seat at 4, wide grip"),
       value: state.exercises.get(exercise.id)?.stickyNote ?? '',
     });
     return h('form.sheet-body', {
@@ -53,12 +55,12 @@ export function stickyNoteSheet(exercise, onSaved) {
         onSaved?.();
       },
     },
-    h('h2.sheet-title', 'Stała notatka'),
-    h('p.sheet-text', `${exercise.name}. Pokaże się przy każdym treningu z tym ćwiczeniem.`),
-    h('label.field', h('span.field-label', 'Notatka'), note, h('span.field-hint', 'Puste pole usuwa notatkę.')),
-    h('button.btn.btn-primary.btn-block', { type: 'submit' }, 'Zapisz notatkę'),
-    h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: close }, 'Anuluj'));
-  }, { label: 'Stała notatka' });
+    h('h2.sheet-title', L("Stała notatka", "Pinned note")),
+    h('p.sheet-text', L(`${exercise.name}. Pokaże się przy każdym treningu z tym ćwiczeniem.`, `${exercise.name}. It shows up in every workout with this exercise.`)),
+    h('label.field', h('span.field-label', L("Notatka", "Note")), note, h('span.field-hint', L("Puste pole usuwa notatkę.", "Leave it empty to remove the note."))),
+    h('button.btn.btn-primary.btn-block', { type: 'submit' }, L("Zapisz notatkę", "Save note")),
+    h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: close }, L("Anuluj", "Cancel")));
+  }, { label: L("Stała notatka", "Pinned note") });
 }
 
 /** Pole wyszukiwania, filtr partii i filtr sprzętu, wspólne dla biblioteki i wyboru ćwiczeń. */
@@ -66,8 +68,8 @@ export function exerciseFilter(onChange, { muscle: startMuscle = null } = {}) {
   const filter = { query: '', muscle: startMuscle, equipment: null };
   const input = h('input.search-input', {
     type: 'search',
-    placeholder: 'Szukaj ćwiczenia',
-    'aria-label': 'Szukaj ćwiczenia',
+    placeholder: L("Szukaj ćwiczenia", "Search exercises"),
+    'aria-label': L("Szukaj ćwiczenia", "Search exercises"),
     autocomplete: 'off',
     oninput: () => { filter.query = input.value; onChange(filter); },
   });
@@ -79,7 +81,7 @@ export function exerciseFilter(onChange, { muscle: startMuscle = null } = {}) {
       chips.forEach((c) => c.setAttribute('aria-pressed', String(c === event.currentTarget)));
       onChange(filter);
     },
-  }, muscle ?? 'Wszystkie'));
+  }, muscle ? muscleName(muscle) : L('Wszystkie', 'All')));
   const equipmentChips = [null, ...EQUIPMENT_FILTERS].map((equipment) => h('button.chip', {
     type: 'button',
     'aria-pressed': String(equipment === null),
@@ -88,11 +90,11 @@ export function exerciseFilter(onChange, { muscle: startMuscle = null } = {}) {
       equipmentChips.forEach((c) => c.setAttribute('aria-pressed', String(c === event.currentTarget)));
       onChange(filter);
     },
-  }, equipment ?? 'Każdy sprzęt'));
+  }, equipment ? equipmentName(equipment) : L('Każdy sprzęt', 'Any equipment')));
   const node = h('div.filter',
     h('label.search', icon('search', 20), input),
-    h('div.chips', { role: 'group', 'aria-label': 'Partia' }, chips),
-    h('div.chips', { role: 'group', 'aria-label': 'Sprzęt' }, equipmentChips));
+    h('div.chips', { role: 'group', 'aria-label': L('Partia', 'Muscle') }, chips),
+    h('div.chips', { role: 'group', 'aria-label': L('Sprzęt', 'Equipment') }, equipmentChips));
   // Filtr ustawiony z góry musi być widoczny, także gdy jego przycisk jest poza ekranem.
   if (startMuscle) {
     requestAnimationFrame(() => chips[MUSCLES.indexOf(startMuscle) + 1]?.scrollIntoView({ block: 'nearest', inline: 'center' }));
@@ -122,7 +124,7 @@ function recentExercises(limit = 6) {
  * Wybór ćwiczeń. onPick dostaje identyfikatory w kolejności zaznaczania.
  * Przy single stuknięcie od razu wybiera jedno ćwiczenie, a muscle ustawia filtr partii.
  */
-export function pickExercises(onPick, { actionLabel = 'Dodaj do treningu', title = 'Dodaj ćwiczenie', single = false, muscle = null } = {}) {
+export function pickExercises(onPick, { actionLabel = L('Dodaj do treningu', 'Add to workout'), title = L('Dodaj ćwiczenie', 'Add exercise'), single = false, muscle = null } = {}) {
   let refresh = () => {};
   const selected = [];
   openSheet((close) => {
@@ -132,10 +134,10 @@ export function pickExercises(onPick, { actionLabel = 'Dodaj do treningu', title
       type: 'button',
       disabled: true,
       onclick: () => { close(); onPick(selected); },
-    }, 'Wybierz ćwiczenia');
+    }, L("Wybierz ćwiczenia", "Choose exercises"));
     const updateButton = () => {
       addBtn.disabled = selected.length === 0;
-      addBtn.textContent = selected.length ? `${actionLabel} (${selected.length})` : 'Wybierz ćwiczenia';
+      addBtn.textContent = selected.length ? `${actionLabel} (${selected.length})` : L("Wybierz ćwiczenia", "Choose exercises");
     };
     const rowFor = (exercise) => h('div.picker-item',
       h('button.picker-row', {
@@ -154,7 +156,7 @@ export function pickExercises(onPick, { actionLabel = 'Dodaj do treningu', title
         },
       },
       exerciseThumb(exercise),
-      h('span.picker-text', h('span.picker-name', exercise.name), h('span.picker-meta', `${exercise.muscle} · ${exercise.equipment}`)),
+      h('span.picker-text', h('span.picker-name', exercise.name), h('span.picker-meta', `${muscleName(exercise.muscle)} · ${equipmentName(exercise.equipment)}`)),
       !single && h('span.picker-mark', icon('check', 18))),
       favoriteButton(exercise, () => refresh()));
 
@@ -165,14 +167,14 @@ export function pickExercises(onPick, { actionLabel = 'Dodaj do treningu', title
       const recent = browsing ? recentExercises().filter((e) => !e.favorite) : [];
       const rest = all.filter((e) => !e.favorite);
       list.replaceChildren(
-        ...(favorites.length ? [h('h3.list-label', 'Ulubione'), ...favorites.map(rowFor)] : []),
-        ...(recent.length ? [h('h3.list-label', 'Ostatnio'), ...recent.map(rowFor)] : []),
-        ...((favorites.length || recent.length) && rest.length ? [h('h3.list-label', 'Wszystkie')] : []),
+        ...(favorites.length ? [h('h3.list-label', L('Ulubione', 'Favourites')), ...favorites.map(rowFor)] : []),
+        ...(recent.length ? [h('h3.list-label', L("Ostatnio", "Recent")), ...recent.map(rowFor)] : []),
+        ...((favorites.length || recent.length) && rest.length ? [h('h3.list-label', L('Wszystkie', 'All'))] : []),
         ...rest.map(rowFor),
       );
       if (!all.length) {
         list.append(h('div.empty',
-          h('p.empty-title', 'Nie ma takiego ćwiczenia'),
+          h('p.empty-title', L("Nie ma takiego ćwiczenia", "No matching exercise")),
           h('button.btn.btn-ghost', {
             type: 'button',
             onclick: () => exerciseForm({ name: filter.query.trim() }, (created) => {
@@ -186,7 +188,7 @@ export function pickExercises(onPick, { actionLabel = 'Dodaj do treningu', title
               render(filter);
               updateButton();
             }),
-          }, 'Dodaj własne ćwiczenie')));
+          }, L("Dodaj własne ćwiczenie", "Add a custom exercise"))));
       }
     };
     const controls = exerciseFilter(render, { muscle });
@@ -194,7 +196,7 @@ export function pickExercises(onPick, { actionLabel = 'Dodaj do treningu', title
     render(controls.filter);
 
     return h('div.sheet-column',
-      h('div.sheet-head', h('h2.sheet-title', title), iconButton('close', 'Zamknij', close)),
+      h('div.sheet-head', h('h2.sheet-title', title), iconButton('close', L("Zamknij", "Close"), close)),
       controls.node,
       list,
       h('div.sheet-foot',
@@ -206,7 +208,7 @@ export function pickExercises(onPick, { actionLabel = 'Dodaj do treningu', title
           selected.push(created.id);
           render(controls.filter);
           updateButton();
-        }) }, 'Nowe własne ćwiczenie'),
+        }) }, L("Nowe własne ćwiczenie", "New custom exercise")),
         !single && addBtn));
   }, { full: true, label: title });
 }
@@ -221,25 +223,25 @@ export function exerciseForm(initial, onSaved) {
   const isNew = !initial.id;
   openSheet((close) => {
     const name = h('input', { type: 'text', value: initial.name ?? '', maxLength: 80, autocomplete: 'off', required: true });
-    const muscle = selectField('Partia', MUSCLES.map((m) => [m, m]), initial.muscle ?? MUSCLES[0]);
-    const equipment = selectField('Sprzęt', EQUIPMENT.map((e) => [e, e]), initial.equipment ?? EQUIPMENT[0]);
-    const type = selectField('Co zapisujesz', TYPES.map((t) => [t.id, t.label]), initial.type ?? 'weight');
+    const muscle = selectField(L('Partia', 'Muscle'), MUSCLES.map((m) => [m, muscleName(m)]), initial.muscle ?? MUSCLES[0]);
+    const equipment = selectField(L('Sprzęt', 'Equipment'), EQUIPMENT.map((e) => [e, equipmentName(e)]), initial.equipment ?? EQUIPMENT[0]);
+    const type = selectField(L("Co zapisujesz", "What you log"), TYPES.map((t) => [t.id, t.label]), initial.type ?? 'weight');
     if (!isNew) {
       type.select.disabled = true;
-      type.node.append(h('span.field-hint', 'Rodzaju nie da się zmienić, bo zapisane serie mają już swój format.'));
+      type.node.append(h('span.field-hint', L("Rodzaju nie da się zmienić, bo zapisane serie mają już swój format.", "The type can’t be changed because saved sets already use it.")));
     }
 
     const save = async (event) => {
       event.preventDefault();
       const trimmed = name.value.trim();
       if (!trimmed) {
-        toast('Wpisz nazwę ćwiczenia.');
+        toast(L("Wpisz nazwę ćwiczenia.", "Enter an exercise name."));
         name.focus();
         return;
       }
       const duplicate = visibleExercises().find((e) => e.id !== initial.id && e.name.toLocaleLowerCase('pl') === trimmed.toLocaleLowerCase('pl'));
       if (duplicate) {
-        toast('Ćwiczenie o tej nazwie już jest na liście.');
+        toast(L("Ćwiczenie o tej nazwie już jest na liście.", "An exercise with this name is already on the list."));
         name.focus();
         return;
       }
@@ -258,12 +260,12 @@ export function exerciseForm(initial, onSaved) {
     };
 
     return h('form.sheet-body', { onsubmit: save, novalidate: true },
-      h('h2.sheet-title', isNew ? 'Nowe ćwiczenie' : 'Edytuj ćwiczenie'),
-      h('label.field', h('span.field-label', 'Nazwa'), name),
+      h('h2.sheet-title', isNew ? L("Nowe ćwiczenie", "New exercise") : L("Edytuj ćwiczenie", "Edit exercise")),
+      h('label.field', h('span.field-label', L("Nazwa", "Name")), name),
       muscle.node,
       equipment.node,
       type.node,
-      h('button.btn.btn-primary.btn-block', { type: 'submit' }, isNew ? 'Dodaj ćwiczenie' : 'Zapisz zmiany'),
-      h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: close }, 'Anuluj'));
-  }, { label: isNew ? 'Nowe ćwiczenie' : 'Edytuj ćwiczenie' });
+      h('button.btn.btn-primary.btn-block', { type: 'submit' }, isNew ? L('Dodaj ćwiczenie', 'Add exercise') : L("Zapisz zmiany", "Save changes")),
+      h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: close }, L("Anuluj", "Cancel")));
+  }, { label: isNew ? L("Nowe ćwiczenie", "New exercise") : L("Edytuj ćwiczenie", "Edit exercise") });
 }

@@ -3,6 +3,7 @@
 import { cleanProfile, cleanWeights } from './body.js';
 import { cleanRoutines } from './routines.js';
 import { cleanShop } from './shop.js';
+import { L } from './i18n.js';
 import { isRpe, isSetKind } from './stats.js';
 
 const APP_ID = 'krazek'; // Dawna nazwa aplikacji. Zmiana unieważniłaby istniejące kopie.
@@ -68,24 +69,24 @@ export function parseBackup(text) {
   try {
     data = JSON.parse(text);
   } catch {
-    throw new Error('Ten plik nie jest kopią Formy: nie da się go odczytać.');
+    throw new Error(L('Ten plik nie jest kopią Formy: nie da się go odczytać.', 'This file isn’t a Forma backup: it can’t be read.'));
   }
   if (data?.app !== APP_ID || !Array.isArray(data.exercises) || !Array.isArray(data.workouts)) {
-    throw new Error('Ten plik nie jest kopią Formy.');
+    throw new Error(L('Ten plik nie jest kopią Formy.', 'This file isn’t a Forma backup.'));
   }
   if (data.version > VERSION) {
-    throw new Error('Ta kopia pochodzi z nowszej wersji aplikacji. Zaktualizuj aplikację i spróbuj ponownie.');
+    throw new Error(L('Ta kopia pochodzi z nowszej wersji aplikacji. Zaktualizuj aplikację i spróbuj ponownie.', 'This backup is from a newer version of the app. Update the app and try again.'));
   }
   const exercises = data.exercises.map(cleanExercise).filter(Boolean);
   const workouts = data.workouts.map(cleanWorkout).filter(Boolean);
   if (workouts.length !== data.workouts.length || exercises.length !== data.exercises.length) {
-    throw new Error('Kopia jest uszkodzona: część wpisów ma niepoprawne dane. Nic nie zostało zmienione.');
+    throw new Error(L('Kopia jest uszkodzona: część wpisów ma niepoprawne dane. Nic nie zostało zmienione.', 'The backup is damaged: some entries have invalid data. Nothing was changed.'));
   }
   const known = new Set(exercises.map((e) => e.id));
   for (const workout of workouts) {
     for (const item of workout.exercises) {
       if (!known.has(item.exerciseId)) {
-        throw new Error('Kopia jest uszkodzona: trening odwołuje się do nieznanego ćwiczenia. Nic nie zostało zmienione.');
+        throw new Error(L('Kopia jest uszkodzona: trening odwołuje się do nieznanego ćwiczenia. Nic nie zostało zmienione.', 'The backup is damaged: a workout refers to an unknown exercise. Nothing was changed.'));
       }
     }
   }
@@ -98,11 +99,11 @@ export function parseBackup(text) {
   // Starsze kopie nie mają tych pól. Wczytują się wtedy z pustym profilem, dziennikiem wagi i rutynami.
   const bodyWeights = cleanWeights(data.bodyWeights);
   if (!bodyWeights) {
-    throw new Error('Kopia jest uszkodzona: dziennik wagi ma niepoprawne wpisy. Nic nie zostało zmienione.');
+    throw new Error(L('Kopia jest uszkodzona: dziennik wagi ma niepoprawne wpisy. Nic nie zostało zmienione.', 'The backup is damaged: the weight log has invalid entries. Nothing was changed.'));
   }
   const routines = cleanRoutines(data.routines, known);
   if (!routines) {
-    throw new Error('Kopia jest uszkodzona: rutyny mają niepoprawne wpisy. Nic nie zostało zmienione.');
+    throw new Error(L('Kopia jest uszkodzona: rutyny mają niepoprawne wpisy. Nic nie zostało zmienione.', 'The backup is damaged: routines have invalid entries. Nothing was changed.'));
   }
   return { exercises, workouts, settings, profile: cleanProfile(data.profile), bodyWeights, routines, shop: cleanShop(data.shop) };
 }

@@ -22,7 +22,7 @@ const cleanRepRange = (raw) => {
   return valid && raw?.min != null && raw?.max != null ? repRange : null;
 };
 
-const GENERIC_NAMES = new Set(['Trening', 'Trening poranny', 'Trening popołudniowy', 'Trening wieczorny']);
+const GENERIC_NAMES = new Set(['Trening', 'Trening poranny', 'Trening popołudniowy', 'Trening wieczorny', 'Workout', 'Morning workout', 'Afternoon workout', 'Evening workout']);
 
 /** Automatyczna nazwa treningu nie nadaje się na rutynę, więc formularz jej nie podpowiada. */
 export const hasOwnName = (workout) => !GENERIC_NAMES.has(workout.name);

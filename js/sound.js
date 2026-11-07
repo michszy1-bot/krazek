@@ -3,6 +3,8 @@
 // Działający silnik dźwięku może zatrzymać muzykę, dlatego budzi się dopiero na przerwę
 // (Safari wymaga do tego stuknięcia) i zasypia zaraz po sygnale.
 
+import { L } from './i18n.js';
+
 const BEEPS = [
   { hz: 1000, seconds: 0.18 },
   { hz: 1000, seconds: 0.18 },
@@ -66,8 +68,8 @@ export function stopRest() {
 /** Stan dźwięku pokazywany w Ustawieniach, żeby dało się ustalić, co robi telefon. */
 export function status() {
   return {
-    session: 'audioSession' in navigator ? navigator.audioSession.type : 'brak',
-    engine: context?.state ?? 'brak',
+    session: 'audioSession' in navigator ? navigator.audioSession.type : L('brak', 'none'),
+    engine: context?.state ?? L('brak', 'none'),
     error: lastError,
   };
 }
@@ -77,7 +79,7 @@ export function beepNow() {
   if (context.state !== 'running') {
     // Kontekst wstrzymany na chwilę, np. przez dźwięk z innej aplikacji, zwykle da się wznowić.
     const paused = context;
-    paused.resume().then(() => { if (paused === context) playBeeps(); }).catch(() => { lastError = 'nie można wznowić dźwięku'; });
+    paused.resume().then(() => { if (paused === context) playBeeps(); }).catch(() => { lastError = L('nie można wznowić dźwięku', 'can’t resume sound'); });
     return;
   }
   playBeeps();
