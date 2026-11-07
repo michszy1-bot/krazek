@@ -45,8 +45,9 @@ function makeTooltip(host) {
  * Wykres liniowy z jedną serią.
  * points: [{ x: znacznik czasu, y: liczba, label: data w dymku, value: wartość w dymku }]
  * xDomain: opcjonalny zakres osi czasu [od, do], żeby dwa wykresy jeden pod drugim miały te same daty.
+ * yTicks: opcjonalna stała skala osi Y, np. [6, 7, 8, 9, 10] dla oceny wysiłku.
  */
-export function lineChart({ points, formatTick, formatEnd, formatDate, label, minStep = 0, height = 220, xDomain = null }) {
+export function lineChart({ points, formatTick, formatEnd, formatDate, label, minStep = 0, height = 220, xDomain = null, yTicks = null }) {
   const host = h('div.chart', { role: 'img', tabindex: '0', 'aria-label': label });
   const plot = h('div.chart-plot');
   host.append(plot);
@@ -58,7 +59,7 @@ export function lineChart({ points, formatTick, formatEnd, formatDate, label, mi
     const bottom = 26;
     const left = 44;
     const ys = points.map((p) => p.y);
-    const ticks = niceTicks(Math.min(...ys), Math.max(...ys), 4, minStep);
+    const ticks = yTicks ?? niceTicks(Math.min(...ys), Math.max(...ys), 4, minStep);
     const yMin = ticks[0];
     const yMax = ticks.at(-1);
     const endLabel = formatEnd(points.at(-1));

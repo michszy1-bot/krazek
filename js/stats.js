@@ -27,6 +27,18 @@ export const RPE_SCALE = [
 
 export const isRpe = (value) => RPE_SCALE.some((step) => step.value === value);
 
+/**
+ * Średnia ocena wysiłku serii roboczych z jednego treningu, zaokrąglona do 0,1.
+ * Zwraca null, gdy żadna seria robocza nie ma oceny.
+ */
+export function sessionEffort(sets) {
+  const working = sets.filter(isWorking);
+  const rated = working.filter((set) => isRpe(set.rpe));
+  if (!rated.length) return null;
+  const sum = rated.reduce((total, set) => total + set.rpe, 0);
+  return { average: Math.round((sum / rated.length) * 10) / 10, rated: rated.length, total: working.length };
+}
+
 // Od tej oceny w dół zostają co najmniej 3 powtórzenia w zapasie, więc ciężar można podnieść.
 const LIGHT_RPE = 7;
 

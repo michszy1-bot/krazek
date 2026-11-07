@@ -3,7 +3,7 @@
 import { actionSheet, ask, emptyState, h, icon, iconButton, openSheet, pageHeader, particles, recordChip, segmented, toast } from './ui.js';
 import { addDays, countOf, dayKey, fmtClock, fmtDayLong, fmtDayMedium, fmtDayShort, fmtDuration, fmtMonth, fmtMultiplier, fmtNum, fmtSet, fmtTime, fmtUnit, fmtVolume, plural, startOfWeek } from './format.js';
 import { columnChart, lineChart, rankedBars } from './chart.js';
-import { backupStatus, exerciseSessions, flagRecords, isWorking, loadBar, METRICS, muscleSets, neglectedMuscles, PLATE_TIERS, plateHeight, plateTier, plateTravel, plateWidth, RECORD_TYPES, recordsFor, recordTimeline, SET_KINDS, setLabels, streakStatus, summarizeSets, weekDays, weeklyTotals, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
+import { backupStatus, exerciseSessions, flagRecords, isWorking, loadBar, METRICS, muscleSets, neglectedMuscles, PLATE_TIERS, plateHeight, plateTier, plateTravel, plateWidth, RECORD_TYPES, recordsFor, recordTimeline, sessionEffort, SET_KINDS, setLabels, streakStatus, summarizeSets, weekDays, weeklyTotals, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
 import { bodyWeightChart, weightsFrom } from './profile.js';
 import { dayTime, weightOn } from './body.js';
 import { clearMedia, downloadMedia, isDownloadingMedia, mediaStatus } from './media.js';
@@ -555,11 +555,16 @@ export function exerciseView(id, backTo) {
       if (metric.unit === 'volume') return volumeTick(value, maxValue);
       return fmtNum(value);
     };
-    // Waga ciała pod wynikami, z tymi samymi datami, żeby dało się porównać oba wykresy.
+    // Waga ciała i wysiłek pod wynikami, z tymi samymi datami, żeby dało się porównać wykresy.
     const weights = weightsFrom(from);
-    const times = [...visible.map((session) => session.date), ...weights.map((item) => dayTime(item.day))];
-    const xDomain = weights.length ? [Math.min(...times), Math.max(...times)] : null;
-    chartHost.replaceChildren(
+    const efforts = sessions
+      .filter((session) => session.date >= from)
+      .map((session) => ({ date: session.date, effort: sessionEffort(session.sets) }))
+      .filter((item) => item.effort);
+    const times = [...visible.map((session) => session.date), ...weights.map((item) => dayTime(item.day)), ...efforts.map((item) => item.date)];
+    const xDomain = weights.length || efforts.length ? [Math.min(...times), Math.max(...times)] : null;
+    // Natywne replaceChildren wpisałoby false i null jako tekst, więc puste pozycje odpadają tutaj.
+    chartHost.replaceChildren(...[
       h('h2.block-title', metric.title),
       lineChart({
         points: visible.map((session) => ({
@@ -577,8 +582,9 @@ export function exerciseView(id, backTo) {
       }),
       weights.length > 0 && h('h2.block-title.chart-second-title', L('Waga ciała', 'Body weight')),
       weights.length > 0 && bodyWeightChart(weights, { xDomain, height: 160 }),
+      effortChart(efforts, sessions, exercise.name, xDomain),
       relativeStrength(visible, type),
-    );
+    ].flat().filter(Boolean));
   };
 
   host.append(
@@ -602,6 +608,36 @@ export function exerciseView(id, backTo) {
   );
   render();
   return host;
+}
+
+/** Średnia ocena wysiłku (RPE) z każdego treningu na stałej skali od 6 do 10. */
+function effortChart(efforts, sessions, name, xDomain) {
+  const title = h('h2.block-title.chart-second-title', L('Wysiłek (RPE)', 'Effort (RPE)'));
+  if (!efforts.length) {
+    const everRated = sessions.some((session) => sessionEffort(session.sets));
+    return [title, h('p.settings-text', everRated
+      ? L('Brak ocen wysiłku w tym okresie.', 'No effort ratings in this period.')
+      : L('Oceniaj serie po odhaczeniu (RPE), a tu pojawi się wykres wysiłku.', 'Rate your sets after ticking them (RPE) and an effort chart will appear here.'))];
+  }
+  return [
+    title,
+    lineChart({
+      points: efforts.map(({ date, effort }) => ({
+        x: date,
+        y: effort.average,
+        label: L(`${fmtDayMedium(date)} · ocenione ${effort.rated} z ${effort.total}`, `${fmtDayMedium(date)} · ${effort.rated} of ${effort.total} rated`),
+        value: `RPE ${fmtNum(effort.average)}`,
+      })),
+      formatTick: fmtNum,
+      formatEnd: (point) => point.value,
+      formatDate: fmtDayShort,
+      yTicks: [6, 7, 8, 9, 10],
+      height: 160,
+      label: L(`Średnia ocena wysiłku, ${name}. Dane są też w historii poniżej.`, `Average effort rating, ${name}. The data is also in the history below.`),
+      xDomain,
+    }),
+    h('p.settings-text', L('Średnia ocena serii roboczych z treningu: 10 to nic w zapasie, 6 to cztery powtórzenia i więcej. Niższa ocena przy tym samym ciężarze znaczy, że robisz się silniejszy.', 'Average rating of your working sets per workout: 10 means nothing left, 6 means four or more reps left. A lower rating at the same weight means you’re getting stronger.')),
+  ];
 }
 
 /** Ostatni szacowany 1RM względem wagi ciała z tamtego dnia, np. 1,3 × masa ciała. */

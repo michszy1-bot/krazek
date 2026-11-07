@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { addDays, countOf, dayKey, fmtClock, fmtDayMedium, fmtDuration, fmtMultiplier, fmtNum, fmtSet, fmtSetChange, fmtVolume, inputValue, parseNum, pastWorkoutStart, plural, startOfWeek } from '../js/format.js';
 import { achievementDate, ACHIEVEMENT_GROUPS, ACHIEVEMENTS, achievementProgress, achievementXp, rewardTier } from '../js/achievements.js';
 import { badgeMarkup } from '../js/badges.js';
-import { backupStatus, bestSet, bestStreak, compareSets, estimate1RM, flagRecords, goalProgress, isComplete, loadBar, MUSCLE_SCALES, muscleLevel, muscleSets, neglectedMuscles, niceTicks, plateHeight, plateTier, plateTravel, plateWidth, recordsFor, recordTimeline, restAfterSet, setLabels, stepBaseWeight, steppedWeight, streakMultiplier, streakStatus, suggestNextWeight, summarizeSets, swapExercise, warmupSets, weekDays, weeklyTotals, weeksToShield, weightStep, workoutComparison, workoutRecords, workoutVolume } from '../js/stats.js';
+import { backupStatus, bestSet, sessionEffort, bestStreak, compareSets, estimate1RM, flagRecords, goalProgress, isComplete, loadBar, MUSCLE_SCALES, muscleLevel, muscleSets, neglectedMuscles, niceTicks, plateHeight, plateTier, plateTravel, plateWidth, recordsFor, recordTimeline, restAfterSet, setLabels, stepBaseWeight, steppedWeight, streakMultiplier, streakStatus, suggestNextWeight, summarizeSets, swapExercise, warmupSets, weekDays, weeklyTotals, weeksToShield, weightStep, workoutComparison, workoutRecords, workoutVolume } from '../js/stats.js';
 import { workoutsCsv } from '../js/csv.js';
 import { L, language, useLanguageInTests } from '../js/i18n.js';
 import { EXERCISE_NAMES_EN } from '../js/exercises-en.js';
@@ -1460,4 +1460,16 @@ test('eksport CSV: kolumny i liczby zgodne z językiem', () => {
   const polish = workoutsCsv([workout], lookup);
   assert.ok(polish.includes('Data;Godzina'));
   assert.ok(polish.includes(';82,5;5;'));
+});
+
+test('wysiłek treningu: średnia RPE z ocenionych serii roboczych, bez rozgrzewek', () => {
+  const set = (rpe, kind = 'normal') => ({ weight: 80, reps: 5, kind, ...(rpe ? { rpe } : {}) });
+  assert.equal(sessionEffort([set(null), set(null)]), null);
+  assert.equal(sessionEffort([set(9, 'warmup')]), null);
+  assert.deepEqual(sessionEffort([set(6, 'warmup'), set(8), set(9), set(null)]), { average: 8.5, rated: 2, total: 3 });
+  assert.deepEqual(sessionEffort([set(7), set(8), set(8)]), { average: 7.7, rated: 3, total: 3 });
+  // Dropset i seria do upadku są robocze, więc ich ocena też się liczy.
+  assert.deepEqual(sessionEffort([set(10, 'failure'), set(8, 'drop')]), { average: 9, rated: 2, total: 2 });
+  // Wartość spoza skali, np. z uszkodzonej kopii, jest pomijana.
+  assert.deepEqual(sessionEffort([set(8), { ...set(null), rpe: 12 }]), { average: 8, rated: 1, total: 2 });
 });
