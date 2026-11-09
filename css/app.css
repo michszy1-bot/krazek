@@ -1102,6 +1102,15 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 
 .share-preview { display: block; width: min(100%, 300px); aspect-ratio: 9 / 16; margin: 0 auto; border-radius: 12px; border: 1px solid var(--line); }
 
+/* Sekcja zwijana nagłówkiem */
+
+.fold-head { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; list-style: none; -webkit-user-select: none; user-select: none; }
+.fold-head::-webkit-details-marker { display: none; }
+.fold-head .block-title { flex: 1; }
+.fold-icon { display: flex; color: var(--ink-2); transition: transform 160ms ease; }
+.fold[open] .fold-icon { transform: rotate(180deg); }
+.fold:not([open]) { gap: 0; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; }
 }

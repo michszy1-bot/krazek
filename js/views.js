@@ -349,6 +349,36 @@ const dataTable = (summary, headers, rows) => h('details.data-table',
     h('thead', h('tr', headers.map((text) => h('th', { scope: 'col' }, text)))),
     h('tbody', rows.map((cells) => h('tr', cells.map((text) => h('td', text)))))));
 
+const SETS_FOLD_KEY = 'forma-fold-sets-per-muscle';
+
+/** Czy sekcja była rozwinięta. Zapis w przeglądarce, bo to tylko wygląd, a nie dane do kopii zapasowej. */
+function foldOpen(key) {
+  try {
+    return localStorage.getItem(key) === 'open';
+  } catch {
+    return false;
+  }
+}
+
+/** Sekcja zwijana nagłówkiem. Domyślnie zwinięta, a wybór zostaje zapamiętany. */
+function foldBlock(key, title, meta, ...content) {
+  return h('details.block.fold', {
+    open: foldOpen(key),
+    ontoggle: (event) => {
+      try {
+        localStorage.setItem(key, event.currentTarget.open ? 'open' : 'closed');
+      } catch {
+        // Bez zapisu sekcja po prostu wróci do zwiniętej.
+      }
+    },
+  },
+  h('summary.fold-head',
+    h('h2.block-title', title),
+    meta && h('span.block-meta', meta),
+    h('span.fold-icon', icon('down', 20))),
+  content);
+}
+
 const RECORDS_PREVIEW = 8;
 
 function recordRow(entry) {
@@ -488,8 +518,9 @@ export function progressView() {
           })
           : h('p.muted', L('W tym okresie nie ma serii z ciężarem.', 'No weighted sets in this period.')),
         dataTable(L('Pokaż tabelę', 'Show table'), L(['Tydzień od', 'Treningi', 'Objętość'], ['Week of', 'Workouts', 'Volume']), [...weeks].reverse().map((w) => [fmtDayShort(w.weekStart), String(w.workouts), fmtVolume(w.volume)]))),
-      h('section.block',
-        h('h2.block-title', L('Serie na partię', 'Sets per muscle')),
+      foldBlock(SETS_FOLD_KEY,
+        L('Serie na partię', 'Sets per muscle'),
+        muscles.length ? countOf(muscles.length, 'partia', 'partie', 'partii', 'muscle', 'muscles') : null,
         muscles.length
           ? rankedBars(muscles.map((m) => ({ label: muscleName(m.muscle), value: m.sets })), (v) => fmtNum(v))
           : h('p.muted', L('W tym okresie nie ma zapisanych serii.', 'No sets logged in this period.'))),
