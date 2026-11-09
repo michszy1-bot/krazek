@@ -86,6 +86,45 @@ export function iconButton(name, label, onclick, extraClass = '') {
   return h(`button.icon-btn${extraClass ? `.${extraClass}` : ''}`, { type: 'button', 'aria-label': label, title: label, onclick }, icon(name));
 }
 
+export const HOLD_MS = 700;
+
+/**
+ * Przycisk, który działa dopiero po przytrzymaniu, żeby nie dało się go nacisnąć przypadkiem.
+ * Krótkie stuknięcie pokazuje podpowiedź. Z klawiatury działa od razu, bo tam przypadkowe naciśnięcie jest mało prawdopodobne.
+ */
+export function holdButton(spec, label, onDone, hint) {
+  let timer = null;
+  let startedAt = 0;
+  const button = h(`${spec}.btn-hold`, { type: 'button', 'aria-label': L(`${label}, przytrzymaj`, `${label}, press and hold`), style: `--hold-ms:${HOLD_MS}ms` },
+    h('span.hold-fill', { 'aria-hidden': 'true' }),
+    h('span.hold-label', label));
+  const stop = (tapped) => {
+    if (!timer) return;
+    clearTimeout(timer);
+    timer = null;
+    button.classList.remove('holding');
+    if (tapped && Date.now() - startedAt < HOLD_MS) toast(hint);
+  };
+  button.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0) return;
+    startedAt = Date.now();
+    button.classList.add('holding');
+    timer = setTimeout(() => {
+      timer = null;
+      button.classList.remove('holding');
+      navigator.vibrate?.(15);
+      onDone();
+    }, HOLD_MS);
+  });
+  button.addEventListener('pointerup', () => stop(true));
+  button.addEventListener('pointerleave', () => stop(false));
+  button.addEventListener('pointercancel', () => stop(false));
+  button.addEventListener('contextmenu', (event) => event.preventDefault());
+  // detail = 0 oznacza naciśnięcie z klawiatury, a nie palcem czy myszą.
+  button.addEventListener('click', (event) => { if (event.detail === 0) onDone(); });
+  return button;
+}
+
 // --- Arkusz wysuwany od dołu, oparty na <dialog>, więc ma blokadę fokusu i Esc ---
 
 export function openSheet(build, { full = false, label = '', onClose } = {}) {

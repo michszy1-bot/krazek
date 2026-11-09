@@ -1033,6 +1033,75 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 #toast { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .toast-action { flex: none; min-height: 44px; margin: -10px -6px -10px 0; padding: 0 10px; color: #1e55c8; font-weight: 700; }
 
+/* Zadania tygodnia, pierwsze kroki i sezon */
+
+.block-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.block-meta { font-size: 13px; color: var(--ink-3); text-align: right; }
+.quest-list { display: flex; flex-direction: column; gap: 8px; }
+.quest { display: flex; align-items: center; gap: 12px; background: var(--panel); border-radius: var(--radius); padding: 12px; }
+.quest-check {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 15px;
+  color: #0d1f15;
+}
+.quest.done .quest-check, .level-quest .quest-check { background: var(--green); border-color: var(--green); }
+.quest-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.quest-title { font-weight: 500; }
+.quest.done .quest-title { color: var(--ink-2); }
+.quest-meta { font-size: 13px; color: var(--ink-2); }
+.quest-xp { flex: none; font: 700 17px/1 var(--font-data); color: var(--yellow); white-space: nowrap; }
+.quest.done .quest-xp { color: var(--ink-3); }
+.level-quest { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 14px; }
+.level-quest .quest-check { width: 46px; height: 46px; font-size: 22px; }
+
+.season-card { display: flex; align-items: center; gap: 14px; background: var(--panel); border-radius: var(--radius); padding: 14px; }
+.season-card .badge { flex: none; }
+.season-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.season-name { font: 700 21px/1.1 var(--font-data); }
+.season-tier { font-size: 14px; color: var(--ink-2); }
+.stat-change { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.season-list { display: flex; flex-direction: column; gap: 8px; }
+.season-list li { display: flex; align-items: center; gap: 12px; }
+.season-empty { flex: none; width: 40px; height: 40px; border-radius: 50%; border: 2px dashed var(--line); }
+
+.quest-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 14px;
+  background: var(--panel);
+  border-radius: var(--radius);
+}
+.quest-strip-title { flex: 1; font-weight: 500; }
+.quest-dots { display: flex; gap: 6px; }
+.quest-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line); }
+.quest-dot.done { background: var(--green); border-color: var(--green); }
+.quest-strip-count { font: 700 18px/1 var(--font-data); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+
+/* Zakładki ekranu ćwiczenia */
+
+.tab-content { display: flex; flex-direction: column; gap: 20px; }
+
+/* Przycisk na przytrzymanie */
+
+.btn-hold { position: relative; overflow: hidden; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.hold-fill { position: absolute; inset: 0; background: rgb(0 0 0 / 28%); transform: scaleX(0); transform-origin: left center; pointer-events: none; }
+.btn-hold.holding .hold-fill { transform: scaleX(1); transition: transform var(--hold-ms, 700ms) linear; }
+.hold-label { position: relative; }
+
+/* Karta treningu */
+
+.share-preview { display: block; width: min(100%, 300px); aspect-ratio: 9 / 16; margin: 0 auto; border-radius: 12px; border: 1px solid var(--line); }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; }
 }

@@ -80,6 +80,46 @@ export function strengthMap(rows) {
   });
 }
 
+const RECOVERY_STATES = [
+  { colour: 1, label: L('do 24 h', 'under 24 h'), name: L('świeżo po treningu', 'just trained') },
+  { colour: 2, label: '24–48 h', name: L('regeneruje się', 'recovering') },
+  { colour: 3, label: '48–72 h', name: L('prawie gotowa', 'nearly ready') },
+  { colour: 4, label: L('ponad 72 h', 'over 72 h'), name: L('gotowa', 'ready') },
+];
+
+/** Czas od treningu słownie: godziny w pierwszej dobie, potem dni. */
+function sinceText(hours) {
+  if (hours < 24) {
+    const whole = Math.max(1, Math.round(hours));
+    return L(`${whole} h temu`, `${whole} h ago`);
+  }
+  const days = Math.floor(hours / 24);
+  return L(`${days} ${plural(days, 'dzień', 'dni', 'dni')} temu`, `${days} ${plural(days, 'day', 'days', 'days', 'day', 'days')} ago`);
+}
+
+/** rows: [{ muscle, hours }] z czasem od ostatniej serii. Partia bez serii zostaje szara. */
+export function recoveryMap(rows, colourOf) {
+  const rowOf = new Map(rows.map((row) => [row.muscle, row]));
+  const stateOf = (hours) => RECOVERY_STATES.find((item) => item.colour === colourOf(hours));
+  return drawMap({
+    colourOf: (muscle) => colourOf(rowOf.get(muscle)?.hours ?? null),
+    infoOf: (muscle) => {
+      const hours = rowOf.get(muscle)?.hours ?? null;
+      return hours == null
+        ? L(`${muscle}: jeszcze bez serii`, `${muscleName(muscle)}: no sets yet`)
+        : `${muscleName(muscle)}: ${sinceText(hours)}, ${stateOf(hours).name}`;
+    },
+    hint: L('Stuknij partię, żeby zobaczyć, kiedy była trenowana.', 'Tap a muscle to see when it was trained.'),
+    summary: L(
+      `Mapa regeneracji. ${rows.map((row) => `${row.muscle}: ${row.hours == null ? 'bez serii' : `${sinceText(row.hours)}, ${stateOf(row.hours).name}`}`).join('; ')}.`,
+      `Recovery map. ${rows.map((row) => `${muscleName(row.muscle)}: ${row.hours == null ? 'no sets' : `${sinceText(row.hours)}, ${stateOf(row.hours).name}`}`).join('; ')}.`),
+    legend: h('div.muscle-legend',
+      h('p.muscle-legend-title', L('Od ostatniej serii', 'Since the last set')),
+      h('ul.muscle-legend-row.muscle-legend-plain', { 'aria-label': L('Regeneracja', 'Recovery') },
+        RECOVERY_STATES.map(({ colour, label }) => h('li', h(`span.muscle-swatch.muscle-${colour}`), label)))),
+  });
+}
+
 function drawMap({ colourOf, infoOf, hint, summary, legend }) {
   const info = h('p.muscle-info', { role: 'status' }, hint);
 

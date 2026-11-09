@@ -8,6 +8,8 @@ import { HELPER_MUSCLES, MUSCLES } from './exercises.js';
 import { dayKey, startOfWeek } from './format.js';
 import { estimate1RM, isWorking, muscleTopSets, recordTimeline, streakFrom, streakMultiplier, weekCounter } from './stats.js';
 import { DEADLIFT_LIKE, LIFTS_BODY, ONE_DUMBBELL, STRENGTH_ALSO, STRENGTH_TOPS } from './strength-norms.js';
+import { doneQuests, XP_FIRST_STEP, XP_QUEST } from './quests.js';
+import { seasonMedals, seasonXp } from './seasons.js';
 
 export const XP_WORKOUT = 50; // raz dziennie, żeby nie opłacało się dzielić treningu
 export const XP_RECORD = 100; // na ćwiczenie w treningu
@@ -188,8 +190,11 @@ function muscleRow(muscle, best) {
   };
 }
 
-/** Poziom główny i poziomy partii, od najsłabszej. Partie bez wyniku są na końcu. */
-export function levelProgress(workouts, exerciseById, { weeklyGoal = null, bodyWeights = [], shieldedWeeks = [] } = {}) {
+/**
+ * Poziom główny i poziomy partii, od najsłabszej. Partie bez wyniku są na końcu.
+ * firstSteps to wykonane pierwsze kroki, bo tylko one nie wynikają z historii treningów.
+ */
+export function levelProgress(workouts, exerciseById, { weeklyGoal = null, bodyWeights = [], shieldedWeeks = [], firstSteps = [] } = {}) {
   const best = bestStrength(workouts, exerciseById, bodyWeights);
   const muscles = MUSCLES
     .filter((muscle) => muscle !== 'Całe ciało')
@@ -198,8 +203,12 @@ export function levelProgress(workouts, exerciseById, { weeklyGoal = null, bodyW
   const records = recordTimeline(workouts, exerciseById);
   const achievements = achievementProgress(workouts, exerciseById, { weeklyGoal, shieldedWeeks, bodyWeights, records });
   const fromAchievements = achievementXp(achievements);
-  const xp = earnedXp(workouts, exerciseById, weeklyGoal, shieldedWeeks, records) + fromAchievements;
-  return { ...mainLevel(xp), achievementXp: fromAchievements, achievements, muscles };
+  const quests = doneQuests(workouts, exerciseById, { weeklyGoal, records });
+  const medals = seasonMedals(workouts);
+  // Zadania, pierwsze kroki i medale sezonu są, tak jak osiągnięcia, bez mnożnika.
+  const bonusXp = quests.length * XP_QUEST + firstSteps.length * XP_FIRST_STEP + seasonXp(medals);
+  const xp = earnedXp(workouts, exerciseById, weeklyGoal, shieldedWeeks, records) + fromAchievements + bonusXp;
+  return { ...mainLevel(xp), achievementXp: fromAchievements, achievements, muscles, records, quests, medals };
 }
 
 /** Co dał zapisany trening: różnica między historią z nim i bez niego. */
@@ -218,5 +227,7 @@ export function workoutGain(workouts, workout, exerciseById, options = {}) {
     after,
     muscleUps: after.muscles.filter((row) => row.level > levelBefore.get(row.muscle)),
     newAchievements: after.achievements.filter((item) => item.done && !hadBefore.has(item.id)),
+    newQuests: after.quests.filter((entry) => !before.quests.some((old) => old.key === entry.key)).map((entry) => entry.quest),
+    newSeasonMedals: after.medals.filter((medal) => !before.medals.some((old) => old.season.key === medal.season.key && old.tier.id === medal.tier.id)),
   };
 }

@@ -1,6 +1,7 @@
 // Ekran treningu: trwającego (zapis na bieżąco, minutnik) oraz edycji zapisanego.
 
-import { actionSheet, ask, h, icon, iconButton, openSheet, particles, recordChip, toast } from './ui.js';
+import { actionSheet, ask, h, holdButton, icon, iconButton, openSheet, particles, recordChip, toast } from './ui.js';
+import { shareCard } from './share.js';
 import { hasRecordSparks } from './shop.js';
 import { countOf, fmtClock, fmtDuration, fmtNum, fmtSet, fmtSetChange, fmtUnit, fmtVolume, inputValue, parseNum, pastWorkoutStart, toLocalInput } from './format.js';
 import { emptySet, exerciseSessions, flagRecords, isComplete, isWorking, recordsFor, restAfterSet, RPE_SCALE, SET_KINDS, setLabels, stepBaseWeight, steppedWeight, suggestNextWeight, swapExercise, warmupSets, weightStep, workingSetCount, workoutComparison, workoutRecords, workoutVolume } from './stats.js';
@@ -99,7 +100,7 @@ function mount({ draft, mode, onSaved, isNew = false }) {
     ? h('header.wk-head',
       iconButton('down', L('Zwiń trening', 'Minimise workout'), collapse),
       h('p.wk-clock', { 'aria-label': L('Czas treningu', 'Workout time') }, h('span', { id: 'wk-elapsed' }, elapsedText())),
-      h('button.btn.btn-finish', { type: 'button', onclick: finishLive }, L('Zakończ', 'Finish')))
+      holdButton('button.btn.btn-finish', L('Zakończ', 'Finish'), finishLive, L('Przytrzymaj „Zakończ”, żeby zakończyć trening.', 'Press and hold “Finish” to end the workout.')))
     : h('header.wk-head',
       iconButton('close', isNew ? L('Anuluj dodawanie', 'Cancel adding') : L('Anuluj edycję', 'Cancel editing'), cancelEdit),
       h('p.wk-head-title', isNew ? L('Wcześniejszy trening', 'Past workout') : L('Edycja treningu', 'Edit workout')),
@@ -991,6 +992,7 @@ function showSummary(workout, records, gain, routine, updatedRoutine) {
       },
     }, L('Zaktualizuj rutynę', 'Update routine')),
     h(`button.btn.btn-block.${updatedRoutine ? 'btn-ghost' : 'btn-primary'}`, { type: 'button', onclick: close }, updatedRoutine ? L('Zostaw rutynę bez zmian', 'Keep the routine as is') : L('Gotowe', 'Done')),
+    h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => shareCard({ workout, records, xp: gain.xp, level: gain.after.level }) }, L('Udostępnij kartę treningu', 'Share workout card')),
     !routine && h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => { close(); saveWorkoutAsRoutine(workout); } }, L('Zapisz jako rutynę', 'Save as routine'))),
   { label: L('Trening zapisany', 'Workout saved'), onClose: releasePlate });
 }

@@ -3,7 +3,8 @@
 import { h, icon } from './ui.js';
 import { L, language } from './i18n.js';
 import { fmtClock } from './format.js';
-import { applyDueShields, load, state, subscribe } from './store.js';
+import { applyDueShields, load, saveSettings, state, subscribe } from './store.js';
+import { liveFirstSteps } from './quests.js';
 import { isWorkoutOpen, resumeWorkout } from './workout.js';
 import { exerciseView, homeView, journalView, libraryView, progressView, settingsView, workoutDetailView } from './views.js';
 import { profileView } from './profile.js';
@@ -50,7 +51,15 @@ function applyLooks() {
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', themeColor(state.shop));
 }
 
+/** Raz wykonany pierwszy krok zostaje zapisany, żeby jego XP nie znikło, np. po usunięciu rutyny. */
+function recordFirstSteps() {
+  const stored = state.settings.firstSteps ?? {};
+  const fresh = [...liveFirstSteps(state)].filter((id) => !stored[id]);
+  if (fresh.length) saveSettings({ firstSteps: { ...stored, ...Object.fromEntries(fresh.map((id) => [id, Date.now()])) } });
+}
+
 function render({ keepScroll = false } = {}) {
+  recordFirstSteps();
   applyLooks();
   const { tab, view } = route();
   if (['#/postepy', '#/cwiczenia', '#/dziennik', '#/'].includes(tab) && !location.hash.includes('cwiczenie/')) lastTab = tab;

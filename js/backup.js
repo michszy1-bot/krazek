@@ -5,6 +5,9 @@ import { cleanRoutines } from './routines.js';
 import { cleanShop } from './shop.js';
 import { L } from './i18n.js';
 import { isRpe, isSetKind } from './stats.js';
+import { FIRST_STEPS } from './quests.js';
+
+const FIRST_STEP_IDS = new Set(FIRST_STEPS.map((step) => step.id));
 
 const APP_ID = 'krazek'; // Dawna nazwa aplikacji. Zmiana unieważniłaby istniejące kopie.
 const VERSION = 1;
@@ -96,6 +99,9 @@ export function parseBackup(text) {
   const goal = data.settings?.weeklyGoal;
   if (Number.isInteger(goal) && goal >= 1 && goal <= 7) settings.weeklyGoal = goal;
   if (typeof data.settings?.askRpe === 'boolean') settings.askRpe = data.settings.askRpe;
+  // Wykonane pierwsze kroki dają XP, więc muszą przetrwać przywrócenie kopii.
+  const steps = Object.entries(data.settings?.firstSteps ?? {}).filter(([id, at]) => FIRST_STEP_IDS.has(id) && isTime(at));
+  if (steps.length) settings.firstSteps = Object.fromEntries(steps);
   // Starsze kopie nie mają tych pól. Wczytują się wtedy z pustym profilem, dziennikiem wagi i rutynami.
   const bodyWeights = cleanWeights(data.bodyWeights);
   if (!bodyWeights) {

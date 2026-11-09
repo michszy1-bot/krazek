@@ -3,7 +3,7 @@
 import { actionSheet, ask, emptyState, h, icon, iconButton, openSheet, pageHeader, particles, recordChip, segmented, toast } from './ui.js';
 import { addDays, countOf, dayKey, fmtClock, fmtDayLong, fmtDayMedium, fmtDayShort, fmtDuration, fmtMonth, fmtMultiplier, fmtNum, fmtSet, fmtTime, fmtUnit, fmtVolume, plural, startOfWeek } from './format.js';
 import { columnChart, lineChart, rankedBars } from './chart.js';
-import { backupStatus, exerciseSessions, flagRecords, isWorking, loadBar, METRICS, muscleSets, neglectedMuscles, PLATE_TIERS, plateHeight, plateTier, plateTravel, plateWidth, RECORD_TYPES, recordsFor, recordTimeline, sessionEffort, SET_KINDS, setLabels, streakStatus, summarizeSets, weekDays, weeklyTotals, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
+import { backupStatus, exerciseSessions, flagRecords, isWorking, loadBar, METRICS, muscleRecovery, muscleSets, neglectedMuscles, PLATE_TIERS, plateHeight, plateTier, plateTravel, plateWidth, RECORD_TYPES, recordsFor, recordTimeline, recoveryColour, sessionEffort, SET_KINDS, setLabels, streakStatus, summarizeSets, weekDays, weeklyTotals, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
 import { bodyWeightChart, weightsFrom } from './profile.js';
 import { dayTime, weightOn } from './body.js';
 import { clearMedia, downloadMedia, isDownloadingMedia, mediaStatus } from './media.js';
@@ -11,7 +11,9 @@ import { backupText, deleteExercise, deleteWorkout, dismissShieldNote, exerciseB
 import { workoutsCsv } from './csv.js';
 import { L, LANGUAGES, language, setLanguage } from './i18n.js';
 import { equipmentName, MUSCLES, muscleName } from './exercises.js';
-import { muscleMap } from './muscle-map.js';
+import { muscleMap, recoveryMap } from './muscle-map.js';
+import { questStrip } from './quest-views.js';
+import { shareCard } from './share.js';
 import { hasChalkDust, shownInscription } from './shop.js';
 import { applyFilter, exerciseFilter, exerciseForm, favoriteButton, stickyNoteSheet } from './picker.js';
 import { addPastWorkout, editWorkout, repeatWorkout, resumeWorkout, startRoutine, startWorkout, stat } from './workout.js';
@@ -190,6 +192,7 @@ export function homeView() {
     state.active
       ? h('button.btn.btn-primary.btn-hero', { type: 'button', onclick: resumeWorkout }, L('Wróć do treningu', 'Back to workout'), h('span.hero-time', { dataset: { elapsedFrom: state.active.startedAt } }, fmtClock((Date.now() - state.active.startedAt) / 1000)))
       : h('button.btn.btn-primary.btn-hero', { type: 'button', onclick: startWorkout }, L('Rozpocznij trening', 'Start workout')),
+    questStrip(),
     backup.due && h('button.notice', { type: 'button', onclick: exportBackup },
       h('strong', state.lastBackupAt ? L('Czas na kopię zapasową', 'Time for a backup') : L('Zrób pierwszą kopię zapasową', 'Make your first backup')),
       h('span', L(`Poza kopią: ${countOf(backup.unsaved, 'trening', 'treningi', 'treningów')}. Stuknij, żeby ją zapisać.`, `Not backed up: ${countOf(backup.unsaved, '', '', '', 'workout', 'workouts')}. Tap to save a backup.`))),
@@ -321,6 +324,7 @@ export function workoutDetailView(id) {
     }),
     h('div.detail-actions',
       h('button.btn.btn-primary.btn-block', { type: 'button', onclick: () => repeatWorkout(workout) }, L('Powtórz trening', 'Repeat workout')),
+      h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => shareCard({ workout, records: workoutRecordsOf(workout) }) }, L('Udostępnij kartę treningu', 'Share workout card')),
       h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => saveWorkoutAsRoutine(workout) }, L('Zapisz jako rutynę', 'Save as routine')),
       h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => editWorkout(workout) }, L('Edytuj trening', 'Edit workout')),
       h('button.btn.btn-text-danger.btn-block', { type: 'button', onclick: remove }, L('Usuń trening', 'Delete workout'))));
@@ -383,16 +387,41 @@ const neglectText = ({ muscle, days }) => (days === null
   ? L(`${muscle}: jeszcze bez serii`, `${muscleName(muscle)}: no sets yet`)
   : L(`${muscle}: ${countOf(days, 'dzień', 'dni', 'dni')} temu`, `${muscleName(muscle)}: ${countOf(days, '', '', '', 'day', 'days')} ago`));
 
+const MAP_MODES = [
+  { value: 'sets', label: L(`Serie z ${MAP_DAYS} dni`, `Sets, ${MAP_DAYS} days`) },
+  { value: 'recovery', label: L('Regeneracja', 'Recovery') },
+];
+let mapMode = 'sets';
+
+/** Mapa serii z ostatnich dni albo mapa regeneracji, czyli czas od ostatniej serii na partię. */
+function mapBlock() {
+  const host = h('div');
+  const draw = () => {
+    if (mapMode === 'recovery') {
+      const rows = muscleRecovery(state.workouts, exerciseById, MUSCLES.filter((m) => m !== WHOLE_BODY));
+      host.replaceChildren(
+        recoveryMap(rows, recoveryColour),
+        h('p.settings-text', L('Liczy się czas od końca treningu z co najmniej jedną serią roboczą na partię. Przysiad i inne złożone ćwiczenia na nogi zmęczą też pośladki i dwugłowe. To orientacyjna podpowiedź: małe partie zwykle wracają szybciej, a po bardzo ciężkim treningu potrzeba więcej czasu.', 'This is the time since the end of a workout with at least one working set for the muscle. Squats and other compound leg exercises also tire the glutes and hamstrings. It’s only a guide: small muscles usually recover faster, and a very hard session needs more time.')));
+      return;
+    }
+    const rows = muscleSets(state.workouts, exerciseById, Date.now() - MAP_DAYS * 86400000);
+    const wholeBody = rows.find((row) => row.muscle === WHOLE_BODY)?.sets ?? 0;
+    host.replaceChildren(...[
+      muscleMap(rows),
+      h('p.settings-text', L('Ćwiczenia złożone na nogi liczą się też w połowie do pozostałych partii nóg. Np. seria przysiadu to cała seria na czworogłowe oraz po pół na pośladki i dwugłowe. Góra ciała liczy się tylko do partii głównej.', 'Compound leg exercises also count as half a set for the other leg muscles. For example, a squat set is a full set for quads and half a set for glutes and hamstrings. Upper body counts only for the main muscle.')),
+      wholeBody > 0 && h('p.settings-text', L(`Ćwiczenia na całe ciało: ${countOf(wholeBody, 'seria', 'serie', 'serii')}. Nie ma ich na mapie.`, `Full-body exercises: ${countOf(wholeBody, '', '', '', 'set', 'sets')}. They aren’t on the map.`)),
+    ].filter(Boolean));
+  };
+  draw();
+  return [segmented(MAP_MODES, mapMode, (value) => { mapMode = value; draw(); }, L('Rodzaj mapy', 'Map type')), host];
+}
+
 /** Mapa i zaniedbane partie zawsze z ostatnich dni, bo to podpowiedź, co robić dalej. */
 function musclesSection() {
-  const rows = muscleSets(state.workouts, exerciseById, Date.now() - MAP_DAYS * 86400000);
-  const wholeBody = rows.find((row) => row.muscle === WHOLE_BODY)?.sets ?? 0;
   const neglected = neglectedMuscles(state.workouts, exerciseById, MUSCLES.filter((m) => m !== WHOLE_BODY), new Date(), MAP_DAYS);
   return h('section.block',
-    h('h2.block-title', L(`Mapa mięśni z ${MAP_DAYS} dni`, `Muscle map, last ${MAP_DAYS} days`)),
-    muscleMap(rows),
-    h('p.settings-text', L('Ćwiczenia złożone na nogi liczą się też w połowie do pozostałych partii nóg. Np. seria przysiadu to cała seria na czworogłowe oraz po pół na pośladki i dwugłowe. Góra ciała liczy się tylko do partii głównej.', 'Compound leg exercises also count as half a set for the other leg muscles. For example, a squat set is a full set for quads and half a set for glutes and hamstrings. Upper body counts only for the main muscle.')),
-    wholeBody > 0 && h('p.settings-text', L(`Ćwiczenia na całe ciało: ${countOf(wholeBody, 'seria', 'serie', 'serii')}. Nie ma ich na mapie.`, `Full-body exercises: ${countOf(wholeBody, '', '', '', 'set', 'sets')}. They aren’t on the map.`)),
+    h('h2.block-title', L('Mapa mięśni', 'Muscle map')),
+    mapBlock(),
     h('h2.block-title.chart-second-title', L('Zaniedbane partie', 'Neglected muscles')),
     neglected.length
       ? h('ul.neglected', neglected.map((row) => h('li', neglectText(row))))
@@ -577,7 +606,7 @@ export function exerciseView(id, backTo) {
         formatEnd: (point) => point.value,
         formatDate: fmtDayShort,
         minStep: metric.unit === 'reps' || metric.unit === 'seconds' ? 1 : 0,
-        label: L(`${metric.title}, ${exercise.name}. Dane są też w historii poniżej.`, `${metric.title}, ${exercise.name}. The data is also in the history below.`),
+        label: L(`${metric.title}, ${exercise.name}. Dane są też w zakładce Historia.`, `${metric.title}, ${exercise.name}. The data is also in the History tab.`),
         xDomain,
       }),
       weights.length > 0 && h('h2.block-title.chart-second-title', L('Waga ciała', 'Body weight')),
@@ -587,28 +616,52 @@ export function exerciseView(id, backTo) {
     ].flat().filter(Boolean));
   };
 
-  host.append(
-    recordsSection(type, records),
-    h('div.filters',
-      segmented(DETAIL_RANGES, detailRange, (value) => { detailRange = value; render(); }, L('Zakres czasu', 'Time range')),
-      metrics.length > 1 && segmented(metrics.map((m) => ({ value: m.key, label: m.label })), metricKey, (value) => {
-        metricKey = value;
-        metricChoice.set(id, value);
-        render();
-      }, L('Wskaźnik', 'Metric'))),
-    h('section.block', chartHost),
-    h('section.block',
-      h('h2.block-title', L('Historia', 'History')),
+  // Zakładki skracają ekran: wykresy, historia i rekordy nie leżą już jeden pod drugim.
+  const tabs = {
+    charts: () => {
+      const content = [
+        h('div.filters',
+          segmented(DETAIL_RANGES, detailRange, (value) => { detailRange = value; render(); }, L('Zakres czasu', 'Time range')),
+          metrics.length > 1 && segmented(metrics.map((m) => ({ value: m.key, label: m.label })), metricKey, (value) => {
+            metricKey = value;
+            metricChoice.set(id, value);
+            render();
+          }, L('Wskaźnik', 'Metric'))),
+        h('section.block', chartHost),
+      ];
+      render();
+      return content;
+    },
+    history: () => h('section.block',
+      h('h2.block-title', countOf(sessions.length, 'sesja', 'sesje', 'sesji', 'session', 'sessions')),
       h('div.rows', [...sessions].reverse().map((session) => {
         const working = session.sets.filter(isWorking);
         return h('a.history-row', { href: `#/dziennik/${session.workoutId}` },
           h('span.history-date', fmtDayMedium(session.date)),
           h('span.history-sets', working.map((set) => fmtSet(set, type, { compact: true })).join(', ')));
       }))),
+    records: () => recordsSection(type, records) ?? h('p.muted.chart-empty', L('Brak rekordów.', 'No records yet.')),
+  };
+  const tabHost = h('div.tab-content');
+  const showTab = (key) => {
+    exerciseTab = key;
+    tabHost.replaceChildren(...[tabs[key]()].flat().filter(Boolean));
+  };
+
+  host.append(
+    h('div.detail-tabs', segmented(EXERCISE_TABS, exerciseTab, showTab, L('Widok ćwiczenia', 'Exercise view'))),
+    tabHost,
   );
-  render();
+  showTab(exerciseTab);
   return host;
 }
+
+const EXERCISE_TABS = [
+  { value: 'charts', label: L('Wykresy', 'Charts') },
+  { value: 'history', label: L('Historia', 'History') },
+  { value: 'records', label: L('Rekordy', 'Records') },
+];
+let exerciseTab = 'charts';
 
 /** Średnia ocena wysiłku (RPE) z każdego treningu na stałej skali od 6 do 10. */
 function effortChart(efforts, sessions, name, xDomain) {
@@ -633,7 +686,7 @@ function effortChart(efforts, sessions, name, xDomain) {
       formatDate: fmtDayShort,
       yTicks: [6, 7, 8, 9, 10],
       height: 160,
-      label: L(`Średnia ocena wysiłku, ${name}. Dane są też w historii poniżej.`, `Average effort rating, ${name}. The data is also in the history below.`),
+      label: L(`Średnia ocena wysiłku, ${name}. Dane są też w zakładce Historia.`, `Average effort rating, ${name}. The data is also in the History tab.`),
       xDomain,
     }),
     h('p.settings-text', L('Średnia ocena serii roboczych z treningu: 10 to nic w zapasie, 6 to cztery powtórzenia i więcej. Niższa ocena przy tym samym ciężarze znaczy, że robisz się silniejszy.', 'Average rating of your working sets per workout: 10 means nothing left, 6 means four or more reps left. A lower rating at the same weight means you’re getting stronger.')),

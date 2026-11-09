@@ -1,7 +1,7 @@
 // Poziomy na ekranie: sekcje profilu i wynik w podsumowaniu treningu.
 
 import { h, icon } from './ui.js';
-import { badge } from './badges.js';
+import { badge, seasonBadgeItem } from './badges.js';
 import { countOf, fmtMultiplier, fmtNum } from './format.js';
 import { L } from './i18n.js';
 import { muscleName } from './exercises.js';
@@ -10,8 +10,16 @@ import { streakStatus } from './stats.js';
 import { levelProgress, MAX_MUSCLE_LEVEL, strengthCategory, strengthColour, XP_GOAL, XP_RECORD, XP_WORKOUT } from './level.js';
 import { strengthMap } from './muscle-map.js';
 import { exerciseById, state } from './store.js';
+import { firstStepsDone, liveFirstSteps, XP_FIRST_STEP, XP_QUEST } from './quests.js';
+import { SEASON_TIERS } from './seasons.js';
+import { firstStepsSection, questsSection, seasonSection } from './quest-views.js';
 
-export const levelOptions = () => ({ weeklyGoal: state.settings.weeklyGoal, bodyWeights: state.bodyWeights, shieldedWeeks: state.shop.shieldedWeeks });
+export const levelOptions = () => ({
+  weeklyGoal: state.settings.weeklyGoal,
+  bodyWeights: state.bodyWeights,
+  shieldedWeeks: state.shop.shieldedWeeks,
+  firstSteps: firstStepsDone(state.settings.firstSteps, liveFirstSteps(state)),
+});
 
 /** Co jeszcze trzeba zrobić, żeby mnożnik wzrósł. */
 function nextMultiplierText(next) {
@@ -77,6 +85,9 @@ export function levelSections(onAddWeight) {
       xpBar(L(`Postęp poziomu ${progress.level}`, `Level ${progress.level} progress`), progress.share),
       h('p.level-meta', h('span', `${fmtNum(progress.xp)} XP`), h('span', nextText(progress))),
       streakBlock()),
+    firstStepsSection(),
+    questsSection(progress.records),
+    seasonSection(progress.records),
     h('section.block',
       h('h2.block-title', L("Siła partii", "Muscle strength")),
       state.bodyWeights.length
@@ -100,13 +111,16 @@ export function pointsSection() {
       h('li', h('span', L("Nowy rekord w ćwiczeniu", "New record in an exercise")), h('strong', `${XP_RECORD} XP`)),
       h('li', h('span', goal == null ? L('Wykonany cel tygodniowy (nie masz ustawionego celu)', 'Weekly goal met (you have no goal set)') : L('Wykonany cel tygodniowy', 'Weekly goal met')), h('strong', `${XP_GOAL} XP`)),
       h('li', h('span', L("Seria tygodni: co 4 tygodnie z rzędu mnożnik rośnie o 0,1", "Week streak: every 4 weeks in a row the multiplier grows by 0.1")), h('strong', L(`do ${fmtMultiplier(1.5)}`, `up to ${fmtMultiplier(1.5)}`))),
-      h('li', h('span', L("Osiągnięcie, bez mnożnika", "Medal, no multiplier")), h('strong', L("od 50 XP", "from 50 XP")))),
+      h('li', h('span', L("Osiągnięcie, bez mnożnika", "Medal, no multiplier")), h('strong', L("od 50 XP", "from 50 XP"))),
+      h('li', h('span', L("Zadanie tygodnia, bez mnożnika", "Weekly quest, no multiplier")), h('strong', `${XP_QUEST} XP`)),
+      h('li', h('span', L("Pierwszy krok, bez mnożnika", "First step, no multiplier")), h('strong', `${XP_FIRST_STEP} XP`)),
+      h('li', h('span', L("Medal sezonu, bez mnożnika", "Season medal, no multiplier")), h('strong', `${SEASON_TIERS[0].xp}–${fmtNum(SEASON_TIERS.at(-1).xp)} XP`))),
     h('p.settings-text', L("Mnożnik działa na całe XP z danego tygodnia, oprócz osiągnięć, i zależy od serii sprzed tego tygodnia. Tydzień bez celu zeruje serię, chyba że masz tarczę.", "The multiplier applies to all XP from a week, except medals, and depends on your streak before that week. A week without the goal resets the streak unless you have a shield.")),
     h('p.settings-text', L("Rozgrzewka się nie liczy. Wszystko wynika z historii, więc usunięcie treningu albo podniesienie celu może obniżyć wynik.", "Warm-ups don’t count. Everything comes from your history, so deleting a workout or raising your goal can lower the total.")));
 }
 
 /** Wynik treningu w podsumowaniu. Bez punktów nie ma czego pokazywać. */
-export function levelGainBlock({ xp, multiplier, before, after, muscleUps, newAchievements }) {
+export function levelGainBlock({ xp, multiplier, before, after, muscleUps, newAchievements, newQuests, newSeasonMedals }) {
   if (!(xp > 0)) return null;
   const leveledUp = after.level > before.level;
   return h('div.level-gain',
@@ -117,5 +131,13 @@ export function levelGainBlock({ xp, multiplier, before, after, muscleUps, newAc
     newAchievements.map((item) => h('p.level-unlock',
       badge(item, 46),
       h('span.level-unlock-text', h('span.level-unlock-label', L("Nowy medal", "New medal")), h('strong', item.name)),
-      h('span.level-unlock-xp', `+${fmtNum(item.xp)} XP`))));
+      h('span.level-unlock-xp', `+${fmtNum(item.xp)} XP`))),
+    (newSeasonMedals ?? []).map(({ season, tier }) => h('p.level-unlock',
+      badge(seasonBadgeItem(season, tier, true), 46),
+      h('span.level-unlock-text', h('span.level-unlock-label', L("Medal sezonu", "Season medal")), h('strong', `${tier.name} · ${season.name}`)),
+      h('span.level-unlock-xp', `+${fmtNum(tier.xp)} XP`))),
+    (newQuests ?? []).map((quest) => h('p.level-quest',
+      h('span.quest-check', { 'aria-hidden': 'true' }, '✓'),
+      h('span.level-unlock-text', h('span.level-unlock-label', L("Zadanie tygodnia", "Weekly quest")), h('strong', quest.title)),
+      h('span.level-unlock-xp', `+${fmtNum(quest.xp)} XP`))));
 }

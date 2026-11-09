@@ -419,6 +419,34 @@ export function weeklyTotals(workouts, weeks, now = new Date()) {
 }
 
 /** Liczba serii roboczych na partię mięśniową od `fromTs`, od największej. */
+/** Progi regeneracji w godzinach od ostatniej serii na partię: do 24, do 48, do 72 i dalej. */
+export const RECOVERY_HOURS = [24, 48, 72];
+
+/**
+ * Ile godzin minęło od ostatniej serii roboczej na każdą partię: [{ muscle, hours }], hours = null, gdy nigdy.
+ * Liczy się koniec treningu. Partia pomocnicza liczy się, gdy dostaje co najmniej pół serii, czyli przy nogach.
+ */
+export function muscleRecovery(workouts, exerciseById, muscles, now = Date.now()) {
+  const last = new Map();
+  for (const workout of workouts) {
+    const at = Math.min(now, workout.endedAt || workout.startedAt);
+    for (const item of workout.exercises) {
+      if (!item.sets.some(isWorking)) continue;
+      for (const [muscle, share] of musclesOf(exerciseById(item.exerciseId))) {
+        if (share >= 0.5 && at > (last.get(muscle) ?? 0)) last.set(muscle, at);
+      }
+    }
+  }
+  return muscles.map((muscle) => ({ muscle, hours: last.has(muscle) ? (now - last.get(muscle)) / 3600000 : null }));
+}
+
+/** Kolor regeneracji jak na pozostałych mapach: 1 świeżo po treningu, 4 gotowa, 0 bez danych. */
+export function recoveryColour(hours) {
+  if (hours == null) return 0;
+  const index = RECOVERY_HOURS.findIndex((limit) => hours < limit);
+  return index < 0 ? 4 : index + 1;
+}
+
 export function muscleSets(workouts, exerciseById, fromTs) {
   const totals = new Map();
   for (const workout of workouts) {

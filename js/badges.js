@@ -29,6 +29,7 @@ const SHAPES = {
   'Jeden trening': polygon(10, 46),
   Wytrwałość: polygon(6, 46, 0),
   Okazje: burst(18, 47, 43),
+  Sezon: polygon(12, 47),
 };
 
 /** Metal zależy od nagrody: brąz, srebro, złoto, a najwyższe nagrody to złoty rant na ciemnej tarczy. */
@@ -119,8 +120,22 @@ export function badgeMarkup(item) {
     + '<ellipse cx="30" cy="16" rx="50" ry="22" transform="rotate(-22 30 16)" fill="#fff" opacity="0.28"/>'
     + '</g>'
     + `<path transform="${scaled(0.84)}" d="${shape}" fill="none" stroke="#000" stroke-opacity="0.3" stroke-width="1.400"/>`
-    + glyphMarkup(MARKS[item.id], metal)
-    + labelMarkup(MARKS[item.id], metal);
+    + glyphMarkup(item.mark ?? MARKS[item.id], metal)
+    + labelMarkup(item.mark ?? MARKS[item.id], metal);
+}
+
+// Znak sezonu: księżyc na zimę i wiosnę, słońce na lato, płomień na jesień.
+const SEASON_GLYPHS = ['moon', 'sun', 'flame'];
+
+/** Medal sezonu w formacie osiągnięcia: metal z progu, a na tarczy numer sezonu i rok, np. 3/26. */
+export function seasonBadgeItem(season, tier, done) {
+  return {
+    id: `season-${season.key}-${tier.id}`,
+    group: 'Sezon',
+    xp: tier.xp,
+    done,
+    mark: mark(SEASON_GLYPHS[season.index], `${season.index + 1}/${String(season.year).slice(2)}`),
+  };
 }
 
 /** Medal do pokazania. Niezdobyty jest przyciemniony i bez koloru, więc widać, co jeszcze jest do zebrania. */
