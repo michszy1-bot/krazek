@@ -388,12 +388,15 @@ const neglectText = ({ muscle, days }) => (days === null
   : L(`${muscle}: ${countOf(days, 'dzień', 'dni', 'dni')} temu`, `${muscleName(muscle)}: ${countOf(days, '', '', '', 'day', 'days')} ago`));
 
 const MAP_MODES = [
-  { value: 'sets', label: L(`Serie z ${MAP_DAYS} dni`, `Sets, ${MAP_DAYS} days`) },
+  { value: 'sets', label: L('Serie w tym tygodniu', 'Sets this week') },
   { value: 'recovery', label: L('Regeneracja', 'Recovery') },
 ];
 let mapMode = 'sets';
 
-/** Mapa serii z ostatnich dni albo mapa regeneracji, czyli czas od ostatniej serii na partię. */
+/**
+ * Mapa serii z bieżącego tygodnia albo mapa regeneracji, czyli czas od ostatniej serii na partię.
+ * Serie liczą się od poniedziałku, tak jak tygodniowe cele serii na partię i XP za serie.
+ */
 function mapBlock() {
   const host = h('div');
   const draw = () => {
@@ -404,10 +407,11 @@ function mapBlock() {
         h('p.settings-text', L('Liczy się czas od końca treningu z co najmniej jedną serią roboczą na partię. Przysiad i inne złożone ćwiczenia na nogi zmęczą też pośladki i dwugłowe. To orientacyjna podpowiedź: małe partie zwykle wracają szybciej, a po bardzo ciężkim treningu potrzeba więcej czasu.', 'This is the time since the end of a workout with at least one working set for the muscle. Squats and other compound leg exercises also tire the glutes and hamstrings. It’s only a guide: small muscles usually recover faster, and a very hard session needs more time.')));
       return;
     }
-    const rows = muscleSets(state.workouts, exerciseById, Date.now() - MAP_DAYS * 86400000);
+    const rows = muscleSets(state.workouts, exerciseById, startOfWeek(new Date()).getTime());
     const wholeBody = rows.find((row) => row.muscle === WHOLE_BODY)?.sets ?? 0;
     host.replaceChildren(...[
       muscleMap(rows),
+      h('p.settings-text', L('Licznik zeruje się w każdy poniedziałek, tak jak tygodniowe cele serii.', 'The count resets every Monday, like the weekly set targets.')),
       h('p.settings-text', L('Ćwiczenia złożone na nogi liczą się też w połowie do pozostałych partii nóg. Np. seria przysiadu to cała seria na czworogłowe oraz po pół na pośladki i dwugłowe. Góra ciała liczy się tylko do partii głównej.', 'Compound leg exercises also count as half a set for the other leg muscles. For example, a squat set is a full set for quads and half a set for glutes and hamstrings. Upper body counts only for the main muscle.')),
       wholeBody > 0 && h('p.settings-text', L(`Ćwiczenia na całe ciało: ${countOf(wholeBody, 'seria', 'serie', 'serii')}. Nie ma ich na mapie.`, `Full-body exercises: ${countOf(wholeBody, '', '', '', 'set', 'sets')}. They aren’t on the map.`)),
     ].filter(Boolean));
@@ -416,7 +420,7 @@ function mapBlock() {
   return [segmented(MAP_MODES, mapMode, (value) => { mapMode = value; draw(); }, L('Rodzaj mapy', 'Map type')), host];
 }
 
-/** Mapa i zaniedbane partie zawsze z ostatnich dni, bo to podpowiedź, co robić dalej. */
+/** Mapa z tego tygodnia i zaniedbane partie z ostatnich 7 dni, bo w poniedziałek rano każda partia byłaby zaniedbana. */
 function musclesSection() {
   const neglected = neglectedMuscles(state.workouts, exerciseById, MUSCLES.filter((m) => m !== WHOLE_BODY), new Date(), MAP_DAYS);
   return h('section.block',
