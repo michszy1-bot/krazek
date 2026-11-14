@@ -443,6 +443,10 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .thumb img, .thumb canvas { display: block; width: 100%; height: 100%; }
 .thumb-empty { background: var(--panel-raised); color: var(--ink-3); }
 .library-row { position: relative; }
+.library .list-section { font-size: 20px; font-weight: 700; padding: 18px 0 2px; }
+.library .list-section:first-child { padding-top: 4px; }
+.library .muscle-label { display: flex; align-items: baseline; gap: 8px; font-size: 14px; color: var(--ink); padding: 12px 0 2px; }
+.muscle-count { font-weight: 500; color: var(--ink-3); font-size: 13px; }
 .library .link-row { padding: 10px 56px 10px 12px; }
 .library-row > .star-btn { position: absolute; top: 50%; right: 4px; transform: translateY(-50%); }
 /* Gwiazdka: 44 punkty na palec, kontur gdy wyłączona, żółta gdy włączona */

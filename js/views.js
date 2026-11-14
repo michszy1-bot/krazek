@@ -783,6 +783,22 @@ function exerciseMenu(exercise, backTo) {
 
 // --- Biblioteka ćwiczeń ---
 
+/** Ćwiczenia pogrupowane według partii, w kolejności filtrów, z nagłówkiem i liczbą przy każdej. */
+function byMuscle(exercises, rowFor) {
+  const order = (muscle) => { const i = MUSCLES.indexOf(muscle); return i < 0 ? MUSCLES.length : i; };
+  const groups = new Map();
+  for (const exercise of exercises) {
+    if (!groups.has(exercise.muscle)) groups.set(exercise.muscle, []);
+    groups.get(exercise.muscle).push(exercise);
+  }
+  return [...groups.entries()]
+    .sort(([a], [b]) => order(a) - order(b))
+    .flatMap(([muscle, items]) => [
+      h('h3.list-label.muscle-label', muscleName(muscle), h('span.muscle-count', String(items.length))),
+      ...items.map(rowFor),
+    ]);
+}
+
 export function libraryView() {
   const list = h('div.rows.library');
   const render = (filter) => {
@@ -802,9 +818,9 @@ export function libraryView() {
     const favorites = found.filter((e) => e.favorite);
     const rest = found.filter((e) => !e.favorite);
     list.replaceChildren(
-      ...(favorites.length ? [h('h3.list-label', L('Ulubione', 'Favourites')), ...favorites.map(rowFor)] : []),
-      ...(favorites.length && rest.length ? [h('h3.list-label', L('Wszystkie', 'All'))] : []),
-      ...rest.map(rowFor),
+      ...(favorites.length ? [h('h2.list-section', L('Ulubione', 'Favourites')), ...byMuscle(favorites, rowFor)] : []),
+      ...(favorites.length && rest.length ? [h('h2.list-section', L('Wszystkie', 'All'))] : []),
+      ...byMuscle(rest, rowFor),
     );
   };
   const controls = exerciseFilter(render);
