@@ -48,6 +48,26 @@ function cleanSet(raw) {
   };
 }
 
+// Tętno i kalorie z opaski: liczby całkowite albo brak.
+function cleanBand(raw) {
+  if (!raw || typeof raw !== 'object') return {};
+  const num = (v, max) => (Number.isInteger(v) && v > 0 && v <= max ? v : null);
+  const dec = (v) => (typeof v === 'number' && v >= 0 && v <= 10 ? v : null);
+  const band = { avgHr: num(raw.avgHr, 250), maxHr: num(raw.maxHr, 250), kcal: num(raw.kcal, 5000) };
+  if (!Object.values(band).some((v) => v != null)) return {};
+  const extra = {
+    minHr: num(raw.minHr, 250), load: num(raw.load, 1000), seconds: num(raw.seconds, 86400),
+    effect: dec(raw.effect), anaerobic: dec(raw.anaerobic), zoneMaxHr: num(raw.zoneMaxHr, 250),
+  };
+  for (const [key, value] of Object.entries(extra)) if (value != null) band[key] = value;
+  if (Array.isArray(raw.zones) && raw.zones.length === 5 && raw.zones.every((s) => Number.isInteger(s) && s >= 0) && band.zoneMaxHr) band.zones = raw.zones;
+  if (Array.isArray(raw.hr)) {
+    const hr = raw.hr.filter((p) => Array.isArray(p) && Number.isInteger(p[0]) && Number.isInteger(p[1]) && p[1] > 0 && p[1] <= 250).slice(0, 2000);
+    if (hr.length) band.hr = hr;
+  }
+  return { band };
+}
+
 function cleanWorkout(raw) {
   if (!raw || !isText(raw.id) || !isTime(raw.startedAt) || !Array.isArray(raw.exercises)) return null;
   return {
@@ -56,6 +76,7 @@ function cleanWorkout(raw) {
     startedAt: raw.startedAt,
     endedAt: isTime(raw.endedAt) ? raw.endedAt : raw.startedAt,
     note: typeof raw.note === 'string' ? raw.note : '',
+    ...cleanBand(raw.band),
     exercises: raw.exercises
       .filter((item) => item && isText(item.exerciseId) && Array.isArray(item.sets))
       .map((item) => ({

@@ -1,14 +1,15 @@
 // Ekrany aplikacji poza treningiem: start, dziennik, postępy, ćwiczenia i ustawienia.
 
 import { actionSheet, ask, emptyState, h, icon, iconButton, openSheet, pageHeader, particles, recordChip, segmented, toast } from './ui.js';
-import { addDays, countOf, dayKey, fmtClock, fmtDayLong, fmtDayMedium, fmtDayShort, fmtDuration, fmtMonth, fmtMultiplier, fmtNum, fmtSet, fmtTime, fmtUnit, fmtVolume, plural, startOfWeek } from './format.js';
+import { parseNum, addDays, countOf, dayKey, fmtClock, fmtDayLong, fmtDayMedium, fmtDayShort, fmtDuration, fmtMonth, fmtMultiplier, fmtNum, fmtSet, fmtTime, fmtUnit, fmtVolume, plural, startOfWeek } from './format.js';
 import { columnChart, lineChart, rankedBars } from './chart.js';
 import { backupStatus, exerciseSessions, flagRecords, isWorking, loadBar, METRICS, muscleRecovery, muscleSets, neglectedMuscles, PLATE_TIERS, plateHeight, plateTier, plateTravel, plateWidth, RECORD_TYPES, recordsFor, recordTimeline, recoveryColour, sessionEffort, SET_KINDS, setLabels, streakStatus, summarizeSets, weekDays, weeklyTotals, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
 import { bodyWeightChart, weightsFrom } from './profile.js';
-import { dayTime, weightOn } from './body.js';
+import { ageOn, dayTime, weightOn } from './body.js';
 import { clearMedia, downloadMedia, isDownloadingMedia, mediaStatus } from './media.js';
-import { backupText, deleteExercise, deleteWorkout, dismissShieldNote, exerciseById, isExerciseUsed, markBackedUp, previewBackup, restoreBackup, saveSettings, state, visibleExercises, wipeAll } from './store.js';
+import { backupText, deleteExercise, deleteWorkout, saveWorkout, dismissShieldNote, exerciseById, isExerciseUsed, markBackedUp, previewBackup, restoreBackup, saveSettings, state, visibleExercises, wipeAll } from './store.js';
 import { workoutsCsv } from './csv.js';
+import { bandFromFit, zoneBounds } from './fit.js';
 import { L, LANGUAGES, language, setLanguage } from './i18n.js';
 import { equipmentName, MUSCLES, muscleName } from './exercises.js';
 import { muscleMap, recoveryMap } from './muscle-map.js';
@@ -304,6 +305,7 @@ export function workoutDetailView(id) {
       stat(L('Czas', 'Time'), fmtDuration(workout.endedAt - workout.startedAt)),
       stat(L('Objętość', 'Volume'), fmtVolume(workoutVolume(workout))),
       stat(L('Serie', 'Sets'), String(workingSetCount(workout)))),
+    bandSection(workout),
     workout.note && h('p.detail-note', workout.note),
     workout.exercises.map((item) => {
       const exercise = exerciseById(item.exerciseId);
@@ -328,6 +330,141 @@ export function workoutDetailView(id) {
       h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => saveWorkoutAsRoutine(workout) }, L('Zapisz jako rutynę', 'Save as routine')),
       h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => editWorkout(workout) }, L('Edytuj trening', 'Edit workout')),
       h('button.btn.btn-text-danger.btn-block', { type: 'button', onclick: remove }, L('Usuń trening', 'Delete workout'))));
+}
+
+/** Dane z opaski albo zegarka przy treningu: serie i ćwiczenia są z Formy, tętno i kalorie z opaski. */
+function bandSection(workout) {
+  const band = workout.band;
+  if (!band) {
+    return h('button.btn.btn-ghost.btn-block.band-add', { type: 'button', onclick: () => bandSheet(workout) },
+      icon('plus', 18), L('Dodaj dane z opaski', 'Add data from your band'));
+  }
+  const dash = (value) => (value == null ? '–' : String(value));
+  const hr = band.hr?.length > 1 && lineChart({
+    points: band.hr.map(([t, bpm]) => ({ x: t, y: bpm, value: `${bpm}`, label: fmtClock(t) })),
+    formatTick: (v) => String(Math.round(v)),
+    formatEnd: (point) => point.value,
+    formatDate: (t) => fmtClock(t),
+    minStep: 10,
+    height: 150,
+    label: L(`Tętno w czasie treningu, średnio ${band.avgHr}, najwyżej ${band.maxHr}.`, `Heart rate during the workout, average ${band.avgHr}, peak ${band.maxHr}.`),
+  });
+  return h('section.band',
+    h('div.band-head',
+      h('h2.band-title', L('Z opaski', 'From your band')),
+      h('button.band-edit', { type: 'button', onclick: () => bandSheet(workout) }, L('Zmień', 'Edit'))),
+    h('div.stats',
+      stat(L('Tętno śr.', 'Avg HR'), dash(band.avgHr)),
+      stat(L('Tętno maks.', 'Max HR'), dash(band.maxHr)),
+      stat(L('Kalorie', 'Calories'), dash(band.kcal)),
+      band.seconds != null && stat(L('Czas', 'Time'), fmtClock(band.seconds)),
+      band.load != null && stat(L('Obciążenie', 'Load'), String(band.load)),
+      band.minHr != null && stat(L('Tętno min.', 'Min HR'), String(band.minHr))),
+    hr && h('div.band-card', h('h3.band-sub', L('Tętno', 'Heart rate')), hr),
+    band.zones && bandZones(band),
+    (band.effect != null || band.anaerobic != null) && h('div.band-card',
+      h('h3.band-sub', L('Efekt treningu', 'Training effect')),
+      h('div.band-effects',
+        band.effect != null && bandEffect(L('Tlenowy', 'Aerobic'), band.effect),
+        band.anaerobic != null && bandEffect(L('Beztlenowy', 'Anaerobic'), band.anaerobic))));
+}
+
+const ZONE_NAMES = [
+  L('Lekkie', 'Light'), L('Intensywne', 'Intensive'), L('Tlenowa', 'Aerobic'), L('Beztlenowa', 'Anaerobic'), L('VO₂ max', 'VO₂ max'),
+];
+
+function bandZones(band) {
+  const bounds = zoneBounds(band.zoneMaxHr);
+  const total = band.zones.reduce((sum, s) => sum + s, 0) || 1;
+  const rows = band.zones.map((seconds, i) => {
+    const share = Math.round((seconds / total) * 100);
+    const range = i < 4 ? `${bounds[i]}–${bounds[i + 1] - 1}` : `${bounds[i]}+`;
+    return h('div.zone-row',
+      h('div.zone-text',
+        h('span.zone-name', ZONE_NAMES[i]),
+        h('span.zone-range', L(`${range} ud./min`, `${range} bpm`)),
+        h('span.zone-value', `${share}% · ${fmtClock(seconds)}`)),
+      h('div.zone-track', h(`div.zone-fill.zone-${i}`, { style: `width: ${Math.max(seconds ? 2 : 0, (seconds / total) * 100)}%` })));
+  }).reverse();
+  return h('div.band-card', h('h3.band-sub', L('Strefy tętna', 'Heart rate zones')), ...rows);
+}
+
+function bandEffect(label, value) {
+  const word = value < 1 ? L('Brak efektu', 'No effect') : value < 2 ? L('Niewielki', 'Minor')
+    : value < 3 ? L('Średni', 'Moderate') : value < 4 ? L('Duży', 'High') : L('Bardzo duży', 'Very high');
+  return h('div.band-effect', h('span.band-effect-value', fmtNum(value)), h('span.band-effect-label', label), h('span.band-effect-word', word));
+}
+
+async function saveBand(workout, band) {
+  const { band: _old, ...rest } = workout;
+  await saveWorkout(band ? { ...rest, band } : rest);
+}
+
+/** Tętno maksymalne do stref: 220 minus wiek, a bez daty urodzenia 190. */
+function userMaxHr() {
+  return state.profile.birthDate ? 220 - ageOn(state.profile.birthDate) : 190;
+}
+
+function bandSheet(workout) {
+  openSheet((close) => {
+    const field = (label, value, max) => h('input', { type: 'text', inputMode: 'numeric', autocomplete: 'off', value: value ?? '', 'aria-label': label, 'data-max': max });
+    const avg = field(L('Średnie tętno', 'Average heart rate'), workout.band?.avgHr, 250);
+    const max = field(L('Maksymalne tętno', 'Max heart rate'), workout.band?.maxHr, 250);
+    const kcal = field(L('Kalorie', 'Calories'), workout.band?.kcal, 5000);
+    const read = (input) => parseNum(input.value, { integer: true, max: Number(input.dataset.max) });
+    // Bez filtra typu, bo iPhone nie zna rozszerzenia .fit i wyszarzyłby plik.
+    const file = h('input', {
+      type: 'file',
+      hidden: true,
+      onchange: async () => {
+        const chosen = file.files?.[0];
+        file.value = '';
+        if (!chosen) return;
+        let band;
+        try {
+          band = bandFromFit(await chosen.arrayBuffer(), { maxHr: userMaxHr() });
+        } catch {
+          toast(L('To nie jest plik treningu z opaski. W Zepp wybierz Eksportuj dane → format FIT.', 'This isn’t a workout file from a band. In Zepp choose Export data → FIT format.'));
+          return;
+        }
+        // Zepp przesuwa godziny o strefę czasową, więc porównuję tylko dni z zapasem.
+        if (band.date && Math.abs(band.date - workout.startedAt) > 36 * 3600000) {
+          const confirmed = await ask({
+            title: L('Ten plik jest z innego dnia', 'This file is from another day'),
+            text: L(`Trening z opaski: ${fmtDayMedium(band.date)}. Trening w Formie: ${fmtDayMedium(workout.startedAt)}.`, `Band workout: ${fmtDayMedium(band.date)}. Forma workout: ${fmtDayMedium(workout.startedAt)}.`),
+            confirm: L('Wczytaj mimo to', 'Load anyway'),
+          });
+          if (!confirmed) return;
+        }
+        const { date, ...keep } = band;
+        await saveBand(workout, keep);
+        close();
+        toast(L('Wczytano trening z opaski.', 'Band workout loaded.'));
+      },
+    });
+    return h('form.sheet-body', {
+      novalidate: true,
+      onsubmit: async (event) => {
+        event.preventDefault();
+        const typed = { avgHr: read(avg), maxHr: read(max), kcal: read(kcal) };
+        const empty = Object.values(typed).every((v) => v == null);
+        await saveBand(workout, empty ? null : { ...workout.band, ...typed });
+        close();
+        toast(empty ? L('Usunięto dane z opaski.', 'Band data removed.') : L('Zapisano dane z opaski.', 'Band data saved.'));
+      },
+    },
+    h('h2.sheet-title', L('Dane z opaski', 'Band data')),
+    h('p.sheet-text', L('W Zepp otwórz trening, stuknij ⋯ → Eksportuj dane → format FIT i zapisz plik w Plikach. Potem wczytaj go tutaj.', 'In Zepp open the workout, tap ⋯ → Export data → FIT format and save it to Files. Then load it here.')),
+    h('button.btn.btn-primary.btn-block.band-add', { type: 'button', onclick: () => file.click() }, icon('plus', 18), L('Wczytaj plik z opaski (.fit)', 'Load band file (.fit)')),
+    file,
+    h('p.sheet-text', L('Albo przepisz liczby ręcznie. Puste pola usuwają dane.', 'Or type the numbers. Empty fields remove the data.')),
+    h('div.field-row',
+      h('label.field', h('span.field-label', L('Tętno śr.', 'Avg HR')), avg),
+      h('label.field', h('span.field-label', L('Tętno maks.', 'Max HR')), max),
+      h('label.field', h('span.field-label', 'kcal'), kcal)),
+    h('button.btn.btn-ghost.btn-block', { type: 'submit' }, L('Zapisz', 'Save')),
+    h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: close }, L('Anuluj', 'Cancel')));
+  }, { label: L('Dane z opaski', 'Band data') });
 }
 
 // --- Postępy ---

@@ -544,6 +544,31 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .detail-sets .right { text-align: right; width: 44px; }
 .detail-rpe { margin-left: 10px; font: 600 15px/1 var(--font-data); color: var(--ink-3); }
 .detail-actions { display: flex; flex-direction: column; gap: 8px; }
+.band { display: flex; flex-direction: column; gap: 8px; }
+.band-head { display: flex; align-items: baseline; justify-content: space-between; }
+.band-title { font-size: 15px; font-weight: 600; color: var(--ink-2); }
+.band-add { gap: 6px; }
+.band .stats { grid-template-columns: repeat(3, 1fr); }
+.band-card { background: var(--panel); border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.band-sub { font-size: 14px; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.04em; }
+.zone-row { display: flex; flex-direction: column; gap: 6px; }
+.zone-text { display: grid; grid-template-columns: 1fr auto; column-gap: 8px; }
+.zone-name { font-weight: 600; }
+.zone-range { grid-row: 2; font-size: 14px; color: var(--ink-2); }
+.zone-value { grid-row: 1 / span 2; grid-column: 2; align-self: center; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.zone-track { height: 8px; border-radius: 4px; background: var(--panel-raised); overflow: hidden; }
+.zone-fill { height: 100%; border-radius: 4px; }
+.zone-0 { background: #8a63e8; }
+.zone-1 { background: #3d8fd6; }
+.zone-2 { background: #2fae7d; }
+.zone-3 { background: #e8a23a; }
+.zone-4 { background: #e2533f; }
+.band-effects { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.band-effect { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.band-effect-value { font: 700 30px/1.05 var(--font-data); }
+.band-effect-label { font-size: 14px; color: var(--ink-2); }
+.band-effect-word { font-size: 14px; font-weight: 600; }
+.band-edit { min-height: 44px; padding: 0 4px; color: var(--accent-line, var(--ink)); font-weight: 600; font-size: 15px; }
 
 /* Kalendarz */
 
