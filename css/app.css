@@ -475,6 +475,12 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .muscle-2 { fill: #ff8c1a; background: #ff8c1a; }
 .muscle-3 { fill: #ffd93b; background: #ffd93b; }
 .muscle-4 { fill: #2fd46b; background: #2fd46b; }
+.muscle-main { fill: #e2533f; background: #e2533f; }
+.muscle-helper { fill: #f2b632; background: #f2b632; }
+.muscle-legend-plain.muscle-legend-center { grid-template-columns: repeat(3, auto); justify-content: center; column-gap: 16px; font-size: 13px; color: var(--ink-2); }
+.muscle-swatch.muscle-0 { background: var(--panel-raised); }
+.workout-muscles .muscle-body { fill: var(--ink-3); opacity: 0.22; }
+.workout-muscles .muscle-swatch.muscle-0 { box-shadow: inset 0 0 0 1px var(--ink-3); }
 .muscle-info { min-height: 22px; text-align: center; font-size: 15px; font-weight: 500; }
 .muscle-legend { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--ink-2); }
 .muscle-legend-title { margin: 0; text-align: center; }

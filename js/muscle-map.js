@@ -57,6 +57,37 @@ export function muscleMap(rows) {
   });
 }
 
+/**
+ * Mięśnie z jednego treningu. rows: [{ muscle, sets, main }], gdzie main to partia główna
+ * któregoś ćwiczenia, a pozostałe pracowały pomocniczo (np. pośladki przy przysiadzie).
+ */
+export function workoutMuscleMap(rows) {
+  const rowOf = new Map(rows.map((row) => [row.muscle, row]));
+  const shown = rows.filter((row) => row.muscle !== 'Całe ciało');
+  const roleOf = (row) => (row.main ? L('główna', 'main') : L('pomocnicza', 'secondary'));
+  return drawMap({
+    colourOf: (muscle) => {
+      const row = rowOf.get(muscle);
+      return row ? (row.main ? 'main' : 'helper') : 0;
+    },
+    infoOf: (muscle) => {
+      const row = rowOf.get(muscle);
+      return row
+        ? `${muscleName(muscle)}: ${setsText(row.sets)}, ${roleOf(row)}`
+        : L(`${muscle}: nie pracowały w tym treningu`, `${muscleName(muscle)}: not trained in this workout`);
+    },
+    hint: L('Stuknij partię, żeby zobaczyć liczbę serii.', 'Tap a muscle to see its sets.'),
+    summary: shown.length
+      ? L(`Mięśnie w tym treningu: ${shown.map((row) => `${row.muscle} ${fmtNum(row.sets)} (${roleOf(row)})`).join(', ')}.`,
+        `Muscles in this workout: ${shown.map((row) => `${muscleName(row.muscle)} ${fmtNum(row.sets)} (${roleOf(row)})`).join(', ')}.`)
+      : L('W tym treningu nie ma serii na mapie mięśni.', 'This workout has no sets on the muscle map.'),
+    legend: h('ul.muscle-legend-row.muscle-legend-plain.muscle-legend-center', { 'aria-label': L('Legenda', 'Legend') },
+      h('li', h('span.muscle-swatch.muscle-main'), L('Główne', 'Main')),
+      h('li', h('span.muscle-swatch.muscle-helper'), L('Pomocnicze', 'Secondary')),
+      h('li', h('span.muscle-swatch.muscle-0'), L('Nie pracowały', 'Not trained'))),
+  });
+}
+
 /** rows: [{ muscle, level, ratio }] z poziomami siły. Partia bez wyniku zostaje szara. */
 export function strengthMap(rows) {
   const rowOf = new Map(rows.map((row) => [row.muscle, row]));

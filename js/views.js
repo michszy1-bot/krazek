@@ -11,8 +11,8 @@ import { backupText, deleteExercise, deleteWorkout, saveWorkout, dismissShieldNo
 import { workoutsCsv } from './csv.js';
 import { bandFromFit, zoneBounds } from './fit.js';
 import { L, LANGUAGES, language, setLanguage } from './i18n.js';
-import { equipmentName, MUSCLES, muscleName } from './exercises.js';
-import { muscleMap, recoveryMap } from './muscle-map.js';
+import { equipmentName, MUSCLES, muscleName, musclesOf } from './exercises.js';
+import { muscleMap, recoveryMap, workoutMuscleMap } from './muscle-map.js';
 import { questStrip } from './quest-views.js';
 import { shareCard } from './share.js';
 import { hasChalkDust, shownInscription } from './shop.js';
@@ -306,6 +306,7 @@ export function workoutDetailView(id) {
       stat(L('Objętość', 'Volume'), fmtVolume(workoutVolume(workout))),
       stat(L('Serie', 'Sets'), String(workingSetCount(workout)))),
     bandSection(workout),
+    workoutMuscles(workout),
     workout.note && h('p.detail-note', workout.note),
     workout.exercises.map((item) => {
       const exercise = exerciseById(item.exerciseId);
@@ -330,6 +331,25 @@ export function workoutDetailView(id) {
       h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => saveWorkoutAsRoutine(workout) }, L('Zapisz jako rutynę', 'Save as routine')),
       h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: () => editWorkout(workout) }, L('Edytuj trening', 'Edit workout')),
       h('button.btn.btn-text-danger.btn-block', { type: 'button', onclick: remove }, L('Usuń trening', 'Delete workout'))));
+}
+
+/** Mapa mięśni z tego treningu: partie główne na czerwono, pomocnicze na żółto. */
+function workoutMuscles(workout) {
+  const rows = new Map();
+  for (const item of workout.exercises) {
+    const sets = item.sets.filter(isWorking).length;
+    if (!sets) continue;
+    for (const [muscle, share] of musclesOf(exerciseById(item.exerciseId))) {
+      const row = rows.get(muscle) || { muscle, sets: 0, main: false };
+      row.sets += sets * share;
+      if (share >= 1) row.main = true;
+      rows.set(muscle, row);
+    }
+  }
+  if (!rows.size) return null;
+  return h('section.band-card.workout-muscles',
+    h('h3.band-sub', L('Ćwiczone mięśnie', 'Muscles trained')),
+    workoutMuscleMap([...rows.values()]));
 }
 
 /** Dane z opaski albo zegarka przy treningu: serie i ćwiczenia są z Formy, tętno i kalorie z opaski. */
