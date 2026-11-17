@@ -1,7 +1,7 @@
 // Ekrany aplikacji poza treningiem: start, dziennik, postępy, ćwiczenia i ustawienia.
 
 import { actionSheet, ask, emptyState, h, icon, iconButton, openSheet, pageHeader, particles, recordChip, segmented, toast } from './ui.js';
-import { parseNum, addDays, countOf, dayKey, fmtClock, fmtDayLong, fmtDayMedium, fmtDayShort, fmtDuration, fmtMonth, fmtMultiplier, fmtNum, fmtSet, fmtTime, fmtUnit, fmtVolume, plural, startOfWeek } from './format.js';
+import { addDays, countOf, dayKey, fmtClock, fmtDayLong, fmtDayMedium, fmtDayShort, fmtDuration, fmtMonth, fmtMultiplier, fmtNum, fmtSet, fmtTime, fmtUnit, fmtVolume, plural, startOfWeek } from './format.js';
 import { columnChart, lineChart, rankedBars } from './chart.js';
 import { backupStatus, exerciseSessions, flagRecords, isWorking, loadBar, METRICS, muscleRecovery, muscleSets, neglectedMuscles, PLATE_TIERS, plateHeight, plateTier, plateTravel, plateWidth, RECORD_TYPES, recordsFor, recordTimeline, recoveryColour, sessionEffort, SET_KINDS, setLabels, streakStatus, summarizeSets, weekDays, weeklyTotals, workingSetCount, workoutRecords, workoutVolume } from './stats.js';
 import { bodyWeightChart, weightsFrom } from './profile.js';
@@ -407,11 +407,6 @@ function userMaxHr() {
 
 function bandSheet(workout) {
   openSheet((close) => {
-    const field = (label, value, max) => h('input', { type: 'text', inputMode: 'numeric', autocomplete: 'off', value: value ?? '', 'aria-label': label, 'data-max': max });
-    const avg = field(L('Średnie tętno', 'Average heart rate'), workout.band?.avgHr, 250);
-    const max = field(L('Maksymalne tętno', 'Max heart rate'), workout.band?.maxHr, 250);
-    const kcal = field(L('Kalorie', 'Calories'), workout.band?.kcal, 5000);
-    const read = (input) => parseNum(input.value, { integer: true, max: Number(input.dataset.max) });
     // Bez filtra typu, bo iPhone nie zna rozszerzenia .fit i wyszarzyłby plik.
     const file = h('input', {
       type: 'file',
@@ -442,28 +437,26 @@ function bandSheet(workout) {
         toast(L('Wczytano trening z opaski.', 'Band workout loaded.'));
       },
     });
-    return h('form.sheet-body', {
-      novalidate: true,
-      onsubmit: async (event) => {
-        event.preventDefault();
-        const typed = { avgHr: read(avg), maxHr: read(max), kcal: read(kcal) };
-        const empty = Object.values(typed).every((v) => v == null);
-        await saveBand(workout, empty ? null : { ...workout.band, ...typed });
-        close();
-        toast(empty ? L('Usunięto dane z opaski.', 'Band data removed.') : L('Zapisano dane z opaski.', 'Band data saved.'));
-      },
-    },
-    h('h2.sheet-title', L('Dane z opaski', 'Band data')),
-    h('p.sheet-text', L('W Zepp otwórz trening, stuknij ⋯ → Eksportuj dane → format FIT i zapisz plik w Plikach. Potem wczytaj go tutaj.', 'In Zepp open the workout, tap ⋯ → Export data → FIT format and save it to Files. Then load it here.')),
-    h('button.btn.btn-primary.btn-block.band-add', { type: 'button', onclick: () => file.click() }, icon('plus', 18), L('Wczytaj plik z opaski (.fit)', 'Load band file (.fit)')),
-    file,
-    h('p.sheet-text', L('Albo przepisz liczby ręcznie. Puste pola usuwają dane.', 'Or type the numbers. Empty fields remove the data.')),
-    h('div.field-row',
-      h('label.field', h('span.field-label', L('Tętno śr.', 'Avg HR')), avg),
-      h('label.field', h('span.field-label', L('Tętno maks.', 'Max HR')), max),
-      h('label.field', h('span.field-label', 'kcal'), kcal)),
-    h('button.btn.btn-ghost.btn-block', { type: 'submit' }, L('Zapisz', 'Save')),
-    h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: close }, L('Anuluj', 'Cancel')));
+    const removeBand = async () => {
+      const confirmed = await ask({
+        title: L('Usunąć dane z opaski?', 'Remove band data?'),
+        text: L('Serie i ćwiczenia zostaną. Plik możesz potem wczytać ponownie.', 'Sets and exercises stay. You can load the file again later.'),
+        confirm: L('Usuń dane z opaski', 'Remove band data'),
+        danger: true,
+      });
+      if (!confirmed) return;
+      await saveBand(workout, null);
+      close();
+      toast(L('Usunięto dane z opaski.', 'Band data removed.'));
+    };
+    return h('div.sheet-body',
+      h('h2.sheet-title', L('Dane z opaski', 'Band data')),
+      h('p.sheet-text', L('W Zepp otwórz trening, stuknij ⋯ → Eksportuj dane → format FIT i zapisz plik w Plikach. Potem wczytaj go tutaj.', 'In Zepp open the workout, tap ⋯ → Export data → FIT format and save it to Files. Then load it here.')),
+      h('button.btn.btn-primary.btn-block.band-add', { type: 'button', onclick: () => file.click() }, icon('plus', 18),
+        workout.band ? L('Wczytaj inny plik (.fit)', 'Load another file (.fit)') : L('Wczytaj plik z opaski (.fit)', 'Load band file (.fit)')),
+      file,
+      workout.band && h('button.btn.btn-text-danger.btn-block', { type: 'button', onclick: removeBand }, L('Usuń dane z opaski', 'Remove band data')),
+      h('button.btn.btn-ghost.btn-block', { type: 'button', onclick: close }, L('Anuluj', 'Cancel')));
   }, { label: L('Dane z opaski', 'Band data') });
 }
 
