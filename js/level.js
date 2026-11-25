@@ -18,7 +18,7 @@ export const XP_GOAL = 150; // za tydzień z wykonanym celem
 const XP_MUSCLE_WEEK = 80;
 
 const MAIN_SCALE = 100;
-export const MAX_MUSCLE_LEVEL = 20;
+export const MAX_MUSCLE_LEVEL = 32;
 // Przy większej liczbie powtórzeń wzór na ciężar maksymalny staje się mało wiarygodny.
 const MAX_COUNTED_REPS = 12;
 // Siła rośnie wolniej niż masa ciała, więc sam procent masy ciała zaniżałby wynik cięższych. Wykładniki pochodzą
@@ -30,21 +30,23 @@ const REFERENCE_KG = 80;
 const bodyFactor = (bodyKg, exerciseId) => (bodyKg / REFERENCE_KG) ** (1 - (DEADLIFT_LIKE.has(exerciseId) ? DEADLIFT_EXPONENT : BODY_EXPONENT));
 
 /**
- * Rangi siły partii. Każdy z 20 poziomów to jeden stopień rangi: Brąz I–III to poziomy 1–3, Srebro 4–6,
- * Złoto 7–9, Platyna 10–12, Diament 13–15, Mistrz 16–18, Tytan 19 i Olimpijczyk 20.
+ * Rangi siły partii. Każdy z 32 poziomów to jeden stopień rangi. W randze stopień V jest najniższy, a I najwyższy:
+ * Brąz V–I to poziomy 1–5, Srebro 6–10, Złoto 11–15, Platyna 16–20, Diament 21–25, Mistrz 26–30,
+ * Tytan 31 i Olimpijczyk 32.
  */
 export const RANKS = [
-  { id: 'bronze', name: L('Brąz', 'Bronze'), from: 1, to: 3 },
-  { id: 'silver', name: L('Srebro', 'Silver'), from: 4, to: 6 },
-  { id: 'gold', name: L('Złoto', 'Gold'), from: 7, to: 9 },
-  { id: 'platinum', name: L('Platyna', 'Platinum'), from: 10, to: 12 },
-  { id: 'diamond', name: L('Diament', 'Diamond'), from: 13, to: 15 },
-  { id: 'master', name: L('Mistrz', 'Master'), from: 16, to: 18 },
-  { id: 'titan', name: L('Tytan', 'Titan'), from: 19, to: 19 },
-  { id: 'olympian', name: L('Olimpijczyk', 'Olympian'), from: 20, to: 20 },
+  { id: 'bronze', name: L('Brąz', 'Bronze'), from: 1, to: 5 },
+  { id: 'silver', name: L('Srebro', 'Silver'), from: 6, to: 10 },
+  { id: 'gold', name: L('Złoto', 'Gold'), from: 11, to: 15 },
+  { id: 'platinum', name: L('Platyna', 'Platinum'), from: 16, to: 20 },
+  { id: 'diamond', name: L('Diament', 'Diamond'), from: 21, to: 25 },
+  { id: 'master', name: L('Mistrz', 'Master'), from: 26, to: 30 },
+  { id: 'titan', name: L('Tytan', 'Titan'), from: 31, to: 31 },
+  { id: 'olympian', name: L('Olimpijczyk', 'Olympian'), from: 32, to: 32 },
 ];
 
-const TIERS = ['I', 'II', 'III'];
+// Od najniższego stopnia w randze do najwyższego.
+const TIERS = ['V', 'IV', 'III', 'II', 'I'];
 
 /** Ranga poziomu: { id, name, tier, label }, np. Złoto II. Bez wyniku null. */
 export function rankOf(level) {

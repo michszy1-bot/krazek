@@ -695,10 +695,10 @@ const at75 = [{ day: '2026-01-01', kg: 75 }];
 test('siła partii: 30 kg × 6 na hantel przy 75 kg to 96% masy ciała, z poprawką na masę w poziomie', () => {
   const row = strengthOf([levelWorkout('a', new Date(2026, 10, 2, 9), 'db-incline', [lift(30, 6)])], at75, 'Klatka');
   assert.ok(Math.abs(row.ratio - 0.96) < 1e-9);
-  assert.equal(row.level, 13);
-  assert.equal(strengthCategory(row.level), 'Diament I');
+  assert.equal(row.level, 21);
+  assert.equal(strengthCategory(row.level), 'Diament V');
   assert.equal(row.exercise, 'Wyciskanie hantli na ławce skośnej');
-  assert.ok(Math.abs(row.nextRatio - (1.4 * 13) / 19 / (75 / 80) ** 0.35) < 1e-9);
+  assert.ok(Math.abs(row.nextRatio - (1.4 * 21) / 31 / (75 / 80) ** 0.35) < 1e-9);
   assert.ok(row.share > 0 && row.share < 1);
 });
 
@@ -730,7 +730,7 @@ test('siła partii: bez wagi i przy ćwiczeniu bez normy nie ma wyniku, a powyż
   const heavy = levelWorkout('a', new Date(2026, 10, 2, 9), 'bench-press', [lift(500, 1)]);
   assert.equal(strengthOf([heavy], [], 'Klatka').level, null);
   const top = strengthOf([heavy], at75, 'Klatka');
-  assert.equal(top.level, 20);
+  assert.equal(top.level, 32);
   assert.equal(top.share, 1);
   assert.equal(top.nextRatio, null);
   const assisted = levelWorkout('b', new Date(2026, 10, 2, 9), 'machine-assisted-pull-up', [lift(60, 8)]);
@@ -778,8 +778,8 @@ test('siła partii: wolne ciężary mają pierwszeństwo przed maszyną i wycią
 test('siła partii: 140 kg przy 80 kg to zaawansowany, a przy większej masie ten sam procent daje więcej', () => {
   const strong = strengthOf([levelWorkout('a', new Date(2026, 10, 2, 9), 'bench-press', [lift(140, 1)])], [{ day: '2026-01-01', kg: 80 }], 'Klatka');
   assert.equal(strong.ratio, 1.75);
-  assert.equal(strong.level, 17);
-  assert.equal(strengthCategory(strong.level), 'Mistrz II');
+  assert.equal(strong.level, 28);
+  assert.equal(strengthCategory(strong.level), 'Mistrz III');
   const heavier = strengthOf([levelWorkout('b', new Date(2026, 10, 2, 9), 'bench-press', [lift(175, 1)])], [{ day: '2026-01-01', kg: 100 }], 'Klatka');
   assert.equal(heavier.ratio, 1.75);
   assert.ok(heavier.level > strong.level);
@@ -789,11 +789,11 @@ test('siła partii: 140 kg przy 80 kg to zaawansowany, a przy większej masie te
 test('siła partii: normy z danych zawodników i mniejsza poprawka na masę w martwym ciągu', () => {
   const weights = (kg) => [{ day: '2026-01-01', kg }];
   const at = (id, load, kg, muscle) => strengthOf([levelWorkout('a', new Date(2026, 10, 2, 9), id, [lift(load, 1)])], weights(kg), muscle);
-  assert.equal(at('squat', 240, 80, 'Czworogłowe').level, 20);
-  assert.equal(at('deadlift', 276, 80, 'Plecy').level, 20);
-  assert.equal(at('deadlift', 200, 80, 'Plecy').level, 14);
+  assert.equal(at('squat', 240, 80, 'Czworogłowe').level, 32);
+  assert.equal(at('deadlift', 276, 80, 'Plecy').level, 32);
+  assert.equal(at('deadlift', 200, 80, 'Plecy').level, 23);
   // Masa ciała pomaga w martwym ciągu mniej, więc przy 125 kg poprawka jest tam większa niż w wyciskaniu.
-  const factor = ({ level, nextRatio }, top) => (top * level) / 19 / nextRatio;
+  const factor = ({ level, nextRatio }, top) => (top * level) / 31 / nextRatio;
   const press = factor(at('bench-press', 125, 125, 'Klatka'), 2);
   const pull = factor(at('deadlift', 125, 125, 'Plecy'), 3.45);
   assert.ok(Math.abs(press - (125 / 80) ** 0.35) < 1e-9);
@@ -801,8 +801,8 @@ test('siła partii: normy z danych zawodników i mniejsza poprawka na masę w ma
   assert.ok(pull > press);
 });
 
-test('rangi siły: każdy poziom to stopień rangi, Tytan i Olimpijczyk bez stopni', () => {
-  assert.deepEqual([1, 3, 4, 6, 7, 9, 10, 12, 13, 15, 16, 18, 19, 20].map(strengthCategory), ['Brąz I', 'Brąz III', 'Srebro I', 'Srebro III', 'Złoto I', 'Złoto III', 'Platyna I', 'Platyna III', 'Diament I', 'Diament III', 'Mistrz I', 'Mistrz III', 'Tytan', 'Olimpijczyk']);
+test('rangi siły: pięć stopni w randze, V najniższy, Tytan i Olimpijczyk bez stopni', () => {
+  assert.deepEqual([1, 2, 3, 4, 5, 6, 10, 11, 15, 16, 20, 21, 25, 26, 30, 31, 32].map(strengthCategory), ['Brąz V', 'Brąz IV', 'Brąz III', 'Brąz II', 'Brąz I', 'Srebro V', 'Srebro I', 'Złoto V', 'Złoto I', 'Platyna V', 'Platyna I', 'Diament V', 'Diament I', 'Mistrz V', 'Mistrz I', 'Tytan', 'Olimpijczyk']);
   assert.equal(strengthCategory(null), 'Bez rangi');
 });
 
@@ -810,7 +810,7 @@ test('siła partii: ćwiczenie na nogi daje partii pomocniczej 10% wyniku, dopó
   const day = (d) => new Date(2026, 10, d, 9);
   const lunge = levelWorkout('a', day(2), 'barbell-lunge', [lift(100, 1)]);
   assert.equal(strengthOf([lunge], at75, 'Pośladki').exercise, 'Wykroki w tył ze sztangą');
-  assert.ok(strengthOf([lunge], at75, 'Pośladki').level <= 2);
+  assert.ok(strengthOf([lunge], at75, 'Pośladki').level <= 3);
   // Maszyna wprost na pośladki wygrywa z wykrokami, a wolny ciężar wprost z maszyną.
   const abduction = levelWorkout('b', day(3), 'hip-abduction', [lift(20, 1)]);
   assert.equal(strengthOf([lunge, abduction], at75, 'Pośladki').exercise, 'Odwodzenie nóg na maszynie');
@@ -856,7 +856,7 @@ test('ranga grupy to zaokrąglona średnia partii z wynikiem, a partie idą od n
 });
 
 test('kolor rangi siły, a bez wyniku szary', () => {
-  assert.deepEqual([null, 0, 1, 4, 9, 10, 15, 18, 19, 20].map(strengthColour), [0, 0, 'rank-bronze', 'rank-silver', 'rank-gold', 'rank-platinum', 'rank-diamond', 'rank-master', 'rank-titan', 'rank-olympian']);
+  assert.deepEqual([null, 0, 1, 6, 11, 16, 21, 26, 31, 32].map(strengthColour), [0, 0, 'rank-bronze', 'rank-silver', 'rank-gold', 'rank-platinum', 'rank-diamond', 'rank-master', 'rank-titan', 'rank-olympian']);
 });
 
 test('normy siły obejmują wszystkie ćwiczenia z ciężarem poza świadomymi wyjątkami', () => {
