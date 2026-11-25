@@ -9,6 +9,7 @@ import { shownTitle, spendable } from './shop.js';
 import { streakStatus } from './stats.js';
 import { groupLevels, levelProgress, rankOf, strengthCategory, strengthColour, XP_GOAL, XP_RECORD, XP_WORKOUT } from './level.js';
 import { strengthMap } from './muscle-map.js';
+import { rankBadgeSvg } from './rank-badges.js';
 import { exerciseById, state } from './store.js';
 import { firstStepsDone, liveFirstSteps, XP_FIRST_STEP, XP_QUEST } from './quests.js';
 import { SEASON_TIERS } from './seasons.js';
@@ -55,24 +56,8 @@ function xpBar(label, share, from = null, colour = null) {
 
 const nextText = ({ level, toNext }) => L(`${fmtNum(toNext)} XP do poziomu ${level + 1}`, `${fmtNum(toNext)} XP to level ${level + 1}`);
 
-const SVG_NS = 'http://www.w3.org/2000/svg';
-
-/** Odznaka rangi: sześciokąt w kolorze rangi z gwiazdą, a od Diamentu ze skrzydłami. */
-export function rankBadge(level, size = 40) {
-  const rank = rankOf(level);
-  const svg = document.createElementNS(SVG_NS, 'svg');
-  svg.setAttribute('viewBox', '0 0 64 64');
-  svg.setAttribute('width', size);
-  svg.setAttribute('height', size);
-  svg.setAttribute('aria-hidden', 'true');
-  svg.setAttribute('class', `rank-badge ${rank ? `rank-${rank.id}` : 'rank-none'}`);
-  const winged = rank && ['diamond', 'master', 'titan', 'olympian'].includes(rank.id);
-  svg.innerHTML = `${winged ? '<path class="rank-wing" d="M14 22 L2 18 L6 28 L1 32 L9 36 L6 42 L16 40 Z M50 22 L62 18 L58 28 L63 32 L55 36 L58 42 L48 40 Z"/>' : ''}`
-    + '<path class="rank-hex" d="M32 6 L54 18.5 L54 45.5 L32 58 L10 45.5 L10 18.5 Z"/>'
-    + '<path class="rank-hex-inner" d="M32 13 L48 22 L48 42 L32 51 L16 42 L16 22 Z"/>'
-    + (rank ? '<path class="rank-star" d="M32 21 L35.5 28.5 L43.5 29.3 L37.5 34.7 L39.3 42.6 L32 38.5 L24.7 42.6 L26.5 34.7 L20.5 29.3 L28.5 28.5 Z"/>' : '<text x="32" y="38" text-anchor="middle" class="rank-none-text">?</text>');
-  return svg;
-}
+/** Odznaka rangi partii albo grupy na danym poziomie. */
+export const rankBadge = (level, size = 46) => rankBadgeSvg(rankOf(level)?.id ?? null, size);
 
 function muscleRow(row) {
   if (row.level == null) {
@@ -96,7 +81,7 @@ function groupRow(group) {
   const rank = rankOf(group.level);
   return h(`details.rank-group.${rank ? `rank-${rank.id}` : 'rank-none'}`,
     h('summary.rank-group-head',
-      rankBadge(group.level, 46),
+      rankBadge(group.level, 56),
       h('span.rank-group-text',
         h('span.rank-group-name', group.name),
         h('span.rank-group-rank', rank ? rank.label : L('Bez rangi', 'Unranked'))),

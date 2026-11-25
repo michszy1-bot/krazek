@@ -506,13 +506,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .rank-badge.rank-master, .rank-text.rank-master { --rank: var(--rank-master); }
 .rank-badge.rank-titan, .rank-text.rank-titan { --rank: var(--rank-titan); }
 .rank-badge.rank-olympian, .rank-text.rank-olympian { --rank: var(--rank-olympian); }
-.rank-hex { fill: var(--rank); }
-.rank-hex-inner { fill: rgba(0, 0, 0, 0.22); }
-.rank-star { fill: #fff; opacity: 0.92; }
-.rank-wing { fill: var(--rank); opacity: 0.75; }
-.rank-none .rank-hex { fill: var(--panel-raised); }
-.rank-none-text { fill: var(--ink-3); font: 700 20px var(--font-data); }
-.rank-row { grid-template-columns: 40px 1fr auto; align-items: center; }
+.rank-row { grid-template-columns: 46px 1fr auto; align-items: center; }
 .rank-row .rank-badge { grid-row: span 2; }
 .rank-row .xp-bar, .rank-row .level-row-detail { grid-column: 2 / -1; }
 .rank-text { color: var(--rank); font-weight: 700; }
