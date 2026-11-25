@@ -29,24 +29,36 @@ const DEADLIFT_EXPONENT = 0.5;
 const REFERENCE_KG = 80;
 const bodyFactor = (bodyKg, exerciseId) => (bodyKg / REFERENCE_KG) ** (1 - (DEADLIFT_LIKE.has(exerciseId) ? DEADLIFT_EXPONENT : BODY_EXPONENT));
 
-/** Nazwa poziomu siły. Elita zaczyna się dopiero na poziomie najwyższym. */
-export function strengthCategory(level) {
-  if (level >= MAX_MUSCLE_LEVEL) return L('Elita', 'Elite');
-  if (level >= 16) return L('Zaawansowany', 'Advanced');
-  if (level >= 11) return L('Średnio zaawansowany', 'Intermediate');
-  return level >= 6 ? L('Nowicjusz', 'Novice') : L('Początkujący', 'Beginner');
-}
-
-/** Kolory poziomów siły, te same co na mapie serii: od czerwonego do zielonego. */
-export const STRENGTH_BANDS = [
-  { colour: 1, label: '1–5' },
-  { colour: 2, label: '6–10' },
-  { colour: 3, label: '11–15' },
-  { colour: 4, label: '16–20' },
+/**
+ * Rangi siły partii. Każdy z 20 poziomów to jeden stopień rangi: Brąz I–III to poziomy 1–3, Srebro 4–6,
+ * Złoto 7–9, Platyna 10–12, Diament 13–15, Mistrz 16–18, Tytan 19 i Olimpijczyk 20.
+ */
+export const RANKS = [
+  { id: 'bronze', name: L('Brąz', 'Bronze'), from: 1, to: 3 },
+  { id: 'silver', name: L('Srebro', 'Silver'), from: 4, to: 6 },
+  { id: 'gold', name: L('Złoto', 'Gold'), from: 7, to: 9 },
+  { id: 'platinum', name: L('Platyna', 'Platinum'), from: 10, to: 12 },
+  { id: 'diamond', name: L('Diament', 'Diamond'), from: 13, to: 15 },
+  { id: 'master', name: L('Mistrz', 'Master'), from: 16, to: 18 },
+  { id: 'titan', name: L('Tytan', 'Titan'), from: 19, to: 19 },
+  { id: 'olympian', name: L('Olimpijczyk', 'Olympian'), from: 20, to: 20 },
 ];
 
-/** Numer koloru poziomu siły. Partia bez wyniku, czyli 0, zostaje szara. */
-export const strengthColour = (level) => (level ? Math.ceil(level / 5) : 0);
+const TIERS = ['I', 'II', 'III'];
+
+/** Ranga poziomu: { id, name, tier, label }, np. Złoto II. Bez wyniku null. */
+export function rankOf(level) {
+  if (!level) return null;
+  const rank = RANKS.find((item) => level >= item.from && level <= item.to) ?? RANKS.at(-1);
+  const tier = rank.to > rank.from ? TIERS[level - rank.from] : null;
+  return { id: rank.id, name: rank.name, tier, label: tier ? `${rank.name} ${tier}` : rank.name };
+}
+
+/** Nazwa rangi ze stopniem, np. „Złoto II”. */
+export const strengthCategory = (level) => rankOf(level)?.label ?? L('Bez rangi', 'Unranked');
+
+/** Klasa koloru rangi, wspólna dla mapy, pasków i odznak. Partia bez wyniku, czyli 0, zostaje szara. */
+export const strengthColour = (level) => (level ? `rank-${rankOf(level).id}` : 0);
 
 export const xpPerSet = (muscle) => XP_MUSCLE_WEEK / muscleTopSets(muscle);
 

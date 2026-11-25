@@ -7,7 +7,7 @@ import { L } from './i18n.js';
 import { muscleName } from './exercises.js';
 import { shownTitle, spendable } from './shop.js';
 import { streakStatus } from './stats.js';
-import { levelProgress, MAX_MUSCLE_LEVEL, strengthCategory, strengthColour, XP_GOAL, XP_RECORD, XP_WORKOUT } from './level.js';
+import { levelProgress, rankOf, strengthCategory, strengthColour, XP_GOAL, XP_RECORD, XP_WORKOUT } from './level.js';
 import { strengthMap } from './muscle-map.js';
 import { exerciseById, state } from './store.js';
 import { firstStepsDone, liveFirstSteps, XP_FIRST_STEP, XP_QUEST } from './quests.js';
@@ -55,19 +55,40 @@ function xpBar(label, share, from = null, colour = null) {
 
 const nextText = ({ level, toNext }) => L(`${fmtNum(toNext)} XP do poziomu ${level + 1}`, `${fmtNum(toNext)} XP to level ${level + 1}`);
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/** Odznaka rangi: sześciokąt w kolorze rangi z gwiazdą, a od Diamentu ze skrzydłami. */
+export function rankBadge(level, size = 40) {
+  const rank = rankOf(level);
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 64 64');
+  svg.setAttribute('width', size);
+  svg.setAttribute('height', size);
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('class', `rank-badge ${rank ? `rank-${rank.id}` : 'rank-none'}`);
+  const winged = rank && ['diamond', 'master', 'titan', 'olympian'].includes(rank.id);
+  svg.innerHTML = `${winged ? '<path class="rank-wing" d="M14 22 L2 18 L6 28 L1 32 L9 36 L6 42 L16 40 Z M50 22 L62 18 L58 28 L63 32 L55 36 L58 42 L48 40 Z"/>' : ''}`
+    + '<path class="rank-hex" d="M32 6 L54 18.5 L54 45.5 L32 58 L10 45.5 L10 18.5 Z"/>'
+    + '<path class="rank-hex-inner" d="M32 13 L48 22 L48 42 L32 51 L16 42 L16 22 Z"/>'
+    + (rank ? '<path class="rank-star" d="M32 21 L35.5 28.5 L43.5 29.3 L37.5 34.7 L39.3 42.6 L32 38.5 L24.7 42.6 L26.5 34.7 L20.5 29.3 L28.5 28.5 Z"/>' : '<text x="32" y="38" text-anchor="middle" class="rank-none-text">?</text>');
+  return svg;
+}
+
 function muscleRow(row) {
   if (row.level == null) {
-    return h('li.level-row',
+    return h('li.level-row.rank-row',
+      rankBadge(null),
       h('span.level-row-name', muscleName(row.muscle)),
-      h('span.level-row-value', L('Brak wyniku', 'No result')));
+      h('span.level-row-value', L('Bez rangi', 'Unranked')));
   }
-  return h('li.level-row',
+  const next = row.nextRatio != null && strengthCategory(row.level + 1);
+  return h('li.level-row.rank-row',
+    rankBadge(row.level),
     h('span.level-row-name', muscleName(row.muscle)),
-    h('span.level-row-value', L(`Poziom ${row.level}`, `Level ${row.level}`)),
-    h('span.level-row-detail', strengthCategory(row.level)),
-    xpBar(L(`${row.muscle}, postęp poziomu ${row.level}`, `${muscleName(row.muscle)}, level ${row.level} progress`), row.share, null, strengthColour(row.level)),
+    h(`span.level-row-value.rank-text.rank-${rankOf(row.level).id}`, strengthCategory(row.level)),
+    xpBar(L(`${row.muscle}, postęp do rangi ${next || strengthCategory(row.level)}`, `${muscleName(row.muscle)}, progress to ${next || strengthCategory(row.level)}`), row.share, null, strengthColour(row.level)),
     h('span.level-row-detail', L(`${percent(row.ratio)}% masy ciała · ${row.exercise}`, `${percent(row.ratio)}% of body weight · ${row.exercise}`)),
-    row.nextRatio != null && h('span.level-row-detail', L(`Poziom ${row.level + 1} od ${Math.ceil(row.nextRatio * 100)}%`, `Level ${row.level + 1} from ${Math.ceil(row.nextRatio * 100)}%`)));
+    next && h('span.level-row-detail', L(`${next} od ${Math.ceil(row.nextRatio * 100)}%`, `${next} from ${Math.ceil(row.nextRatio * 100)}%`)));
 }
 
 const levelLink = (href, name, label) => h('a.level-link', { href, 'aria-label': label, title: label }, icon(name, 22));
@@ -89,13 +110,13 @@ export function levelSections(onAddWeight) {
     questsSection(progress.records),
     seasonSection(progress.records),
     h('section.block',
-      h('h2.block-title', L("Siła partii", "Muscle strength")),
+      h('h2.block-title', L("Rangi partii", "Muscle ranks")),
       state.bodyWeights.length
         ? [strengthMap(progress.muscles), h('h3.list-label', L("Od najsłabszej", "Weakest first")), h('ul.level-list', progress.muscles.map(muscleRow))]
         : h('button.notice', { type: 'button', onclick: onAddWeight },
           h('strong', L("Dodaj swoją wagę", "Add your weight")),
           h('span', L("Siłę partii liczę jako procent masy ciała, więc potrzebny jest choć jeden wpis w dzienniku wagi.", "Muscle strength is measured as a percentage of body weight, so you need at least one entry in the weight log."))),
-      state.bodyWeights.length > 0 && h('p.settings-text', L(`Poziomy 1–${MAX_MUSCLE_LEVEL} to najlepszy szacowany ciężar maksymalny względem wagi z dnia treningu, z poprawką na to, że siła rośnie wolniej niż masa ciała. Najpierw liczą się wolne ciężary, potem maszyny i wyciągi, a na końcu ćwiczenia na nogi, w których partia tylko pomaga, np. wykroki dla pośladków. Te ostatnie dają jej tylko 10% wyniku. Normy dla mężczyzn są orientacyjne, a dla ćwiczeń innych niż główne szacunkowe. Własne ćwiczenia i te bez obciążenia się nie liczą.`, `Levels 1–${MAX_MUSCLE_LEVEL} are your best estimated one-rep max relative to your weight on the day, adjusted because strength grows more slowly than body weight. Free weights count first, then machines and cables, and finally leg exercises where the muscle only assists, e.g. lunges for glutes. Those give it only 10% of the result. The standards for men are approximate, and for exercises other than the main lifts they’re estimates. Custom and unweighted exercises don’t count.`))),
+      state.bodyWeights.length > 0 && h('p.settings-text', L(`Rangi, od Brązu do Olimpijczyka, to najlepszy szacowany ciężar maksymalny względem wagi z dnia treningu, z poprawką na to, że siła rośnie wolniej niż masa ciała. Najpierw liczą się wolne ciężary, potem maszyny i wyciągi, a na końcu ćwiczenia na nogi, w których partia tylko pomaga, np. wykroki dla pośladków. Te ostatnie dają jej tylko 10% wyniku. Normy dla mężczyzn są orientacyjne, a dla ćwiczeń innych niż główne szacunkowe. Własne ćwiczenia i te bez obciążenia się nie liczą.`, `Ranks, from Bronze to Olympian, are your best estimated one-rep max relative to your weight on the day, adjusted because strength grows more slowly than body weight. Free weights count first, then machines and cables, and finally leg exercises where the muscle only assists, e.g. lunges for glutes. Those give it only 10% of the result. The standards for men are approximate, and for exercises other than the main lifts they’re estimates. Custom and unweighted exercises don’t count.`))),
   ];
 }
 
@@ -127,7 +148,7 @@ export function levelGainBlock({ xp, multiplier, before, after, muscleUps, newAc
     h('p.level-line-top', h('strong.level-gain-xp', `+${fmtNum(xp)} XP`), h('span', leveledUp ? L(`Nowy poziom: ${after.level}!`, `New level: ${after.level}!`) : nextText(after))),
     xpBar(L(`Postęp poziomu ${after.level}`, `Level ${after.level} progress`), after.share, leveledUp ? 0 : before.share),
     multiplier > 1 && h('p.level-meta', L(`Z mnożnikiem za serię tygodni: ${fmtMultiplier(multiplier)}`, `With the week streak multiplier: ${fmtMultiplier(multiplier)}`)),
-    muscleUps.length > 0 && h('p.level-meta', L(`Siła: ${muscleUps.map((row) => `${row.muscle} ${row.level}`).join(' · ')}`, `Strength: ${muscleUps.map((row) => `${muscleName(row.muscle)} ${row.level}`).join(' · ')}`)),
+    muscleUps.length > 0 && h('p.level-meta', L(`Nowa ranga: ${muscleUps.map((row) => `${row.muscle} ${strengthCategory(row.level)}`).join(' · ')}`, `New rank: ${muscleUps.map((row) => `${muscleName(row.muscle)} ${strengthCategory(row.level)}`).join(' · ')}`)),
     newAchievements.map((item) => h('p.level-unlock',
       badge(item, 46),
       h('span.level-unlock-text', h('span.level-unlock-label', L("Nowy medal", "New medal")), h('strong', item.name)),

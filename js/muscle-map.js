@@ -5,7 +5,7 @@ import { L } from './i18n.js';
 import { muscleName } from './exercises.js';
 import { fmtNum, plural } from './format.js';
 import { BODY_BACK, BODY_FRONT } from './muscle-shapes.js';
-import { STRENGTH_BANDS, strengthCategory, strengthColour } from './level.js';
+import { RANKS, strengthCategory, strengthColour } from './level.js';
 import { MUSCLE_SCALES, muscleLevel } from './stats.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -98,16 +98,16 @@ export function strengthMap(rows) {
       const row = rowOf.get(muscle);
       return row?.level == null
         ? L(`${muscle}: brak wyniku`, `${muscleName(muscle)}: no result`)
-        : L(`${muscle}: poziom ${row.level}, ${strengthCategory(row.level).toLowerCase()}`, `${muscleName(muscle)}: level ${row.level}, ${strengthCategory(row.level).toLowerCase()}`);
+        : `${muscleName(muscle)}: ${strengthCategory(row.level)}`;
     },
-    hint: L('Stuknij partię, żeby zobaczyć jej poziom.', 'Tap a muscle to see its level.'),
+    hint: L('Stuknij partię, żeby zobaczyć jej rangę.', 'Tap a muscle to see its rank.'),
     summary: known.length
-      ? L(`Mapa mięśni. Poziomy siły: ${known.map((row) => `${row.muscle} ${row.level}`).join(', ')}.`, `Muscle map. Strength levels: ${known.map((row) => `${muscleName(row.muscle)} ${row.level}`).join(', ')}.`)
-      : L('Mapa mięśni. Nie ma jeszcze poziomów siły.', 'Muscle map. No strength levels yet.'),
+      ? L(`Mapa rang. ${known.map((row) => `${row.muscle} ${strengthCategory(row.level)}`).join(', ')}.`, `Rank map. ${known.map((row) => `${muscleName(row.muscle)} ${strengthCategory(row.level)}`).join(', ')}.`)
+      : L('Mapa rang. Nie ma jeszcze żadnej rangi.', 'Rank map. No ranks yet.'),
     legend: h('div.muscle-legend',
-      h('p.muscle-legend-title', L('Poziom siły', 'Strength level')),
-      h('ul.muscle-legend-row.muscle-legend-plain', { 'aria-label': L('Poziom siły', 'Strength level') },
-        STRENGTH_BANDS.map(({ colour, label }) => h('li', h(`span.muscle-swatch.muscle-${colour}`), label)))),
+      h('p.muscle-legend-title', L('Rangi', 'Ranks')),
+      h('ul.muscle-legend-row.muscle-legend-ranks', { 'aria-label': L('Rangi', 'Ranks') },
+        RANKS.map(({ id, name }) => h('li', h(`span.muscle-swatch.muscle-rank-${id}`), name)))),
   });
 }
 

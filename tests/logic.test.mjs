@@ -696,7 +696,7 @@ test('siła partii: 30 kg × 6 na hantel przy 75 kg to 96% masy ciała, z popraw
   const row = strengthOf([levelWorkout('a', new Date(2026, 10, 2, 9), 'db-incline', [lift(30, 6)])], at75, 'Klatka');
   assert.ok(Math.abs(row.ratio - 0.96) < 1e-9);
   assert.equal(row.level, 13);
-  assert.equal(strengthCategory(row.level), 'Średnio zaawansowany');
+  assert.equal(strengthCategory(row.level), 'Diament I');
   assert.equal(row.exercise, 'Wyciskanie hantli na ławce skośnej');
   assert.ok(Math.abs(row.nextRatio - (1.4 * 13) / 19 / (75 / 80) ** 0.35) < 1e-9);
   assert.ok(row.share > 0 && row.share < 1);
@@ -779,7 +779,7 @@ test('siła partii: 140 kg przy 80 kg to zaawansowany, a przy większej masie te
   const strong = strengthOf([levelWorkout('a', new Date(2026, 10, 2, 9), 'bench-press', [lift(140, 1)])], [{ day: '2026-01-01', kg: 80 }], 'Klatka');
   assert.equal(strong.ratio, 1.75);
   assert.equal(strong.level, 17);
-  assert.equal(strengthCategory(strong.level), 'Zaawansowany');
+  assert.equal(strengthCategory(strong.level), 'Mistrz II');
   const heavier = strengthOf([levelWorkout('b', new Date(2026, 10, 2, 9), 'bench-press', [lift(175, 1)])], [{ day: '2026-01-01', kg: 100 }], 'Klatka');
   assert.equal(heavier.ratio, 1.75);
   assert.ok(heavier.level > strong.level);
@@ -801,8 +801,9 @@ test('siła partii: normy z danych zawodników i mniejsza poprawka na masę w ma
   assert.ok(pull > press);
 });
 
-test('nazwy poziomów siły', () => {
-  assert.deepEqual([1, 5, 6, 10, 11, 15, 16, 19, 20].map(strengthCategory), ['Początkujący', 'Początkujący', 'Nowicjusz', 'Nowicjusz', 'Średnio zaawansowany', 'Średnio zaawansowany', 'Zaawansowany', 'Zaawansowany', 'Elita']);
+test('rangi siły: każdy poziom to stopień rangi, Tytan i Olimpijczyk bez stopni', () => {
+  assert.deepEqual([1, 3, 4, 6, 7, 9, 10, 12, 13, 15, 16, 18, 19, 20].map(strengthCategory), ['Brąz I', 'Brąz III', 'Srebro I', 'Srebro III', 'Złoto I', 'Złoto III', 'Platyna I', 'Platyna III', 'Diament I', 'Diament III', 'Mistrz I', 'Mistrz III', 'Tytan', 'Olimpijczyk']);
+  assert.equal(strengthCategory(null), 'Bez rangi');
 });
 
 test('siła partii: ćwiczenie na nogi daje partii pomocniczej 10% wyniku, dopóki nie ma ćwiczenia wprost na nią', () => {
@@ -838,8 +839,8 @@ test('góra ciała: wyciskanie i wiosłowanie liczą się tylko do partii głów
   for (const [id, muscles] of HELPER_MUSCLES) assert.deepEqual(muscles.filter((m) => upper.has(m)), [], id);
 });
 
-test('kolor poziomu siły: co pięć poziomów, a bez wyniku szary', () => {
-  assert.deepEqual([null, 0, 1, 5, 6, 10, 11, 15, 16, 20].map(strengthColour), [0, 0, 1, 1, 2, 2, 3, 3, 4, 4]);
+test('kolor rangi siły, a bez wyniku szary', () => {
+  assert.deepEqual([null, 0, 1, 4, 9, 10, 15, 18, 19, 20].map(strengthColour), [0, 0, 'rank-bronze', 'rank-silver', 'rank-gold', 'rank-platinum', 'rank-diamond', 'rank-master', 'rank-titan', 'rank-olympian']);
 });
 
 test('normy siły obejmują wszystkie ćwiczenia z ciężarem poza świadomymi wyjątkami', () => {

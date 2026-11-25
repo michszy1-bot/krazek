@@ -486,6 +486,36 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .muscle-legend-title { margin: 0; text-align: center; }
 .muscle-legend-row { display: grid; grid-template-columns: 38px repeat(4, 1fr); gap: 4px; list-style: none; padding: 0; margin: 0; }
 .muscle-legend-row li { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.muscle-legend-ranks { grid-template-columns: repeat(4, 1fr); row-gap: 6px; }
+/* Kolory rang: Brąz, Srebro, Złoto, Platyna, Diament, Mistrz, Tytan, Olimpijczyk */
+:root { --rank-bronze: #c27c45; --rank-silver: #aeb8c6; --rank-gold: #e8b62a; --rank-platinum: #2ec4a6; --rank-diamond: #8f7cf2; --rank-master: #d65ce0; --rank-titan: #e5484d; --rank-olympian: #54c8ff; }
+.muscle-rank-bronze { fill: var(--rank-bronze); background: var(--rank-bronze); }
+.muscle-rank-silver { fill: var(--rank-silver); background: var(--rank-silver); }
+.muscle-rank-gold { fill: var(--rank-gold); background: var(--rank-gold); }
+.muscle-rank-platinum { fill: var(--rank-platinum); background: var(--rank-platinum); }
+.muscle-rank-diamond { fill: var(--rank-diamond); background: var(--rank-diamond); }
+.muscle-rank-master { fill: var(--rank-master); background: var(--rank-master); }
+.muscle-rank-titan { fill: var(--rank-titan); background: var(--rank-titan); }
+.muscle-rank-olympian { fill: var(--rank-olympian); background: var(--rank-olympian); }
+.rank-badge { flex: none; --rank: var(--ink-3); }
+.rank-badge.rank-bronze, .rank-text.rank-bronze { --rank: var(--rank-bronze); }
+.rank-badge.rank-silver, .rank-text.rank-silver { --rank: var(--rank-silver); }
+.rank-badge.rank-gold, .rank-text.rank-gold { --rank: var(--rank-gold); }
+.rank-badge.rank-platinum, .rank-text.rank-platinum { --rank: var(--rank-platinum); }
+.rank-badge.rank-diamond, .rank-text.rank-diamond { --rank: var(--rank-diamond); }
+.rank-badge.rank-master, .rank-text.rank-master { --rank: var(--rank-master); }
+.rank-badge.rank-titan, .rank-text.rank-titan { --rank: var(--rank-titan); }
+.rank-badge.rank-olympian, .rank-text.rank-olympian { --rank: var(--rank-olympian); }
+.rank-hex { fill: var(--rank); }
+.rank-hex-inner { fill: rgba(0, 0, 0, 0.22); }
+.rank-star { fill: #fff; opacity: 0.92; }
+.rank-wing { fill: var(--rank); opacity: 0.75; }
+.rank-none .rank-hex { fill: var(--panel-raised); }
+.rank-none-text { fill: var(--ink-3); font: 700 20px var(--font-data); }
+.rank-row { grid-template-columns: 40px 1fr auto; align-items: center; }
+.rank-row .rank-badge { grid-row: span 2; }
+.rank-row .xp-bar, .rank-row .level-row-detail { grid-column: 2 / -1; }
+.rank-text { color: var(--rank); font-weight: 700; }
 .muscle-legend-name { font-weight: 500; color: var(--ink); }
 .muscle-legend-plain { grid-template-columns: repeat(4, 1fr); }
 .muscle-legend-plain li { justify-content: center; }
