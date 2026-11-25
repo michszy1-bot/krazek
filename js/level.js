@@ -54,6 +54,28 @@ export function rankOf(level) {
   return { id: rank.id, name: rank.name, tier, label: tier ? `${rank.name} ${tier}` : rank.name };
 }
 
+/** Duże grupy jak w rankingach siłowni. Ranga grupy to średni poziom jej partii, które mają wynik. */
+export const MUSCLE_GROUPS = [
+  { id: 'arms', name: L('Ręce', 'Arms'), muscles: ['Biceps', 'Triceps', 'Przedramiona'] },
+  { id: 'legs', name: L('Nogi', 'Legs'), muscles: ['Czworogłowe', 'Dwugłowe uda', 'Pośladki', 'Łydki'] },
+  { id: 'core', name: L('Brzuch', 'Core'), muscles: ['Brzuch'] },
+  { id: 'shoulders', name: L('Barki', 'Shoulders'), muscles: ['Barki'] },
+  { id: 'chest', name: L('Klatka', 'Chest'), muscles: ['Klatka'] },
+  { id: 'back', name: L('Plecy', 'Back'), muscles: ['Plecy'] },
+];
+
+/** rows: poziomy partii z levelProgress. Zwraca grupy z poziomem (albo null) i partiami od najsłabszej. */
+export function groupLevels(rows) {
+  const rowOf = new Map(rows.map((row) => [row.muscle, row]));
+  return MUSCLE_GROUPS.map((group) => {
+    const members = group.muscles.map((muscle) => rowOf.get(muscle) ?? { muscle, level: null, share: 0 });
+    const ranked = members.filter((row) => row.level != null);
+    const level = ranked.length ? Math.round(ranked.reduce((sum, row) => sum + row.level, 0) / ranked.length) : null;
+    const order = (row) => (row.level == null ? Infinity : row.level + row.share);
+    return { ...group, level, members: [...members].sort((a, b) => order(a) - order(b)) };
+  });
+}
+
 /** Nazwa rangi ze stopniem, np. „Złoto II”. */
 export const strengthCategory = (level) => rankOf(level)?.label ?? L('Bez rangi', 'Unranked');
 

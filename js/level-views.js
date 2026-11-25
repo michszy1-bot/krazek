@@ -7,7 +7,7 @@ import { L } from './i18n.js';
 import { muscleName } from './exercises.js';
 import { shownTitle, spendable } from './shop.js';
 import { streakStatus } from './stats.js';
-import { levelProgress, rankOf, strengthCategory, strengthColour, XP_GOAL, XP_RECORD, XP_WORKOUT } from './level.js';
+import { groupLevels, levelProgress, rankOf, strengthCategory, strengthColour, XP_GOAL, XP_RECORD, XP_WORKOUT } from './level.js';
 import { strengthMap } from './muscle-map.js';
 import { exerciseById, state } from './store.js';
 import { firstStepsDone, liveFirstSteps, XP_FIRST_STEP, XP_QUEST } from './quests.js';
@@ -91,6 +91,19 @@ function muscleRow(row) {
     next && h('span.level-row-detail', L(`${next} od ${Math.ceil(row.nextRatio * 100)}%`, `${next} from ${Math.ceil(row.nextRatio * 100)}%`)));
 }
 
+/** Pasek grupy w kolorze jej rangi. Po rozwinięciu widać partie z rangami. */
+function groupRow(group) {
+  const rank = rankOf(group.level);
+  return h(`details.rank-group.${rank ? `rank-${rank.id}` : 'rank-none'}`,
+    h('summary.rank-group-head',
+      rankBadge(group.level, 46),
+      h('span.rank-group-text',
+        h('span.rank-group-name', group.name),
+        h('span.rank-group-rank', rank ? rank.label : L('Bez rangi', 'Unranked'))),
+      icon('down', 20)),
+    h('ul.level-list.rank-group-list', group.members.map(muscleRow)));
+}
+
 const levelLink = (href, name, label) => h('a.level-link', { href, 'aria-label': label, title: label }, icon(name, 22));
 
 /** Poziom główny, mapa siły i poziomy partii, czyli górna część profilu. */
@@ -112,7 +125,7 @@ export function levelSections(onAddWeight) {
     h('section.block',
       h('h2.block-title', L("Rangi partii", "Muscle ranks")),
       state.bodyWeights.length
-        ? [strengthMap(progress.muscles), h('h3.list-label', L("Od najsłabszej", "Weakest first")), h('ul.level-list', progress.muscles.map(muscleRow))]
+        ? [strengthMap(progress.muscles), h('div.rank-groups', groupLevels(progress.muscles).map(groupRow))]
         : h('button.notice', { type: 'button', onclick: onAddWeight },
           h('strong', L("Dodaj swoją wagę", "Add your weight")),
           h('span', L("Siłę partii liczę jako procent masy ciała, więc potrzebny jest choć jeden wpis w dzienniku wagi.", "Muscle strength is measured as a percentage of body weight, so you need at least one entry in the weight log."))),

@@ -516,6 +516,26 @@ button { background: none; border: 0; padding: 0; cursor: pointer; touch-action:
 .rank-row .rank-badge { grid-row: span 2; }
 .rank-row .xp-bar, .rank-row .level-row-detail { grid-column: 2 / -1; }
 .rank-text { color: var(--rank); font-weight: 700; }
+.rank-groups { display: flex; flex-direction: column; gap: 8px; }
+.rank-group { --rank: var(--ink-3); border-radius: var(--radius); background: linear-gradient(100deg, color-mix(in srgb, var(--rank) 34%, var(--panel)) 0%, color-mix(in srgb, var(--rank) 12%, var(--panel)) 100%); overflow: hidden; }
+.rank-group.rank-none { background: var(--panel); }
+.rank-group.rank-bronze { --rank: var(--rank-bronze); }
+.rank-group.rank-silver { --rank: var(--rank-silver); }
+.rank-group.rank-gold { --rank: var(--rank-gold); }
+.rank-group.rank-platinum { --rank: var(--rank-platinum); }
+.rank-group.rank-diamond { --rank: var(--rank-diamond); }
+.rank-group.rank-master { --rank: var(--rank-master); }
+.rank-group.rank-titan { --rank: var(--rank-titan); }
+.rank-group.rank-olympian { --rank: var(--rank-olympian); }
+.rank-group-head { display: flex; align-items: center; gap: 12px; padding: 10px 14px 10px 10px; min-height: 64px; cursor: pointer; list-style: none; }
+.rank-group-head::-webkit-details-marker { display: none; }
+.rank-group-text { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.rank-group-name { font-weight: 700; font-size: 17px; }
+.rank-group-rank { font: 700 15px/1.2 var(--font-data); letter-spacing: 0.06em; text-transform: uppercase; color: var(--rank); filter: brightness(1.25); }
+.rank-group-head > svg:last-child { color: var(--ink-2); transition: transform 160ms ease; }
+.rank-group[open] .rank-group-head > svg:last-child { transform: rotate(180deg); }
+.rank-group-list { padding: 4px 14px 14px; background: rgba(0, 0, 0, 0.18); }
+.rank-group-list .rank-row { padding-top: 10px; }
 .muscle-legend-name { font-weight: 500; color: var(--ink); }
 .muscle-legend-plain { grid-template-columns: repeat(4, 1fr); }
 .muscle-legend-plain li { justify-content: center; }

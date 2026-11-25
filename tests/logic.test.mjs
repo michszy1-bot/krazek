@@ -8,7 +8,7 @@ import { backupStatus, bestSet, sessionEffort, bestStreak, compareSets, estimate
 import { workoutsCsv } from '../js/csv.js';
 import { L, language, useLanguageInTests } from '../js/i18n.js';
 import { EXERCISE_NAMES_EN } from '../js/exercises-en.js';
-import { levelProgress, strengthCategory, strengthColour, strengthRatio, workoutGain } from '../js/level.js';
+import { groupLevels, levelProgress, strengthCategory, strengthColour, strengthRatio, workoutGain } from '../js/level.js';
 import { LIFTS_BODY, ONE_DUMBBELL, STRENGTH_ALSO, STRENGTH_TOPS } from '../js/strength-norms.js';
 import { applyFilter } from '../js/picker.js';
 import { SHAPE_TO_MUSCLE } from '../js/muscle-map.js';
@@ -837,6 +837,22 @@ test('góra ciała: wyciskanie i wiosłowanie liczą się tylko do partii głów
   assert.deepEqual(musclesOf(lookup('deadlift')), [['Plecy', 1], ['Dwugłowe uda', 0.5], ['Pośladki', 0.5]]);
   const upper = new Set(['Klatka', 'Plecy', 'Barki', 'Biceps', 'Triceps', 'Przedramiona', 'Brzuch']);
   for (const [id, muscles] of HELPER_MUSCLES) assert.deepEqual(muscles.filter((m) => upper.has(m)), [], id);
+});
+
+test('ranga grupy to zaokrąglona średnia partii z wynikiem, a partie idą od najsłabszej', () => {
+  const rows = [
+    { muscle: 'Biceps', level: 14, share: 0.2 },
+    { muscle: 'Triceps', level: 11, share: 0.5 },
+    { muscle: 'Przedramiona', level: null, share: 0 },
+    { muscle: 'Klatka', level: 9, share: 0.1 },
+  ];
+  const groups = groupLevels(rows);
+  const arms = groups.find((g) => g.id === 'arms');
+  assert.equal(arms.level, 13);
+  assert.deepEqual(arms.members.map((r) => r.muscle), ['Triceps', 'Biceps', 'Przedramiona']);
+  assert.equal(groups.find((g) => g.id === 'chest').level, 9);
+  assert.equal(groups.find((g) => g.id === 'core').level, null);
+  assert.deepEqual(groups.map((g) => g.id), ['arms', 'legs', 'core', 'shoulders', 'chest', 'back']);
 });
 
 test('kolor rangi siły, a bez wyniku szary', () => {
