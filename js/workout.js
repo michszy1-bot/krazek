@@ -2,14 +2,15 @@
 
 import { actionSheet, ask, h, holdButton, icon, iconButton, openSheet, particles, recordChip, toast } from './ui.js';
 import { shareCard } from './share.js';
-import { hasRecordSparks } from './shop.js';
+import { finishEffect, hasRecordSparks } from './shop.js';
+import { confetti, fireworks } from './effects.js';
 import { countOf, fmtClock, fmtDuration, fmtNum, fmtSet, fmtSetChange, fmtUnit, fmtVolume, inputValue, parseNum, pastWorkoutStart, toLocalInput } from './format.js';
 import { emptySet, exerciseSessions, flagRecords, isComplete, isWorking, recordsFor, restAfterSet, RPE_SCALE, SET_KINDS, setLabels, stepBaseWeight, steppedWeight, suggestNextWeight, swapExercise, warmupSets, weightStep, workingSetCount, workoutComparison, workoutRecords, workoutVolume } from './stats.js';
 import { exerciseById, flushActive, holdPlate, newId, releasePlate, saveActiveSoon, saveExercise, saveRoutines, saveWorkout, setActive, state } from './store.js';
 import { pickExercises, stickyNoteSheet } from './picker.js';
 import { hasOwnName, putRoutine, routineDiffers, routineFromWorkout } from './routines.js';
 import { demoUrl, exerciseDemo, hasDemo } from './demo.js';
-import { workoutGain } from './level.js';
+import { bestGroup, rankOf, workoutGain } from './level.js';
 import { levelGainBlock, levelOptions } from './level-views.js';
 import { saveWorkoutAsRoutine } from './routine-views.js';
 import * as sound from './sound.js';
@@ -958,10 +959,18 @@ async function saveEdit() {
   onSaved?.();
 }
 
+/** Najwyższa ranga po treningu, do koloru fajerwerków. */
+function summaryRank(gain) {
+  const group = state.bodyWeights.length ? bestGroup(gain.after?.muscles ?? []) : null;
+  return group ? rankOf(group.level).id : null;
+}
+
 function showSummary(workout, records, gain, routine, updatedRoutine) {
   const changes = workoutComparison(workout, state.workouts, exerciseById);
   openSheet((close) => h('div.sheet-body.sheet-summary',
     records.length > 0 && hasRecordSparks(state.shop) && h('span.spark-burst', { 'aria-hidden': 'true' }, particles('spark', 22, 150)),
+    finishEffect(state.shop) === 'confetti' && confetti(),
+    finishEffect(state.shop) === 'fireworks' && fireworks(summaryRank(gain)),
     h('h2.sheet-title', L('Trening zapisany', 'Workout saved')),
     h('div.stats',
       stat(L('Czas', 'Time'), fmtDuration(workout.endedAt - workout.startedAt)),

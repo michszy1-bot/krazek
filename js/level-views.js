@@ -5,9 +5,10 @@ import { badge, seasonBadgeItem } from './badges.js';
 import { countOf, fmtMultiplier, fmtNum } from './format.js';
 import { L } from './i18n.js';
 import { muscleName } from './exercises.js';
-import { shownTitle, spendable } from './shop.js';
+import { badgeFrame, rankUpEffect, shownTitle, spendable } from './shop.js';
+import { framedBadge, rankUpBadge } from './effects.js';
 import { streakStatus } from './stats.js';
-import { groupLevels, levelProgress, rankOf, strengthCategory, strengthColour, XP_GOAL, XP_RECORD, XP_WORKOUT } from './level.js';
+import { bestGroup, groupLevels, levelProgress, rankOf, strengthCategory, strengthColour, XP_GOAL, XP_RECORD, XP_WORKOUT } from './level.js';
 import { strengthMap } from './muscle-map.js';
 import { rankBadgeSvg } from './rank-badges.js';
 import { exerciseById, state } from './store.js';
@@ -94,11 +95,18 @@ const levelLink = (href, name, label) => h('a.level-link', { href, 'aria-label':
 /** Poziom główny, mapa siły i poziomy partii, czyli górna część profilu. */
 export function levelSections(onAddWeight) {
   const progress = levelProgress(state.workouts, exerciseById, levelOptions());
+  const top = state.bodyWeights.length ? bestGroup(progress.muscles) : null;
+  const topRank = top && rankOf(top.level);
   return [
     h('section.level-line',
-      shownTitle(state.shop) && h('p.level-title', shownTitle(state.shop)),
       h('div.level-head',
-        h('strong.level-name', L(`Poziom ${progress.level}`, `Level ${progress.level}`)),
+        h('span.level-hero-badge', framedBadge(topRank?.id ?? null, badgeFrame(state.shop), 76)),
+        h('span.level-hero-text',
+          shownTitle(state.shop) && h('span.level-title', shownTitle(state.shop)),
+          h('strong.level-name', L(`Poziom ${progress.level}`, `Level ${progress.level}`)),
+          h(`span.level-hero-rank${topRank ? `.rank-text.rank-${topRank.id}` : ''}`, topRank
+            ? L(`Najwyższa ranga: ${top.name} · ${topRank.label}`, `Top rank: ${top.name} · ${topRank.label}`)
+            : L('Jeszcze bez rangi', 'No rank yet'))),
         levelLink('#/osiagniecia', 'trophy', L(`Medale, zdobyte: ${progress.achievements.filter((item) => item.done).length} z ${progress.achievements.length}`, `Medals, earned: ${progress.achievements.filter((item) => item.done).length} of ${progress.achievements.length}`)),
         levelLink('#/sklep', 'bag', L(`Sklep, do wydania: ${fmtNum(spendable(progress.xp, state.shop))} XP`, `Shop, to spend: ${fmtNum(spendable(progress.xp, state.shop))} XP`))),
       xpBar(L(`Postęp poziomu ${progress.level}`, `Level ${progress.level} progress`), progress.share),
@@ -146,7 +154,9 @@ export function levelGainBlock({ xp, multiplier, before, after, muscleUps, newAc
     h('p.level-line-top', h('strong.level-gain-xp', `+${fmtNum(xp)} XP`), h('span', leveledUp ? L(`Nowy poziom: ${after.level}!`, `New level: ${after.level}!`) : nextText(after))),
     xpBar(L(`Postęp poziomu ${after.level}`, `Level ${after.level} progress`), after.share, leveledUp ? 0 : before.share),
     multiplier > 1 && h('p.level-meta', L(`Z mnożnikiem za serię tygodni: ${fmtMultiplier(multiplier)}`, `With the week streak multiplier: ${fmtMultiplier(multiplier)}`)),
-    muscleUps.length > 0 && h('p.level-meta', L(`Nowa ranga: ${muscleUps.map((row) => `${row.muscle} ${strengthCategory(row.level)}`).join(' · ')}`, `New rank: ${muscleUps.map((row) => `${muscleName(row.muscle)} ${strengthCategory(row.level)}`).join(' · ')}`)),
+    muscleUps.map((row) => h('p.level-unlock.level-rankup',
+      rankUpBadge(rankOf(row.level).id, rankUpEffect(state.shop), 52),
+      h('span.level-unlock-text', h('span.level-unlock-label', L("Nowa ranga", "New rank")), h('strong', `${muscleName(row.muscle)} · ${strengthCategory(row.level)}`)))),
     newAchievements.map((item) => h('p.level-unlock',
       badge(item, 46),
       h('span.level-unlock-text', h('span.level-unlock-label', L("Nowy medal", "New medal")), h('strong', item.name)),

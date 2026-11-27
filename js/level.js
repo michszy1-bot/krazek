@@ -79,6 +79,11 @@ export function groupLevels(rows) {
 }
 
 /** Nazwa rangi ze stopniem, np. „Złoto II”. */
+/** Grupa z najwyższą rangą, przy remisie pierwsza z listy, albo null, gdy żadna nie ma rangi. */
+export function bestGroup(rows) {
+  return groupLevels(rows).filter((group) => group.level != null).reduce((best, group) => (!best || group.level > best.level ? group : best), null);
+}
+
 export const strengthCategory = (level) => rankOf(level)?.label ?? L('Bez rangi', 'Unranked');
 
 /** Klasa koloru rangi, wspólna dla mapy, pasków i odznak. Partia bez wyniku, czyli 0, zostaje szara. */

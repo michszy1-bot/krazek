@@ -12,6 +12,9 @@ const SHIELD = 'shield';
 const ACCENT = 'accent';
 const DUST = 'dust';
 const SPARK = 'spark';
+const FRAME = 'frame';
+const FINISH = 'finish';
+const RANKUP = 'rankup';
 
 export const SHOP_SECTIONS = [
   { slot: SHIELD, label: L("Tarcza serii", "Streak shield") },
@@ -20,6 +23,9 @@ export const SHOP_SECTIONS = [
   { slot: CLAMP, label: L("Zaciski", "Collars"), worn: L("Założone", "Equipped") },
   { slot: DUST, label: L("Efekt nowego krążka", "New plate effect"), worn: L("Wybrany", "Selected") },
   { slot: SPARK, label: L("Efekt rekordu", "Record effect"), worn: L("Wybrany", "Selected") },
+  { slot: FINISH, label: L("Efekt końca treningu", "Workout finish effect"), worn: L("Wybrany", "Selected") },
+  { slot: RANKUP, label: L("Efekt nowej rangi", "New rank effect"), worn: L("Wybrany", "Selected") },
+  { slot: FRAME, label: L("Ramka odznaki", "Badge frame"), worn: L("Założona", "Equipped") },
   { slot: INSCRIPTION, label: L("Napis przy gryfie", "Bar inscription") },
   { slot: TITLE, label: L("Tytuł w profilu", "Profile title"), worn: L("Wybrany", "Selected") },
   { slot: THEME, label: L("Tło aplikacji", "App background"), worn: L("Włączone", "On") },
@@ -49,6 +55,17 @@ export const SHOP_ITEMS = [
   { id: 'dust-chalk', slot: DUST, name: L("Pył magnezji", "Chalk dust"), meta: L("Chmurka, gdy krążek uderza o sztangę", "A puff when the plate hits the bar"), price: 2500 },
   { id: 'spark-none', slot: SPARK, name: L("Bez efektu", "No effect"), meta: L("Sama lista rekordów", "Just the list of records"), price: 0 },
   { id: 'spark-on', slot: SPARK, name: L("Iskry", "Sparks"), meta: L("W podsumowaniu treningu z nowym rekordem", "In the summary of a workout with a new record"), price: 2500 },
+  { id: 'finish-none', slot: FINISH, name: L("Bez efektu", "No effect"), meta: L("Samo podsumowanie", "Just the summary"), price: 0 },
+  { id: 'finish-confetti', slot: FINISH, name: L("Konfetti", "Confetti"), meta: L("Sypie się w kolorach krążków po każdym treningu", "Falls in plate colours after every workout"), price: 2500 },
+  { id: 'finish-fireworks', slot: FINISH, name: L("Fajerwerki", "Fireworks"), meta: L("Trzy wybuchy w kolorze Twojej najwyższej rangi", "Three bursts in the colour of your top rank"), price: 5000 },
+  { id: 'rankup-none', slot: RANKUP, name: L("Bez efektu", "No effect"), meta: L("Sama odznaka nowej rangi", "Just the new rank badge"), price: 0 },
+  { id: 'rankup-glow', slot: RANKUP, name: L("Blask", "Glow"), meta: L("Odznaka świeci, a za nią kręcą się promienie", "The badge glows with spinning rays behind it"), price: 2500 },
+  { id: 'rankup-burst', slot: RANKUP, name: L("Uderzenie", "Impact"), meta: L("Odznaka spada z fali uderzeniowej i odłamków", "The badge slams down with a shockwave and shards"), price: 5000 },
+  { id: 'frame-none', slot: FRAME, name: L("Bez ramki", "No frame"), meta: L("Sama odznaka", "Just the badge"), price: 0 },
+  { id: 'frame-laurel', slot: FRAME, name: L("Złoty wieniec", "Golden laurel"), meta: L("Liście laurowe i wstęga", "Laurel leaves and a ribbon"), price: 2500 },
+  { id: 'frame-fire', slot: FRAME, name: L("Płomienie", "Flames"), meta: L("Ogień tańczy wokół odznaki", "Fire dances around the badge"), price: 4000 },
+  { id: 'frame-crystal', slot: FRAME, name: L("Kryształ", "Crystal"), meta: L("Lodowe odłamki i błysk światła", "Ice shards and a glint of light"), price: 6000 },
+  { id: 'frame-royal', slot: FRAME, name: L("Królewska", "Royal"), meta: L("Korona, klejnoty i złota obręcz", "Crown, gems and a golden ring"), price: 10000 },
   { id: 'inscription', slot: INSCRIPTION, name: L("Własny napis", "Custom inscription"), meta: L("Imię albo motto pod sztangą", "Your name or motto under the bar"), price: 1000 },
   { id: 'title-none', slot: TITLE, name: L("Bez tytułu", "No title"), meta: L("Sam poziom", "Level only"), price: 0 },
   { id: 'title-iron', slot: TITLE, name: L("Żelazny", "Iron"), meta: L("Tytuł przy poziomie", "Title next to your level"), price: 500 },
@@ -67,7 +84,24 @@ export const SHOP_ITEMS = [
   { id: 'accent-teal', slot: ACCENT, name: L("Turkusowy", "Teal"), meta: L("Też wykresy i pola wyboru", "Also charts and selections"), price: 1500 },
 ];
 
-const itemById = (id) => SHOP_ITEMS.find((item) => item.id === id);
+/** Zakładki sklepu i ich sekcje, w kolejności na ekranie. */
+export const SHOP_TABS = [
+  { id: 'bar', label: L("Sztanga", "Barbell"), slots: [BAR, PLATES, CLAMP, INSCRIPTION] },
+  { id: 'effects', label: L("Efekty", "Effects"), slots: [DUST, SPARK, FINISH, RANKUP] },
+  { id: 'look', label: L("Wygląd", "Look"), slots: [THEME, ACCENT] },
+  { id: 'profile', label: L("Profil", "Profile"), slots: [FRAME, TITLE, SHIELD] },
+];
+
+/** Rzadkość wynika z ceny, więc droższy przedmiot zawsze ma co najmniej taką samą. Darmowe nie mają żadnej. */
+export const RARITIES = [
+  { id: 'common', name: L("Zwykły", "Common"), upTo: 1000 },
+  { id: 'rare', name: L("Rzadki", "Rare"), upTo: 2000 },
+  { id: 'epic', name: L("Epicki", "Epic"), upTo: 5000 },
+  { id: 'legendary', name: L("Legendarny", "Legendary"), upTo: Infinity },
+];
+export const rarityOf = (item) => (item.price > 0 ? RARITIES.find((rarity) => item.price <= rarity.upTo) : null);
+
+export const itemById = (id) => SHOP_ITEMS.find((item) => item.id === id);
 const defaultFor = (slot) => SHOP_ITEMS.find((item) => item.slot === slot && item.price === 0);
 
 export const INSCRIPTION_MAX = 16;
@@ -122,6 +156,11 @@ export const themeColor = (shop) => wornItem(shop, THEME).themeColor;
 
 export const hasChalkDust = (shop) => wornItem(shop, DUST).id === 'dust-chalk';
 export const hasRecordSparks = (shop) => wornItem(shop, SPARK).id === 'spark-on';
+/** Efekty i ramka bez przedrostka, np. 'confetti', albo null, gdy założony jest podstawowy. */
+const wornKind = (shop, slot) => { const { id, price } = wornItem(shop, slot); return price === 0 ? null : id.slice(slot.length + 1); };
+export const finishEffect = (shop) => wornKind(shop, FINISH);
+export const rankUpEffect = (shop) => wornKind(shop, RANKUP);
+export const badgeFrame = (shop) => wornKind(shop, FRAME);
 
 /** Dane z kopii zapasowej lub bazy. Nieznane przedmioty przepadają, a brak danych to pusty sklep. */
 export function cleanShop(raw) {

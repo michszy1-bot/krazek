@@ -14,7 +14,7 @@ import { applyFilter } from '../js/picker.js';
 import { SHAPE_TO_MUSCLE } from '../js/muscle-map.js';
 import { BODY_BACK, BODY_FRONT } from '../js/muscle-shapes.js';
 import { buildBackup, parseBackup } from '../js/backup.js';
-import { buyItem, cleanInscription, cleanShop, hasChalkDust, hasRecordSparks, INSCRIPTION_MAX, SHOP_ITEMS, SHOP_SECTIONS, shownInscription, shownTitle, spendable, themeColor, useShields, wearItem, wornItem, wornLooks } from '../js/shop.js';
+import { badgeFrame, finishEffect, rankUpEffect, rarityOf, SHOP_TABS, buyItem, cleanInscription, cleanShop, hasChalkDust, hasRecordSparks, INSCRIPTION_MAX, SHOP_ITEMS, SHOP_SECTIONS, shownInscription, shownTitle, spendable, themeColor, useShields, wearItem, wornItem, wornLooks } from '../js/shop.js';
 import { ageOn, cleanProfile, cleanWeights, dayTime, isDay, putWeight, removeWeight, weightChange, weightOn } from '../js/body.js';
 import { cleanRoutines, hasOwnName, isNameTaken, moveItem, parseRepRange, putRoutine, routineDiffers, routineFromWorkout, routineSetCount } from '../js/routines.js';
 import { SEED_EXERCISES, MUSCLES, EQUIPMENT, equipmentName, HELPER_MUSCLES, muscleName, musclesOf, RETIRED_EXERCISES, syncExercises } from '../js/exercises.js';
@@ -1489,4 +1489,36 @@ test('wysiłek treningu: średnia RPE z ocenionych serii roboczych, bez rozgrzew
   assert.deepEqual(sessionEffort([set(10, 'failure'), set(8, 'drop')]), { average: 9, rated: 2, total: 2 });
   // Wartość spoza skali, np. z uszkodzonej kopii, jest pomijana.
   assert.deepEqual(sessionEffort([set(8), { ...set(null), rpe: 12 }]), { average: 8, rated: 1, total: 2 });
+});
+
+test('każda sekcja sklepu jest w dokładnie jednej zakładce', () => {
+  const slots = SHOP_TABS.flatMap((tab) => tab.slots);
+  assert.equal(new Set(slots).size, slots.length);
+  assert.deepEqual([...slots].sort(), SHOP_SECTIONS.map((section) => section.slot).sort());
+  for (const section of SHOP_SECTIONS) assert.ok(SHOP_ITEMS.some((item) => item.slot === section.slot && item.price === 0) || section.slot === 'shield' || section.slot === 'inscription', section.slot);
+});
+
+test('rzadkość rośnie z ceną, a darmowe przedmioty jej nie mają', () => {
+  const rarity = (id) => rarityOf(SHOP_ITEMS.find((item) => item.id === id))?.id ?? null;
+  assert.equal(rarity('bar-steel'), null);
+  assert.equal(rarity('title-iron'), 'common');
+  assert.equal(rarity('bar-copper'), 'rare');
+  assert.equal(rarity('frame-fire'), 'epic');
+  assert.equal(rarity('frame-royal'), 'legendary');
+  const order = ['common', 'rare', 'epic', 'legendary'];
+  const paid = SHOP_ITEMS.filter((item) => item.price > 0).sort((a, b) => a.price - b.price);
+  paid.slice(1).forEach((item, i) => assert.ok(order.indexOf(rarityOf(item).id) >= order.indexOf(rarityOf(paid[i]).id)));
+});
+
+test('nowe efekty i ramka działają po zakupie i przechodzą przez kopię zapasową', () => {
+  const empty = cleanShop(undefined);
+  assert.equal(finishEffect(empty), null);
+  assert.equal(rankUpEffect(empty), null);
+  assert.equal(badgeFrame(empty), null);
+  const shop = buyItem(buyItem(buyItem(empty, 'finish-fireworks', 30000), 'rankup-glow', 30000), 'frame-crystal', 30000);
+  assert.equal(finishEffect(shop), 'fireworks');
+  assert.equal(rankUpEffect(shop), 'glow');
+  assert.equal(badgeFrame(shop), 'crystal');
+  assert.deepEqual(cleanShop(JSON.parse(JSON.stringify(shop))), shop);
+  assert.equal(buyItem(empty, 'frame-royal', 9999), null);
 });
